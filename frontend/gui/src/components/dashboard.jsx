@@ -11,6 +11,7 @@ const INDEX_LABELS = {
   sensex: "Sensex"
 };
 const INDEX_ORDER = ["nifty", "banknifty", "sensex"];
+const DEFAULT_SWING_THRESHOLD = 400;
 // Exchange strike-step per index, used to express an option's distance from
 // the ATM strike in whole strikes (e.g. ATM+2).
 const STRIKE_STEP_BY_INDEX = {
@@ -482,6 +483,7 @@ class Dashboard extends Component {
 
   renderActivity = () => {
     const selected = this.state.selectedActivityTab;
+    const swingCount = this.getSwingRows().length;
     return <aside className="scan-activity">
       <div className="scan-activity-head">
         <div role="tablist" aria-label="Market activity">
@@ -493,9 +495,10 @@ class Dashboard extends Component {
                 const next = event.key === "Home" ? "alerts" : event.key === "End" ? "snapshots" : selected === "alerts" ? "snapshots" : "alerts";
                 this.setState({ selectedActivityTab: next }, () => document.getElementById(`activity-tab-${next}`)?.focus());
               } }}
-              onClick={() => this.setState({ selectedActivityTab: value })}>{label}</button>)}
+              onClick={() => this.setState({ selectedActivityTab: value })}>{label}
+              {value === "alerts" && swingCount > 0 && <span className="scan-tab-count" aria-hidden="true">{swingCount}</span>}</button>)}
         </div>
-        <span className="scan-threshold">{this.props.settings.alertsEnabled ? `Threshold ${this.formatValue(this.props.settings.alertLotThreshold)} lots` : "Alerts off"}</span>
+        <span className={`scan-threshold${this.props.settings.alertsEnabled ? " is-on" : ""}`}>{this.props.settings.alertsEnabled ? "Alerts on" : "Alerts off"} · {this.formatValue(this.getSwingThreshold())} lots</span>
       </div>
       <div id="activity-panel" role="tabpanel" aria-labelledby={`activity-tab-${selected}`} tabIndex="0">
         {selected === "alerts" ? this.renderAlertPanel() : this.renderRecentSnapshots()}
@@ -661,52 +664,59 @@ class Dashboard extends Component {
     );
   }
 
-  renderAlertPanel = () => {
-    const threshold = Number(this.props.settings.alertLotThreshold || 0);
-    const hasThreshold = Number.isFinite(threshold) && threshold > 0;
-    const alertsActive = this.props.settings.alertsEnabled && hasThreshold;
-    const rows = alertsActive
-      ? INDEX_ORDER.flatMap(key => {
-        const points = this.getChartPoints(key);
-        const swings = [];
+  getSwingThreshold = () => {
+    const threshold = Number(this.props.settings.alertLotThreshold);
+    return Number.isFinite(threshold) && threshold > 0 ? threshold : DEFAULT_SWING_THRESHOLD;
+  }
 
-        for (let index = 1; index < points.length; index += 1) {
-          const previous = points[index - 1];
-          const current = points[index];
-          const swing = Number((current.netLots - previous.netLots).toFixed(2));
+  // Five-minute swings are market data, so they are listed whether or not popup/email alerts are on.
+  getSwingRows = () => {
+    const threshold = this.getSwingThreshold();
+    return INDEX_ORDER.flatMap(key => {
+      const points = this.getChartPoints(key);
+      const swings = [];
 
-          if (Math.abs(swing) <= threshold) {
-            continue;
-          }
+      for (let index = 1; index < points.length; index += 1) {
+        const previous = points[index - 1];
+        const current = points[index];
+        const swing = Number((current.netLots - previous.netLots).toFixed(2));
 
-          swings.push({
-            key: `${key}-${current.time}`,
-            time: current.time,
-            label: `${INDEX_LABELS[key]} 5-min lot swing`,
-            symbol: current.symbol,
-            swing
-          });
+        if (Math.abs(swing) <= threshold) {
+          continue;
         }
 
-        return swings;
-      }).sort((a, b) => b.time - a.time)
-      : [];
-    const subtitle = alertsActive
-      ? `Market open-to-close swings above ${this.formatValue(threshold)} lots`
-      : this.props.settings.alertsEnabled ? "Set an alert threshold to track swings" : "Email alerts are off";
+        swings.push({
+          key: `${key}-${current.time}`,
+          time: current.time,
+          label: `${INDEX_LABELS[key]} 5-min lot swing`,
+          symbol: current.symbol,
+          swing
+        });
+      }
+
+      return swings;
+    }).sort((a, b) => b.time - a.time);
+  }
+
+  renderAlertPanel = () => {
+    const threshold = this.getSwingThreshold();
+    const rows = this.getSwingRows();
+    const alertsOn = Boolean(this.props.settings.alertsEnabled);
 
     return (
       <section className="side-panel">
-        <div className="panel-head">
-          <div>
-            <div className="panel-title">Lot Swing Alerts</div>
-            <div className="panel-subtitle">{subtitle}</div>
-          </div>
+        <div className={`swing-alert-status${alertsOn ? " is-on" : ""}`}>
+          <span>{alertsOn
+            ? `Popup and sound alerts are on for swings above ${this.formatValue(threshold)} lots.`
+            : `Showing swings above ${this.formatValue(threshold)} lots. Popup and sound alerts are off.`}</span>
+          {!alertsOn && this.props.openSettings && (
+            <button type="button" onClick={this.props.openSettings}>Turn on</button>
+          )}
         </div>
 
         <div className="side-panel-body">
           {rows.length === 0 && (
-            <div className="empty-side-row">Waiting for threshold-crossing five-minute swings</div>
+            <div className="empty-side-row">No five-minute swing above {this.formatValue(threshold)} lots yet today.</div>
           )}
 
           {rows.map(row => (

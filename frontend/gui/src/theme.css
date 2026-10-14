@@ -1,50 +1,71 @@
+/* Utraders brand: teal -> sky -> indigo, taken from the logo mark. */
 :root {
+  --brand-teal: #67d5da;
+  --brand-cyan: #5fc0dc;
+  --brand-sky: #5fa8de;
+  --brand-blue: #6091e0;
+  --brand-indigo: #647de2;
+  --brand-gradient: linear-gradient(135deg, #67d5da 0%, #5fa8de 50%, #647de2 100%);
+  --brand-gradient-strong: linear-gradient(135deg, #3fbac4 0%, #4a86d8 50%, #4a5fdc 100%);
   color-scheme: light;
-  --ui-page: #ffffff;
+  --ui-page: #edf1f7;
   --ui-surface: #ffffff;
-  --ui-subtle: #f6f6f7;
-  --ui-hover: #f0f1f3;
-  --ui-line: #e4e4e7;
-  --ui-border: #c9ccd1;
-  --ui-ink: #202124;
-  --ui-muted: #60646c;
-  --ui-blue: #1763f5;
-  --ui-blue-solid: #1763f5;
-  --ui-blue-soft: #f0f4ff;
-  --ui-selected: #dfeaff;
-  --ui-green: #087a4b;
-  --ui-red: #c92c36;
+  --ui-subtle: #f1f4fa;
+  --ui-hover: #e9eef8;
+  --ui-line: #e1e7f0;
+  --ui-border: #c5cedd;
+  --ui-ink: #0f1629;
+  --ui-muted: #5b6579;
+  --ui-blue: #3653d4;
+  --ui-blue-solid: #4360df;
+  --ui-blue-soft: #edf1ff;
+  --ui-selected: #e0e8ff;
+  --ui-green: #0a7c55;
+  --ui-red: #c8303b;
   --ui-warning-bg: #fff8ed;
   --ui-warning-ink: #885517;
   --ui-warning-line: #efdcbd;
-  --ui-overlay: #18191b66;
-  --ui-shadow: #18191b1a;
-  --ui-grid: #ededf0;
+  --ui-overlay: #0f162966;
+  --ui-shadow: #0f16291a;
+  --ui-grid: #e9edf4;
+  --ui-green-soft: #e3f6ee;
+  --ui-red-soft: #fdecee;
+  --ui-success-bg: #e7f8f1;
+  --ui-success-ink: #0a6b49;
+  --ui-success-line: #b7e6d2;
+  --card-shadow: 0 1px 2px rgba(15, 22, 41, 0.05), 0 8px 24px rgba(15, 22, 41, 0.06);
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --ui-page: #18191b;
-  --ui-surface: #202124;
-  --ui-subtle: #27292d;
-  --ui-hover: #303238;
-  --ui-line: #373a40;
-  --ui-border: #50545d;
-  --ui-ink: #f1f3f5;
-  --ui-muted: #b0b4bd;
-  --ui-blue: #78a9ff;
-  --ui-blue-solid: #1763f5;
-  --ui-blue-soft: #252f42;
-  --ui-selected: #183558;
-  --ui-green: #4cce97;
-  --ui-red: #ff8288;
-  --ui-warning-bg: #372d1f;
+  --ui-page: #070a12;
+  --ui-surface: #0e1320;
+  --ui-subtle: #141b2b;
+  --ui-hover: #1a2336;
+  --ui-line: #212b40;
+  --ui-border: #34405a;
+  --ui-ink: #e9eef6;
+  --ui-muted: #95a1b7;
+  --ui-blue: #86abf4;
+  --ui-blue-solid: #4a63dd;
+  --ui-blue-soft: #16203a;
+  --ui-selected: #1b2a4d;
+  --ui-green: #4fd1a5;
+  --ui-red: #ff7b86;
+  --ui-warning-bg: #2e2617;
   --ui-warning-ink: #f2c787;
-  --ui-warning-line: #725939;
-  --ui-overlay: #00000099;
-  --ui-shadow: #00000040;
-  --ui-grid: #33363c;
+  --ui-warning-line: #5f4a2c;
+  --ui-overlay: #000000a6;
+  --ui-shadow: #00000059;
+  --ui-grid: #1a2232;
+  --ui-green-soft: #10302a;
+  --ui-red-soft: #3a1c22;
+  --ui-success-bg: #10291f;
+  --ui-success-ink: #7fe0bb;
+  --ui-success-line: #1f4d3c;
+  --card-shadow: 0 1px 0 rgba(255, 255, 255, 0.02), 0 12px 30px rgba(0, 0, 0, 0.35);
 }
 html, body { background: var(--ui-page); color: var(--ui-ink); }
+::selection { background: var(--ui-selected); color: var(--ui-ink); }
 .has-section-nav { min-height: 100vh; background: var(--ui-page); color: var(--ui-ink); }
 .scan-topbar strong, .scan-dashboard strong { color: inherit; }
 .app-settings { overflow-x: clip; padding: 16px 12px; }
@@ -55,7 +76,8 @@ html, body { background: var(--ui-page); color: var(--ui-ink); }
 .app-settings .input { background: var(--ui-surface); border-color: var(--ui-border); color: var(--ui-ink); box-shadow: none; }
 .app-settings .input::placeholder { color: var(--ui-muted); }
 .app-settings .card-footer { border-color: var(--ui-line); }
-.app-settings .button.is-link { background: var(--ui-blue-solid); color: #fff; }
+.app-settings .button.is-link { background: var(--brand-gradient); border: 0; color: #08101f; font-weight: 700; }
+.app-settings .button.is-link:hover { filter: brightness(1.06); color: #08101f; }
 .app-settings input[type="checkbox"] { accent-color: var(--ui-blue-solid); }
 .has-section-nav :is(.snapshot-grid-head, .snapshot-grid-head .snapshot-grid-cell, .acdd-grid-head) { background: var(--ui-subtle); color: var(--ui-muted); }
 .has-section-nav :is(.snapshot-grid-cell, .acdd-grid, .acdd-grid-cell, .acdd-summary-cell) { border-color: var(--ui-line); }
@@ -77,7 +99,7 @@ html, body { background: var(--ui-page); color: var(--ui-ink); }
 .lot-alert-modal .value-down { color: var(--ui-red); }
 .lot-alert-modal .value-neutral { color: var(--ui-ink); }
 .lot-alert-actions { border-color: var(--ui-line); }
-.lot-alert-actions button { background: var(--ui-blue-solid); }
+.lot-alert-actions button { background: var(--brand-gradient); color: #08101f; font-weight: 700; }
 .lot-alert-actions button.secondary { background: var(--ui-surface); border-color: var(--ui-border); color: var(--ui-ink); }
 @media (min-width: 601px) and (max-width: 700px) {
   .has-section-nav .scan-topbar { padding: 0 12px; gap: 12px; }

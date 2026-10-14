@@ -4,6 +4,7 @@ import Navbar from "./navbar.jsx";
 import Settings from "./settings.jsx";
 import Dashboard from "./dashboard.jsx";
 import "../equity.css";
+import "../brand.css";
 import { makeEquityApi } from "../equityData";
 import { ChartNoAxesColumn, Layers, LayoutDashboard, Settings as SettingsIcon } from "lucide-react";
 
@@ -50,6 +51,7 @@ class MainPage extends Component {
         handleContractMonthChange={this.props.handleContractMonthChange}
         handleMarketColumnsSave={this.props.handleMarketColumnsSave}
         handleDashboardRefresh={this.props.handleDashboardRefresh}
+        openSettings={() => this.changePage("settings")}
       />
 
     } else if (["equity", "index-options"].includes(this.state.currentPage)) {

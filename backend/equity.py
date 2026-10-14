@@ -169,8 +169,15 @@ def number(value):
     return float(value) if isinstance(value, (int, float)) and math.isfinite(value) else None
 
 
+def price(value):
+    # Kite sends 0 for open/high/low/average_price when a contract has not traded today.
+    value = number(value)
+    return value if value and value > 0 else None
+
+
 def timestamp(value):
-    if not isinstance(value, dt.datetime):
+    # Never-traded contracts carry a Unix-epoch last_trade_time.
+    if not isinstance(value, dt.datetime) or value.year < 2000:
         return None
     if value.tzinfo is None:
         value = value.replace(tzinfo=IST)
@@ -179,7 +186,7 @@ def timestamp(value):
 
 def quote_payload(raw, lot_size):
     ltp = number(raw.get("last_price"))
-    ohlc = {key: number(raw.get("ohlc", {}).get(key)) for key in ("open", "high", "low", "close")}
+    ohlc = {key: price(raw.get("ohlc", {}).get(key)) for key in ("open", "high", "low", "close")}
     close = ohlc["close"]
     depth = {}
     for side in ("buy", "sell"):
@@ -194,7 +201,7 @@ def quote_payload(raw, lot_size):
         "oiLots": number(raw.get("oi")) / lot_size if number(raw.get("oi")) is not None else None,
         "bid": depth["buy"][0]["price"] if depth["buy"] else None,
         "ask": depth["sell"][0]["price"] if depth["sell"] else None,
-        "depth": depth, "ohlc": ohlc, "vwap": number(raw.get("average_price")),
+        "depth": depth, "ohlc": ohlc, "vwap": price(raw.get("average_price")),
         "quotedAt": timestamp(raw.get("timestamp")), "lastTradeAt": timestamp(raw.get("last_trade_time")),
     }
 

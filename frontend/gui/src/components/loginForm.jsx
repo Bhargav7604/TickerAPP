@@ -1,9 +1,14 @@
 import { Component } from "react";
+import { BellRing, ChartCandlestick, LayoutDashboard } from "lucide-react";
+import "../login.css";
+import brandMark from "../assets/brand/utraders-mark.png";
+import logoOnDark from "../assets/brand/utraders-logo-light.png";
+import logoOnLight from "../assets/brand/utraders-logo-dark.png";
 
-const PANEL_METRICS = [
-  ["NIFTY", "+0.42%", "up"],
-  ["BANKNIFTY", "-0.18%", "down"],
-  ["SENSEX", "+0.31%", "up"]
+const FEATURES = [
+  [LayoutDashboard, "Live index futures", "NIFTY, BANKNIFTY and SENSEX across all three expiries."],
+  [ChartCandlestick, "Stock F&O watchlists", "Futures and options with depth and five-minute charts."],
+  [BellRing, "Lot-swing alerts", "Screen, sound and email alerts when net lots move."],
 ];
 
 class LoginForm extends Component {
@@ -38,13 +43,13 @@ class LoginForm extends Component {
         <section className="login-shell" aria-label="Ticker login">
           <div className="login-panel">
             <div className="login-brand">
-              <div className="login-brand-mark" aria-hidden="true">
-                <span>QL</span>
-              </div>
-              <div>
-                <div className="login-kicker">QuantLab</div>
-                <h1>QuantLab Ticker</h1>
-              </div>
+              <img className="login-logo login-logo-on-dark" src={logoOnDark} alt="Utraders" />
+              <img className="login-logo login-logo-on-light" src={logoOnLight} alt="Utraders" />
+            </div>
+
+            <div className="login-heading">
+              <h1>Sign in to Utraders Ticker</h1>
+              <p>Use the username and password from your administrator.</p>
             </div>
 
             <form onSubmit={this.handleLoginFormSubmit} className="login-form" id="login-form">
@@ -103,43 +108,32 @@ class LoginForm extends Component {
             </form>
           </div>
 
-          <div className="login-market-panel" aria-hidden="true">
-            <div className="market-panel-head">
-              <div>
-                <span className="market-panel-label">Market Session</span>
-                <strong>Live index desk</strong>
-              </div>
-              <span className="market-live-dot" />
-            </div>
-
-            <div className="market-card-grid">
-              {PANEL_METRICS.map(([label, value, direction]) => (
-                <div className="market-mini-card" key={label}>
-                  <span>{label}</span>
-                  <strong className={direction === "down" ? "value-down" : "value-up"}>{value}</strong>
-                </div>
+          <div className="login-brand-panel" aria-hidden="true">
+            <img className="login-hero-mark" src={brandMark} alt="" />
+            <p className="login-tagline">Every tick. Every trade. Everywhere.</p>
+            <ul className="login-features">
+              {FEATURES.map(([Icon, title, text]) => (
+                <li key={title}>
+                  <span className="login-feature-icon"><Icon size={18} /></span>
+                  <span><strong>{title}</strong>{text}</span>
+                </li>
               ))}
-            </div>
-
-            <div className="login-chart">
-              <svg viewBox="0 0 420 160" preserveAspectRatio="none">
-                <defs>
-                  <linearGradient id="login-chart-fill" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor="#1f6feb" stopOpacity="0.24" />
-                    <stop offset="100%" stopColor="#1f6feb" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-                <path className="login-chart-area" d="M0 115 L42 108 L84 112 L126 84 L168 92 L210 65 L252 72 L294 43 L336 58 L378 35 L420 42 L420 160 L0 160 Z" />
-                <path className="login-chart-line" d="M0 115 L42 108 L84 112 L126 84 L168 92 L210 65 L252 72 L294 43 L336 58 L378 35 L420 42" />
-              </svg>
-            </div>
-
-            <div className="market-tape">
-              <span>09:15</span>
-              <span>11:00</span>
-              <span>13:30</span>
-              <span>15:30</span>
-            </div>
+            </ul>
+            <svg className="login-wave" viewBox="0 0 420 120" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="login-wave-stroke" x1="0" x2="1" y1="0" y2="0">
+                  <stop offset="0%" stopColor="#67d5da" />
+                  <stop offset="50%" stopColor="#5fa8de" />
+                  <stop offset="100%" stopColor="#647de2" />
+                </linearGradient>
+                <linearGradient id="login-wave-fill" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor="#5fa8de" stopOpacity="0.28" />
+                  <stop offset="100%" stopColor="#5fa8de" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <path fill="url(#login-wave-fill)" d="M0 92 L42 86 L84 90 L126 66 L168 74 L210 50 L252 58 L294 30 L336 44 L378 20 L420 28 L420 120 L0 120 Z" />
+              <path fill="none" stroke="url(#login-wave-stroke)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" d="M0 92 L42 86 L84 90 L126 66 L168 74 L210 50 L252 58 L294 30 L336 44 L378 20 L420 28" />
+            </svg>
           </div>
         </section>
       </main>

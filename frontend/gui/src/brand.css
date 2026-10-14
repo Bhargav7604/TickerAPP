@@ -1,0 +1,30 @@
+/* Utraders look: navy brand header, card surfaces, clearer swing alerts. */
+.has-section-nav .scan-topbar { background: linear-gradient(180deg, #0b1122 0%, #0a0f1d 100%); border-bottom: 1px solid #1c2640; color: #e9eef6; }
+.has-section-nav .scan-nav-links { align-self: center; gap: 6px; }
+.has-section-nav .scan-nav-links button { height: 36px; padding: 0 14px; border: 0; border-radius: 999px; color: #a3aec4; font-weight: 600; }
+.has-section-nav .scan-nav-links button:hover { color: #ffffff; background: rgba(255, 255, 255, 0.06); }
+.has-section-nav .scan-nav-links button.active { color: #08101f; background: var(--brand-gradient); font-weight: 700; box-shadow: 0 6px 18px rgba(95, 168, 222, 0.28); }
+.has-section-nav .scan-topbar .scan-icon-button { color: #a3aec4; }
+.has-section-nav .scan-topbar .scan-icon-button:hover { color: #ffffff; background: rgba(255, 255, 255, 0.08); }
+.has-section-nav .scan-account-popover { color: var(--ui-ink); }
+
+.has-section-nav .market-comparison,
+.has-section-nav .scan-chart-section,
+.has-section-nav .scan-snapshot-preview,
+.has-section-nav .scan-activity,
+.has-section-nav .scan-dashboard .acdd-panel { border: 1px solid var(--ui-line); border-radius: 12px; overflow: hidden; box-shadow: var(--card-shadow); }
+.has-section-nav .scan-table thead th,
+.has-section-nav .scan-preview-table thead th { text-transform: uppercase; letter-spacing: 0.04em; font-size: 11px; }
+.has-section-nav .scan-table .is-selected th:first-child { box-shadow: none; background: linear-gradient(var(--brand-teal), var(--brand-indigo)) left / 4px 100% no-repeat, var(--ui-selected); }
+.has-section-nav .scan-dashboard .contract-segment.active { background: var(--brand-gradient); color: #08101f; }
+.has-section-nav .scan-activity-head [role=tab][aria-selected=true] { color: var(--ui-ink); border-bottom-color: transparent; background: var(--brand-gradient) bottom / 100% 3px no-repeat; }
+
+.scan-tab-count { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; margin-left: 6px; padding: 0 6px; border-radius: 999px; background: var(--brand-gradient); color: #08101f; font-size: 11px; font-weight: 800; }
+.scan-threshold.is-on { color: var(--ui-green); font-weight: 650; }
+.swing-alert-status { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 12px 14px 4px; padding: 10px 12px; border-radius: 10px; font-size: 13px; background: var(--ui-warning-bg); color: var(--ui-warning-ink); border: 1px solid var(--ui-warning-line); }
+.swing-alert-status.is-on { background: var(--ui-success-bg); color: var(--ui-success-ink); border-color: var(--ui-success-line); }
+.swing-alert-status button { flex: none; height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: var(--brand-gradient); color: #08101f; font-size: 12px; font-weight: 700; cursor: pointer; }
+.scan-activity .side-row:has(.side-value.value-up) { box-shadow: inset 3px 0 var(--ui-green); }
+.scan-activity .side-row:has(.side-value.value-down) { box-shadow: inset 3px 0 var(--ui-red); }
+.scan-activity .side-value.value-up { padding: 4px 10px; border-radius: 999px; background: var(--ui-green-soft); }
+.scan-activity .side-value.value-down { padding: 4px 10px; border-radius: 999px; background: var(--ui-red-soft); }

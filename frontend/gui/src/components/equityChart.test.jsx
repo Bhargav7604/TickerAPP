@@ -18,10 +18,10 @@ test("changing theme recolors the chart without discarding its zoom or data", ()
   window.ResizeObserver = class { observe() {} disconnect() {} };
   try {
     const view = render(<ThemeProvider><Toggle /><EquityChart contract={{ id: "test", symbol: "TEST", underlying: "TEST" }} candles={[{ time: 1234, close: 100, volume: 5 }]} /></ThemeProvider>);
-    expect(chart.applyOptions).toHaveBeenLastCalledWith(expect.objectContaining({ layout: expect.objectContaining({ background: { type: "solid", color: "#ffffff" } }) }));
+    expect(chart.applyOptions).toHaveBeenLastCalledWith(expect.objectContaining({ layout: expect.objectContaining({ background: { type: "solid", color: "#0e1320" } }) }));
     fireEvent.click(screen.getByRole("button", { name: "Theme" }));
-    expect(chart.applyOptions).toHaveBeenLastCalledWith(expect.objectContaining({ layout: expect.objectContaining({ background: { type: "solid", color: "#202124" } }) }));
-    expect(price.applyOptions).toHaveBeenLastCalledWith({ color: "#78a9ff" });
+    expect(chart.applyOptions).toHaveBeenLastCalledWith(expect.objectContaining({ layout: expect.objectContaining({ background: { type: "solid", color: "#ffffff" } }) }));
+    expect(price.applyOptions).toHaveBeenLastCalledWith({ color: "#3653d4" });
     expect(createChart).toHaveBeenCalledTimes(1);
     expect(fitContent).toHaveBeenCalledTimes(1);
     expect(price.setData).toHaveBeenCalledTimes(1);
@@ -30,7 +30,7 @@ test("changing theme recolors the chart without discarding its zoom or data", ()
   } finally { window.ResizeObserver = originalObserver; delete document.documentElement.dataset.theme; }
 });
 
-test("terminal renders actual OHLC candles on a black chart and closes on demand", () => {
+test("terminal renders actual OHLC candles on a themed chart and closes on demand", () => {
   const price = { setData: jest.fn(), applyOptions: jest.fn() };
   const volume = { setData: jest.fn(), applyOptions: jest.fn(), priceScale: () => ({ applyOptions: jest.fn() }) };
   const chart = { addSeries: jest.fn(type => type === "candlestick" ? price : volume), applyOptions: jest.fn(), timeScale: () => ({ fitContent: jest.fn() }), subscribeCrosshairMove: jest.fn(), remove: jest.fn() };
@@ -42,7 +42,7 @@ test("terminal renders actual OHLC candles on a black chart and closes on demand
     const view = render(<EquityChart contract={{ id: "test", symbol: "TEST", underlying: "TEST" }} candles={[{ time: 1234, open: 99, high: 102, low: 98, close: 100, volume: 5 }]} terminal onClose={onClose} />);
     expect(chart.addSeries).toHaveBeenCalledWith("candlestick", expect.anything());
     expect(price.setData).toHaveBeenCalledWith([{ time: 1234, open: 99, high: 102, low: 98, close: 100 }]);
-    expect(chart.applyOptions).toHaveBeenLastCalledWith(expect.objectContaining({ layout: expect.objectContaining({ background: { type: "solid", color: "#000000" } }) }));
+    expect(chart.applyOptions).toHaveBeenLastCalledWith(expect.objectContaining({ layout: expect.objectContaining({ background: { type: "solid", color: "#0e1320" } }) }));
     fireEvent.click(screen.getByRole("button", { name: "Collapse chart panel" }));
     expect(onClose).toHaveBeenCalledTimes(1);
     view.unmount();

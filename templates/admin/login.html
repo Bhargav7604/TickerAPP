@@ -1,7 +1,7 @@
 {% extends "admin/base_site.html" %}
 {% load i18n static %}
 
-{% block title %}Admin Login | QuantLab Ticker{% endblock %}
+{% block title %}Admin Login | Utraders Ticker{% endblock %}
 {% block bodyclass %}{{ block.super }} login ql-admin-login{% endblock %}
 {% block nav-breadcrumbs %}{% endblock %}
 {% block nav-sidebar %}{% endblock %}
@@ -12,11 +12,7 @@
   <section class="ql-login-frame">
     <aside class="ql-login-showcase">
       <div class="ql-login-brand">
-        <span class="ql-login-mark">Q</span>
-        <div>
-          <strong>QuantLab Ticker</strong>
-          <span>Admin Console</span>
-        </div>
+        <img class="ql-login-logo" src="{% static 'backend/brand/utraders-logo-light.png' %}" alt="Utraders">
       </div>
       <div class="ql-showcase-copy">
         <span class="ql-eyebrow">Production Workspace</span>
@@ -31,7 +27,7 @@
 
     <div class="ql-login-card">
       <div class="ql-login-card-head">
-        <span class="ql-login-mark">Q</span>
+        <span class="ql-login-mark"><img src="{% static 'backend/brand/utraders-mark.png' %}" alt=""></span>
         <div>
           <strong>Admin Sign In</strong>
           <span>Secure access required</span>

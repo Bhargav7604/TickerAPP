@@ -6,9 +6,8 @@ import { useTheme } from "../theme";
 
 const timeLabel = time => new Date(Number(time) * 1000).toLocaleTimeString("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" });
 const chartColors = {
-  light: { background: "#ffffff", text: "#60646c", grid: "#ededf0", border: "#e4e4e7", price: "#1763f5", volume: "#c9dafe" },
-  dark: { background: "#202124", text: "#b0b4bd", grid: "#33363c", border: "#373a40", price: "#78a9ff", volume: "#3c5177" },
-  terminal: { background: "#000000", text: "#cccccc", grid: "#242424", border: "#666666", price: "#59a5ff", volume: "#967042" },
+  light: { background: "#ffffff", text: "#5b6579", grid: "#e9edf4", border: "#e1e7f0", price: "#3653d4", volume: "#bfe9ec" },
+  dark: { background: "#0e1320", text: "#95a1b7", grid: "#1a2232", border: "#212b40", price: "#86abf4", volume: "#1f4f5e" },
 };
 
 export default function EquityChart({ contract, candles, message, loading, terminal = false, onClose }) {
@@ -36,7 +35,7 @@ export default function EquityChart({ contract, candles, message, loading, termi
     });
     const hasOhlc = terminal && points.every(point => [point.open, point.high, point.low].every(Number.isFinite));
     const price = chart.addSeries(hasOhlc ? CandlestickSeries : LineSeries, hasOhlc ? {
-      upColor: "#00b83e", downColor: "#ed2424", wickUpColor: "#00b83e", wickDownColor: "#ed2424", borderVisible: false, priceLineVisible: false,
+      upColor: "#1fb88a", downColor: "#e5484d", wickUpColor: "#1fb88a", wickDownColor: "#e5484d", borderVisible: false, priceLineVisible: false,
     } : { color: "#1763f5", lineWidth: 2, priceLineVisible: false, lastValueVisible: true });
     const volume = chart.addSeries(HistogramSeries, { color: "#c9dafe", priceFormat: { type: "volume" }, priceScaleId: "volume", lastValueVisible: false, priceLineVisible: false });
     volume.priceScale().applyOptions({ scaleMargins: { top: .82, bottom: 0 } });
@@ -55,7 +54,7 @@ export default function EquityChart({ contract, candles, message, loading, termi
   }, [candles, range, contract.id, terminal]);
   useEffect(() => {
     if (!instance.current) return;
-    const colors = chartColors[terminal ? "terminal" : theme];
+    const colors = chartColors[theme];
     const { chart, price, volume, hasOhlc } = instance.current;
     chart.applyOptions({
       layout: { background: { type: ColorType.Solid, color: colors.background }, textColor: colors.text },

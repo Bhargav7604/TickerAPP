@@ -130,6 +130,16 @@ class EquityTests(TestCase):
         self.assertIsNone(data["ask"])
         self.assertIsNone(quote_payload({}, 500)["ltp"])
 
+    def test_untraded_contract_has_no_zero_ohlc_or_epoch_trade_time(self):
+        data = quote_payload({"last_price": 221.65, "volume": 0, "average_price": 0,
+                              "ohlc": {"open": 0, "high": 0, "low": 0, "close": 221.65},
+                              "last_trade_time": dt.datetime(1970, 1, 1, 5, 30)}, 800)
+        self.assertEqual(data["ohlc"], {"open": None, "high": None, "low": None, "close": 221.65})
+        self.assertIsNone(data["vwap"])
+        self.assertIsNone(data["lastTradeAt"])
+        self.assertEqual(data["change"], 0)
+        self.assertEqual(data["volumeLots"], 0)
+
     def test_cache_reuses_quotes_and_does_not_touch_index_feed(self):
         LiveMarketFeed.objects.create(pk=1, payload={"status": "live", "ticks": {"123": {"last_price": 42}}})
         fetch = Mock(return_value={"NFO:A": {"ltp": 123}})

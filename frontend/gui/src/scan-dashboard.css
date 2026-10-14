@@ -17,9 +17,11 @@
 .scan-topbar button, .scan-dashboard button, .scan-dashboard select { font: inherit; }
 .scan-topbar button, .scan-dashboard button { cursor: pointer; }
 .scan-topbar button:focus-visible, .scan-dashboard :focus-visible { outline: 2px solid var(--ui-blue); outline-offset: 3px; }
-.scan-topbar { display: flex; align-items: center; gap: 36px; padding: 0 24px; height: 56px; background: var(--ui-surface); border-bottom: 1px solid var(--scan-line); }
-.scan-brand { display: inline-flex; align-items: center; gap: 12px; padding: 0; border: 0; background: transparent; color: var(--scan-ink); font-size: 20px !important; font-weight: 750 !important; white-space: nowrap; }
-.scan-brand .brand-mark { width: 30px; height: 30px; background: var(--ui-ink); color: var(--ui-surface); border-radius: 4px; font-size: 18px; }
+.scan-topbar { position: relative; display: flex; align-items: center; gap: 36px; padding: 0 24px; height: 56px; background: var(--ui-surface); border-bottom: 1px solid var(--scan-line); }
+.scan-topbar::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--brand-gradient); }
+.scan-brand { display: inline-flex; align-items: center; gap: 10px; padding: 0; border: 0; background: transparent; color: var(--scan-ink); white-space: nowrap; }
+.scan-brand .brand-logo-mark { height: 34px; width: auto; display: block; }
+.scan-brand .brand-wordmark { height: 15px; width: auto; display: block; }
 .scan-nav-links { display: flex; align-self: stretch; gap: 22px; }
 .scan-nav-links span { white-space: nowrap; }
 @media (min-width: 701px) and (max-width: 900px) {
@@ -27,7 +29,8 @@
   .scan-nav-links { gap: 14px; }
 }
 .scan-nav-links button { display: flex; align-items: center; gap: 8px; color: var(--scan-muted); background: none; border: 0; border-bottom: 3px solid transparent; padding: 2px 0 0; }
-.scan-nav-links button.active { color: var(--scan-blue); border-bottom-color: var(--scan-blue); font-weight: 650; }
+.scan-nav-links button:hover { color: var(--scan-ink); }
+.scan-nav-links button.active { color: var(--scan-blue); border-bottom-color: transparent; background: var(--brand-gradient) bottom / 100% 3px no-repeat; font-weight: 650; }
 .scan-nav-end { margin-left: auto; display: flex; align-items: center; gap: 4px; }
 .scan-icon-button { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; background: transparent; border: 1px solid transparent; border-radius: 6px; color: var(--ui-muted); flex: 0 0 auto; }
 .scan-icon-button:hover { background: var(--ui-hover); color: var(--ui-blue); }
@@ -173,8 +176,9 @@
 }
 @media (max-width: 600px) {
   .scan-topbar { height: 48px; gap: 8px; padding: 0 12px; }
-  .scan-brand { font-size: 19px !important; gap: 10px; }
-  .scan-brand .brand-mark { height: 29px; width: 29px; }
+  .scan-brand { gap: 8px; }
+  .scan-brand .brand-logo-mark { height: 30px; }
+  .scan-brand .brand-wordmark { height: 13px; }
   .scan-nav-links { display: none; }
   .mobile-refresh, .mobile-settings { display: inline-flex; }
   .scan-nav-end { gap: 0; }
@@ -303,5 +307,6 @@
   .market-columns-dialog footer button { padding: 9px; }
 }
 @media (max-width: 360px) {
+  .scan-brand .brand-wordmark { display: none; }
   .scan-table [data-column="difference"] { padding-left: 5px; padding-right: 5px; }
 }

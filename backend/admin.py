@@ -319,5 +319,5 @@ class MarketSnapshotAdmin(admin.ModelAdmin):
 
 admin.site.empty_value_display = "-"
 admin.site.site_header = "Ticker Admin"
-admin.site.site_title = "QuantLab Ticker Admin"
+admin.site.site_title = "Utraders Ticker Admin"
 admin.site.index_title = "Operations Console"

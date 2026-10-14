@@ -2,14 +2,15 @@ import React, { createContext, useContext, useEffect, useLayoutEffect, useState 
 import "./theme.css";
 
 export const THEME_KEY = "index-tool-theme-v1";
-const normalizeTheme = value => value === "dark" ? "dark" : "light";
-export const ThemeContext = createContext({ theme: "light", toggleTheme: () => {} });
+// Dark is the Utraders brand default; an explicit "light" choice is remembered.
+const normalizeTheme = value => value === "light" ? "light" : "dark";
+export const ThemeContext = createContext({ theme: "dark", toggleTheme: () => {} });
 export const useTheme = () => useContext(ThemeContext);
 
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(() => {
     try { return normalizeTheme(localStorage.getItem(THEME_KEY)); }
-    catch { return "light"; }
+    catch { return "dark"; }
   });
   useLayoutEffect(() => { document.documentElement.dataset.theme = theme; }, [theme]);
   useEffect(() => {

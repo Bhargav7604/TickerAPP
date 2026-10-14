@@ -18,8 +18,8 @@ test("watchlist selection remains highlighted when the theme changes", async () 
   await act(async () => { fireEvent.click(selected); });
   expect(selected).toHaveAttribute("aria-pressed", "true");
   expect(selected.closest("tr")).toHaveClass("is-selected");
-  fireEvent.click(screen.getByRole("button", { name: "Switch to dark mode" }));
-  expect(document.documentElement).toHaveAttribute("data-theme", "dark");
+  fireEvent.click(screen.getByRole("button", { name: "Switch to light mode" }));
+  expect(document.documentElement).toHaveAttribute("data-theme", "light");
   expect(selected).toHaveAttribute("aria-pressed", "true");
   expect(selected.closest("tr")).toHaveClass("is-selected");
   expect(screen.getByRole("button", { name: /View RELIANCE.*FUT/ }).closest("tr")).not.toHaveClass("is-selected");

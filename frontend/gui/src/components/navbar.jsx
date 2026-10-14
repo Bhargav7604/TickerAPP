@@ -1,6 +1,8 @@
 import { Component } from "react";
 import { ChartNoAxesColumn, Layers, LayoutDashboard, LogOut, Moon, RefreshCw, Settings, Sun, UserCircle } from "lucide-react";
 import { ThemeContext } from "../theme";
+import brandMark from "../assets/brand/utraders-mark.png";
+import wordmark from "../assets/brand/utraders-wordmark-light.png";
 
 class Navbar extends Component {
   static contextType = ThemeContext;
@@ -13,8 +15,9 @@ class Navbar extends Component {
   };
   render() {
     return <nav className="scan-topbar" aria-label="Main navigation">
-      <button className="scan-brand" type="button" onClick={() => this.props.changePage("dashboard")} aria-label="Index Tool dashboard">
-        <span className="brand-mark">Q</span><span>Index Tool</span>
+      <button className="scan-brand" type="button" onClick={() => this.props.changePage("dashboard")} aria-label="Utraders dashboard">
+        <img className="brand-logo-mark" src={brandMark} alt="" />
+        <img className="brand-wordmark" src={wordmark} alt="" />
       </button>
       <div className="scan-nav-links">
         <button type="button" className={this.props.currentPage === "dashboard" ? "active" : ""}

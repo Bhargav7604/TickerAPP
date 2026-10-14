@@ -297,7 +297,7 @@ export default function Equity({ api, username, indexOptions = false }) {
 
   return <main className={`eq-page${terminal ? ` eq-terminal${terminalChart && selected ? " has-chart" : ""}` : ""}`}>
     <div className="eq-command">
-    <div className="eq-heading"><h1>{terminal ? `Index Tool / ${title}` : title}</h1><span className="eq-state">{api.preview ? "Sample data" : indexOptions ? "NSE + BSE options" : "NSE derivatives"}</span>
+    <div className="eq-heading"><h1>{title}</h1><span className="eq-state">{api.preview ? "Sample data" : indexOptions ? "NSE + BSE options" : "NSE derivatives"}</span>
       <time>{new Date().toLocaleDateString("en-GB", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" })}</time>
       <span className="eq-readonly">Read-only</span>
     </div>
