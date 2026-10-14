@@ -1,0 +1,87 @@
+services:
+  db:
+    build:
+      context: .
+      dockerfile: docker/postgres/Dockerfile
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-tickerapp}
+      POSTGRES_USER: ${POSTGRES_USER:-tickerapp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tickerapp_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment: &backend-environment
+      RAJESH_SRIWASTAVA_TICKER_WEBAPP: prod
+      RAJESH_STOCKS_WEBAPP: prod
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-change-this-secret-before-deploy}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,0.0.0.0}
+      RAJESH_TICKER_DB_NAME: ${POSTGRES_DB:-tickerapp}
+      RAJESH_TICKER_DB_USER: ${POSTGRES_USER:-tickerapp}
+      RAJESH_TICKER_DB_PASSWORD: ${POSTGRES_PASSWORD:-tickerapp_password}
+      RAJESH_TICKER_DB_HOST: db
+      RAJESH_TICKER_DB_PORT: "5432"
+      MASTER_CONTRACT_PATH: /app/runtime/master_contract.csv
+    volumes:
+      - market_data:/app/runtime
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8008/api/health/', timeout=5)",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  market-feed:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+    command: ["python", "manage.py", "run_market_feed"]
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      <<: *backend-environment
+      RUN_MIGRATIONS: "0"
+      COLLECT_STATIC: "0"
+    volumes:
+      - market_data:/app/runtime
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "8008:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  market_data:

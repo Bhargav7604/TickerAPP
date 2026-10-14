@@ -1,0 +1,26 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:"QuantLab Ticker Admin" }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'backend/admin.css' %}">
+{% endblock %}
+
+{% block branding %}
+<div class="ql-admin-brand">
+  <a class="ql-admin-mark" href="{% url 'admin:index' %}" aria-label="{{ site_header|default:'QuantLab Ticker Admin' }}">Q</a>
+  <div class="ql-admin-brand-copy">
+    <strong>QuantLab Ticker</strong>
+    <span>Admin Console</span>
+  </div>
+</div>
+{% endblock %}
+
+{% block nav-global %}
+<div class="ql-admin-nav">
+  <span class="ql-admin-env">Production</span>
+  <a class="ql-admin-nav-link" href="/">Ticker App</a>
+</div>
+{% endblock %}

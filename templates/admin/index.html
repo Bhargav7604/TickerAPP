@@ -1,0 +1,179 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="ql-console">
+  <section class="ql-console-head">
+    <div>
+      <span class="ql-eyebrow">Production Admin</span>
+      <h1>Operations Console</h1>
+      <p>High-control workspace for access, broker configuration, alert delivery, and market data records.</p>
+    </div>
+    <div class="ql-console-actions">
+      <a class="ql-button ql-button-primary" href="{% url 'admin:backend_user_add' %}">Create User</a>
+      <a class="ql-button" href="{% url 'admin:backend_user_changelist' %}">Users</a>
+      <a class="ql-button" href="{% url 'admin:backend_marketsnapshot_changelist' %}">Snapshots</a>
+    </div>
+  </section>
+
+  <section class="ql-command-grid" aria-label="Primary admin areas">
+    <a class="ql-command-card ql-command-card-primary" href="{% url 'admin:backend_user_changelist' %}">
+      <span class="ql-command-icon ql-icon-users" aria-hidden="true"></span>
+      <span class="ql-command-copy">
+        <span>Access Control</span>
+        <strong>App Users</strong>
+        <small>Expiry, contracts, and login state</small>
+      </span>
+      <span class="ql-command-arrow" aria-hidden="true"></span>
+    </a>
+    <a class="ql-command-card" href="{% url 'admin:backend_kitesettings_changelist' %}">
+      <span class="ql-command-icon ql-icon-key" aria-hidden="true"></span>
+      <span class="ql-command-copy">
+        <span>Broker</span>
+        <strong>Kite Settings</strong>
+        <small>API key, secret, session token</small>
+      </span>
+      <span class="ql-command-arrow" aria-hidden="true"></span>
+    </a>
+    <a class="ql-command-card" href="{% url 'admin:backend_smtpsettings_changelist' %}">
+      <span class="ql-command-icon ql-icon-mail" aria-hidden="true"></span>
+      <span class="ql-command-copy">
+        <span>Delivery</span>
+        <strong>SMTP Settings</strong>
+        <small>Email alerts and sender config</small>
+      </span>
+      <span class="ql-command-arrow" aria-hidden="true"></span>
+    </a>
+    <a class="ql-command-card" href="{% url 'admin:backend_marketsnapshot_changelist' %}">
+      <span class="ql-command-icon ql-icon-chart" aria-hidden="true"></span>
+      <span class="ql-command-copy">
+        <span>Data</span>
+        <strong>Market Snapshots</strong>
+        <small>Historical bucket records</small>
+      </span>
+      <span class="ql-command-arrow" aria-hidden="true"></span>
+    </a>
+  </section>
+
+  <section class="ql-content-grid">
+    <div class="ql-panel ql-module-workbench">
+      <div class="ql-panel-head">
+        <div>
+          <span class="ql-panel-kicker">Workspace</span>
+          <h2>System Modules</h2>
+        </div>
+        <a class="ql-text-action" href="{% url 'admin:index' %}">Refresh</a>
+      </div>
+
+      {% if app_list %}
+        <div class="ql-module-board">
+          {% for app in app_list %}
+            <section class="ql-module-section ql-module-{{ app.app_label }}">
+              <div class="ql-module-section-head">
+                <div>
+                  <span>{{ app.models|length }} modules</span>
+                  <h3>{{ app.name }}</h3>
+                </div>
+                {% if app.app_url %}
+                  <a href="{{ app.app_url }}" class="ql-text-action">Open app</a>
+                {% endif %}
+              </div>
+              <div class="ql-model-grid">
+                {% for model in app.models %}
+                  <article class="ql-model-card model-{{ model.object_name|lower }}">
+                    <div class="ql-model-main">
+                      <span class="ql-model-glyph" aria-hidden="true"></span>
+                      <div>
+                        <h4>
+                          {% if model.admin_url %}
+                            <a href="{{ model.admin_url }}"{% if model.admin_url in request.path|urlencode %} aria-current="page"{% endif %}>{{ model.name }}</a>
+                          {% else %}
+                            {{ model.name }}
+                          {% endif %}
+                        </h4>
+                        <p>
+                          {% if model.perms.add and model.add_url %}
+                            Create, inspect, and update records
+                          {% elif model.admin_url %}
+                            Review available records
+                          {% else %}
+                            Permission-restricted module
+                          {% endif %}
+                        </p>
+                      </div>
+                    </div>
+                    <div class="ql-model-actions">
+                      {% if model.add_url %}
+                        <a class="ql-mini-action" href="{{ model.add_url }}">Add</a>
+                      {% endif %}
+                      {% if model.admin_url %}
+                        <a class="ql-mini-action ql-mini-action-primary" href="{{ model.admin_url }}">
+                          {% if model.view_only %}View{% else %}Open{% endif %}
+                        </a>
+                      {% endif %}
+                    </div>
+                  </article>
+                {% endfor %}
+              </div>
+            </section>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="ql-empty-state">{% translate "You don't have permission to view or edit anything." %}</p>
+      {% endif %}
+    </div>
+
+    <aside class="ql-side-stack">
+      <div class="ql-panel ql-signal-panel">
+        <div class="ql-panel-head">
+          <div>
+            <span class="ql-panel-kicker">Runbook</span>
+            <h2>Control Flow</h2>
+          </div>
+        </div>
+        <ol class="ql-flow-list">
+          <li>
+            <span aria-hidden="true"></span>
+            <div>
+              <strong>User access</strong>
+              <small>Create users from App Users only</small>
+            </div>
+          </li>
+          <li>
+            <span aria-hidden="true"></span>
+            <div>
+              <strong>Broker session</strong>
+              <small>Keep Kite settings current</small>
+            </div>
+          </li>
+          <li>
+            <span aria-hidden="true"></span>
+            <div>
+              <strong>Market records</strong>
+              <small>Use snapshots as audit history</small>
+            </div>
+          </li>
+        </ol>
+      </div>
+
+      <div class="ql-panel ql-status-panel">
+        <div class="ql-status-top">
+          <span class="ql-status-dot" aria-hidden="true"></span>
+          <div>
+            <strong>Production Workspace</strong>
+            <small>ticker.quantlab.co.in</small>
+          </div>
+        </div>
+        <div class="ql-status-grid">
+          <span>Admin</span>
+          <strong>Enabled</strong>
+          <span>Deploy</span>
+          <strong>Docker</strong>
+          <span>Database</span>
+          <strong>Postgres</strong>
+        </div>
+      </div>
+    </aside>
+  </section>
+</div>
+{% endblock %}

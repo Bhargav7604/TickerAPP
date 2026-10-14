@@ -1,0 +1,86 @@
+:root {
+  color-scheme: light;
+  --ui-page: #ffffff;
+  --ui-surface: #ffffff;
+  --ui-subtle: #f6f6f7;
+  --ui-hover: #f0f1f3;
+  --ui-line: #e4e4e7;
+  --ui-border: #c9ccd1;
+  --ui-ink: #202124;
+  --ui-muted: #60646c;
+  --ui-blue: #1763f5;
+  --ui-blue-solid: #1763f5;
+  --ui-blue-soft: #f0f4ff;
+  --ui-selected: #dfeaff;
+  --ui-green: #087a4b;
+  --ui-red: #c92c36;
+  --ui-warning-bg: #fff8ed;
+  --ui-warning-ink: #885517;
+  --ui-warning-line: #efdcbd;
+  --ui-overlay: #18191b66;
+  --ui-shadow: #18191b1a;
+  --ui-grid: #ededf0;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ui-page: #18191b;
+  --ui-surface: #202124;
+  --ui-subtle: #27292d;
+  --ui-hover: #303238;
+  --ui-line: #373a40;
+  --ui-border: #50545d;
+  --ui-ink: #f1f3f5;
+  --ui-muted: #b0b4bd;
+  --ui-blue: #78a9ff;
+  --ui-blue-solid: #1763f5;
+  --ui-blue-soft: #252f42;
+  --ui-selected: #183558;
+  --ui-green: #4cce97;
+  --ui-red: #ff8288;
+  --ui-warning-bg: #372d1f;
+  --ui-warning-ink: #f2c787;
+  --ui-warning-line: #725939;
+  --ui-overlay: #00000099;
+  --ui-shadow: #00000040;
+  --ui-grid: #33363c;
+}
+html, body { background: var(--ui-page); color: var(--ui-ink); }
+.has-section-nav { min-height: 100vh; background: var(--ui-page); color: var(--ui-ink); }
+.scan-topbar strong, .scan-dashboard strong { color: inherit; }
+.app-settings { overflow-x: clip; padding: 16px 12px; }
+.app-settings .card { background: var(--ui-surface); color: var(--ui-ink); border: 1px solid var(--ui-line); box-shadow: none; }
+.app-settings .card-header { box-shadow: none; border-bottom: 1px solid var(--ui-line); }
+.app-settings :is(.card-header-title, .label, .checkbox, .settings-section-title) { color: var(--ui-ink); }
+.app-settings .help { color: var(--ui-muted); }
+.app-settings .input { background: var(--ui-surface); border-color: var(--ui-border); color: var(--ui-ink); box-shadow: none; }
+.app-settings .input::placeholder { color: var(--ui-muted); }
+.app-settings .card-footer { border-color: var(--ui-line); }
+.app-settings .button.is-link { background: var(--ui-blue-solid); color: #fff; }
+.app-settings input[type="checkbox"] { accent-color: var(--ui-blue-solid); }
+.has-section-nav :is(.snapshot-grid-head, .snapshot-grid-head .snapshot-grid-cell, .acdd-grid-head) { background: var(--ui-subtle); color: var(--ui-muted); }
+.has-section-nav :is(.snapshot-grid-cell, .acdd-grid, .acdd-grid-cell, .acdd-summary-cell) { border-color: var(--ui-line); }
+.has-section-nav .snapshot-time, .has-section-nav .panel-subtitle { color: var(--ui-muted); }
+.has-section-nav .acdd-row-ac, .has-section-nav .acdd-row-dd { background: var(--ui-surface); }
+.has-section-nav .acdd-signal-ac { color: var(--ui-green); }
+.has-section-nav .acdd-signal-dd { color: var(--ui-red); }
+.lot-alert-modal { background: var(--ui-surface); border-color: var(--ui-line); color: var(--ui-ink); }
+.lot-alert-head { background: var(--ui-subtle); color: var(--ui-ink); border-bottom: 1px solid var(--ui-line); }
+.lot-alert-close { background: var(--ui-hover); border-color: var(--ui-border); color: var(--ui-ink); }
+.lot-alert-modal :is(h2, strong) { color: var(--ui-ink); }
+.lot-alert-modal :is(p, label) { color: var(--ui-muted); }
+.lot-alert-modal :is(.lot-alert-label, .lot-alert-symbol, .lot-alert-time) { color: var(--ui-muted); }
+.lot-alert-modal .lot-alert-grid div { background: var(--ui-subtle); border-color: var(--ui-line); }
+.lot-alert-modal .lot-alert-grid span { color: var(--ui-muted); }
+.lot-alert-modal :is(.acdd-candle-table th, .acdd-candle-table td) { border-color: var(--ui-line); color: var(--ui-ink); }
+.lot-alert-modal .acdd-candle-table th { background: var(--ui-subtle); }
+.lot-alert-modal .value-up { color: var(--ui-green); }
+.lot-alert-modal .value-down { color: var(--ui-red); }
+.lot-alert-modal .value-neutral { color: var(--ui-ink); }
+.lot-alert-actions { border-color: var(--ui-line); }
+.lot-alert-actions button { background: var(--ui-blue-solid); }
+.lot-alert-actions button.secondary { background: var(--ui-surface); border-color: var(--ui-border); color: var(--ui-ink); }
+@media (min-width: 601px) and (max-width: 700px) {
+  .has-section-nav .scan-topbar { padding: 0 12px; gap: 12px; }
+  .has-section-nav .scan-nav-links { display: none; }
+  .scan-nav-end .mobile-settings, .scan-nav-end .mobile-refresh { display: inline-flex; }
+}

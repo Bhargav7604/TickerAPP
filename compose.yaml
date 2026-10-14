@@ -1,0 +1,84 @@
+services:
+  db:
+    image: ${ECR_REGISTRY:?ECR_REGISTRY is required}/${POSTGRES_IMAGE_REPOSITORY:-tickerapp-postgres}:${IMAGE_TAG:-latest}
+    pull_policy: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  backend:
+    image: ${ECR_REGISTRY:?ECR_REGISTRY is required}/${BACKEND_IMAGE_REPOSITORY:-tickerapp-backend}:${IMAGE_TAG:-latest}
+    pull_policy: always
+    depends_on:
+      db:
+        condition: service_healthy
+    environment: &backend-environment
+      RAJESH_SRIWASTAVA_TICKER_WEBAPP: prod
+      RAJESH_STOCKS_WEBAPP: prod
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY is required}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:?DJANGO_ALLOWED_HOSTS is required}
+      RAJESH_TICKER_DB_HOST: db
+      RAJESH_TICKER_DB_PORT: "5432"
+      RAJESH_TICKER_DB_NAME: ${POSTGRES_DB:?POSTGRES_DB is required}
+      RAJESH_TICKER_DB_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      RAJESH_TICKER_DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      MASTER_CONTRACT_PATH: /app/runtime/master_contract.csv
+    volumes:
+      - market_data:/app/runtime
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8008/api/health/', timeout=5)",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  market-feed:
+    image: ${ECR_REGISTRY:?ECR_REGISTRY is required}/${BACKEND_IMAGE_REPOSITORY:-tickerapp-backend}:${IMAGE_TAG:-latest}
+    pull_policy: always
+    command: ["python", "manage.py", "run_market_feed"]
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      <<: *backend-environment
+      RUN_MIGRATIONS: "0"
+      COLLECT_STATIC: "0"
+    volumes:
+      - market_data:/app/runtime
+    restart: unless-stopped
+
+  frontend:
+    image: ${ECR_REGISTRY:?ECR_REGISTRY is required}/${FRONTEND_IMAGE_REPOSITORY:-tickerapp-frontend}:${IMAGE_TAG:-latest}
+    pull_policy: always
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8008:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  market_data:

@@ -1,0 +1,77 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block title %}Admin Login | QuantLab Ticker{% endblock %}
+{% block bodyclass %}{{ block.super }} login ql-admin-login{% endblock %}
+{% block nav-breadcrumbs %}{% endblock %}
+{% block nav-sidebar %}{% endblock %}
+{% block content_title %}{% endblock %}
+
+{% block content %}
+<div class="ql-login-shell">
+  <section class="ql-login-frame">
+    <aside class="ql-login-showcase">
+      <div class="ql-login-brand">
+        <span class="ql-login-mark">Q</span>
+        <div>
+          <strong>QuantLab Ticker</strong>
+          <span>Admin Console</span>
+        </div>
+      </div>
+      <div class="ql-showcase-copy">
+        <span class="ql-eyebrow">Production Workspace</span>
+        <h1>Control access, broker sessions, and market records.</h1>
+      </div>
+      <div class="ql-showcase-stack" aria-hidden="true">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+    </aside>
+
+    <div class="ql-login-card">
+      <div class="ql-login-card-head">
+        <span class="ql-login-mark">Q</span>
+        <div>
+          <strong>Admin Sign In</strong>
+          <span>Secure access required</span>
+        </div>
+      </div>
+
+      <div class="ql-login-copy">
+        <span class="ql-eyebrow">Authentication</span>
+        <h1>Welcome back</h1>
+        <p>Use your admin credentials to continue.</p>
+      </div>
+
+      {% if form.errors and not form.non_field_errors %}
+        <p class="ql-form-alert">{% translate "Please enter the correct username and password." %}</p>
+      {% endif %}
+
+      {% if form.non_field_errors %}
+        {% for error in form.non_field_errors %}
+          <p class="ql-form-alert">{{ error }}</p>
+        {% endfor %}
+      {% endif %}
+
+      <form action="{{ app_path }}" method="post" id="login-form" class="ql-login-form">
+        {% csrf_token %}
+        <div class="ql-field">
+          {{ form.username.errors }}
+          {{ form.username.label_tag }}
+          {{ form.username }}
+        </div>
+        <div class="ql-field">
+          {{ form.password.errors }}
+          {{ form.password.label_tag }}
+          {{ form.password }}
+          <input type="hidden" name="next" value="{{ next }}">
+        </div>
+        <div class="ql-login-submit">
+          <input type="submit" value="{% translate 'Sign in' %}">
+        </div>
+      </form>
+    </div>
+  </section>
+</div>
+{% endblock %}

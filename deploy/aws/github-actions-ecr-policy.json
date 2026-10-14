@@ -1,0 +1,50 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "EcrLogin",
+      "Effect": "Allow",
+      "Action": "ecr:GetAuthorizationToken",
+      "Resource": "*"
+    },
+    {
+      "Sid": "EcrPushPull",
+      "Effect": "Allow",
+      "Action": [
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:BatchGetImage",
+        "ecr:CompleteLayerUpload",
+        "ecr:DescribeImages",
+        "ecr:DescribeRepositories",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:InitiateLayerUpload",
+        "ecr:ListImages",
+        "ecr:PutImage",
+        "ecr:UploadLayerPart"
+      ],
+      "Resource": [
+        "arn:aws:ecr:ap-south-1:801949252238:repository/tickerapp-backend",
+        "arn:aws:ecr:ap-south-1:801949252238:repository/tickerapp-frontend",
+        "arn:aws:ecr:ap-south-1:801949252238:repository/tickerapp-postgres"
+      ]
+    },
+    {
+      "Sid": "DeployThroughSsm",
+      "Effect": "Allow",
+      "Action": "ssm:SendCommand",
+      "Resource": [
+        "arn:aws:ec2:ap-south-1:801949252238:instance/i-0402525c067ce1cef",
+        "arn:aws:ssm:ap-south-1::document/AWS-RunShellScript"
+      ]
+    },
+    {
+      "Sid": "ReadSsmCommandResult",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetCommandInvocation",
+        "ssm:ListCommandInvocations"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

@@ -1,0 +1,784 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ticker App Compact Dashboard Mockup</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --panel: #ffffff;
+      --ink: #101828;
+      --muted: #667085;
+      --line: #d9e2ec;
+      --line-soft: #edf2f7;
+      --brand: #1f6feb;
+      --green: #079455;
+      --red: #d92d20;
+      --amber: #b54708;
+      --teal: #0e9384;
+      --nav: #101828;
+      --shadow: 0 8px 22px rgba(16, 24, 40, 0.07);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+    }
+
+    .topbar {
+      align-items: center;
+      background: var(--nav);
+      color: #ffffff;
+      display: flex;
+      height: 52px;
+      justify-content: space-between;
+      padding: 0 16px;
+    }
+
+    .brand {
+      align-items: center;
+      display: flex;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      align-items: center;
+      background: #ffffff;
+      border-radius: 6px;
+      color: var(--nav);
+      display: inline-flex;
+      font-weight: 800;
+      height: 28px;
+      justify-content: center;
+      width: 28px;
+    }
+
+    .brand-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+
+    .top-actions {
+      align-items: center;
+      display: flex;
+      gap: 8px;
+    }
+
+    .nav-link,
+    .logout {
+      align-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 6px;
+      color: #ffffff;
+      display: inline-flex;
+      font-size: 13px;
+      height: 32px;
+      padding: 0 10px;
+      text-decoration: none;
+    }
+
+    .logout {
+      background: #b42318;
+      border-color: #b42318;
+    }
+
+    .page {
+      display: grid;
+      gap: 10px;
+      padding: 10px;
+    }
+
+    .command-bar {
+      align-items: center;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      box-shadow: var(--shadow);
+      display: grid;
+      gap: 12px;
+      grid-template-columns: 1fr auto;
+      padding: 10px 12px;
+    }
+
+    .session-title {
+      align-items: baseline;
+      display: flex;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    h1 {
+      font-size: 18px;
+      line-height: 1.2;
+      margin: 0;
+    }
+
+    .status {
+      align-items: center;
+      color: var(--muted);
+      display: flex;
+      flex-wrap: wrap;
+      font-size: 12px;
+      gap: 8px;
+    }
+
+    .pill {
+      align-items: center;
+      border-radius: 999px;
+      display: inline-flex;
+      font-size: 12px;
+      font-weight: 700;
+      height: 24px;
+      padding: 0 9px;
+    }
+
+    .pill.live {
+      background: #dcfae6;
+      color: #067647;
+    }
+
+    .pill.warn {
+      background: #fef0c7;
+      color: #93370d;
+    }
+
+    .controls {
+      align-items: center;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .segmented {
+      align-items: center;
+      background: #eef4ff;
+      border: 1px solid #d6e4ff;
+      border-radius: 999px;
+      display: inline-grid;
+      gap: 0;
+      grid-template-columns: repeat(3, minmax(64px, 1fr));
+      height: 36px;
+      padding: 4px;
+    }
+
+    .segment {
+      align-items: center;
+      background: transparent;
+      border: 0;
+      border-radius: 999px;
+      color: #1849a9;
+      display: flex;
+      font-size: 12px;
+      font-weight: 700;
+      justify-content: center;
+      min-height: 28px;
+      padding: 0 10px;
+    }
+
+    .segment.active {
+      background: var(--brand);
+      box-shadow: 0 5px 12px rgba(31, 111, 235, 0.25);
+      color: #ffffff;
+    }
+
+    select,
+    button {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      color: var(--ink);
+      font: inherit;
+      font-size: 13px;
+      height: 32px;
+      padding: 0 10px;
+    }
+
+    button.primary {
+      background: var(--ink);
+      border-color: var(--ink);
+      color: #ffffff;
+      font-weight: 700;
+    }
+
+    .index-grid {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .index-panel,
+    .data-panel,
+    .chart-panel,
+    .side-panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      box-shadow: var(--shadow);
+    }
+
+    .index-panel {
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+    }
+
+    .index-head {
+      align-items: flex-start;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .symbol {
+      font-size: 15px;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+
+    .expiry {
+      color: var(--muted);
+      font-size: 11px;
+      margin-top: 2px;
+    }
+
+    .price {
+      font-size: 20px;
+      font-weight: 800;
+      line-height: 1;
+      text-align: right;
+    }
+
+    .move {
+      font-size: 12px;
+      font-weight: 700;
+      margin-top: 4px;
+      text-align: right;
+    }
+
+    .up {
+      color: var(--green);
+    }
+
+    .down {
+      color: var(--red);
+    }
+
+    .metric-grid {
+      border-top: 1px solid var(--line-soft);
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      padding-top: 8px;
+      row-gap: 8px;
+    }
+
+    .metric {
+      border-right: 1px solid var(--line-soft);
+      min-width: 0;
+      padding: 0 8px;
+    }
+
+    .metric:nth-child(4n) {
+      border-right: 0;
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.2;
+      text-transform: uppercase;
+    }
+
+    .metric-value {
+      font-size: 14px;
+      font-weight: 800;
+      margin-top: 2px;
+      white-space: nowrap;
+    }
+
+    .workspace {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.75fr);
+    }
+
+    .data-panel,
+    .chart-panel,
+    .side-panel {
+      overflow: hidden;
+    }
+
+    .panel-head {
+      align-items: center;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      min-height: 42px;
+      padding: 8px 10px;
+    }
+
+    .panel-title {
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .panel-subtitle {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .comparison-table {
+      border-collapse: collapse;
+      font-size: 13px;
+      width: 100%;
+    }
+
+    .comparison-table th,
+    .comparison-table td {
+      border-bottom: 1px solid var(--line-soft);
+      padding: 8px 10px;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .comparison-table th:first-child,
+    .comparison-table td:first-child {
+      color: var(--muted);
+      font-weight: 700;
+      text-align: left;
+    }
+
+    .comparison-table th {
+      background: #f8fafc;
+      color: #344054;
+      font-size: 12px;
+      position: sticky;
+      top: 0;
+    }
+
+    .lower-grid {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: minmax(0, 1fr);
+      margin-top: 10px;
+    }
+
+    .chart-body {
+      padding: 8px 10px 10px;
+    }
+
+    .chart {
+      display: block;
+      height: 240px;
+      width: 100%;
+    }
+
+    .chart-axis {
+      stroke: #9aa7b7;
+      stroke-width: 1;
+    }
+
+    .chart-grid {
+      stroke: #e6edf5;
+      stroke-width: 1;
+    }
+
+    .chart-line-index {
+      fill: none;
+      stroke: var(--brand);
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 3;
+    }
+
+    .chart-line-lots {
+      fill: none;
+      stroke: var(--amber);
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 3;
+    }
+
+    .chart-label {
+      fill: #64748b;
+      font-size: 11px;
+    }
+
+    .legend {
+      align-items: center;
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    .legend-item {
+      align-items: center;
+      color: var(--muted);
+      display: inline-flex;
+      font-size: 12px;
+      gap: 5px;
+    }
+
+    .dot {
+      border-radius: 50%;
+      height: 8px;
+      width: 8px;
+    }
+
+    .dot.index {
+      background: var(--brand);
+    }
+
+    .dot.lots {
+      background: var(--amber);
+    }
+
+    .side-stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .side-panel {
+      padding-bottom: 4px;
+    }
+
+    .alert-row,
+    .timeline-row {
+      align-items: center;
+      border-bottom: 1px solid var(--line-soft);
+      display: grid;
+      gap: 8px;
+      grid-template-columns: 70px 1fr auto;
+      padding: 9px 10px;
+    }
+
+    .timeline-row {
+      grid-template-columns: 58px 1fr auto;
+    }
+
+    .time {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .alert-copy,
+    .timeline-copy {
+      font-size: 13px;
+      min-width: 0;
+    }
+
+    .alert-value,
+    .timeline-value {
+      font-size: 13px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 1050px) {
+      .command-bar,
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+
+      .controls {
+        justify-content: flex-start;
+      }
+
+      .index-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .topbar,
+      .session-title,
+      .controls {
+        align-items: flex-start;
+        flex-direction: column;
+        height: auto;
+      }
+
+      .topbar {
+        gap: 8px;
+        padding: 10px;
+      }
+
+      .top-actions {
+        width: 100%;
+      }
+
+      .nav-link,
+      .logout {
+        flex: 1;
+        justify-content: center;
+      }
+
+      .metric-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .metric:nth-child(2n) {
+        border-right: 0;
+      }
+
+      .comparison-table-wrap {
+        overflow-x: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">Q</span>
+      <span class="brand-title">Ticker App</span>
+    </div>
+    <div class="top-actions">
+      <a class="nav-link" href="#">Dashboard</a>
+      <a class="nav-link" href="#">Settings</a>
+      <button class="logout">Logout</button>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="command-bar">
+      <div>
+        <div class="session-title">
+          <h1>Market Dashboard</h1>
+          <span class="pill live">Live</span>
+          <span class="pill warn">Alert threshold 25 lots</span>
+        </div>
+        <div class="status">Last refresh 12:35 PM | Recording every 5 minutes | Market hours 09:00-15:30</div>
+      </div>
+      <div class="controls">
+        <div class="segmented" aria-label="contract month">
+          <span class="segment active">Current</span>
+          <span class="segment">Next</span>
+          <span class="segment">Far</span>
+        </div>
+        <select aria-label="chart index">
+          <option>Nifty chart</option>
+          <option>Banknifty chart</option>
+          <option>Sensex chart</option>
+        </select>
+        <button class="primary">Refresh</button>
+      </div>
+    </section>
+
+    <section class="index-grid">
+      <article class="index-panel">
+        <div class="index-head">
+          <div>
+            <div class="symbol">NIFTY</div>
+            <div class="expiry">Current expiry | 30 May 2026</div>
+          </div>
+          <div>
+            <div class="price">22,608.10</div>
+            <div class="move up">+102.45 | +0.46%</div>
+          </div>
+        </div>
+        <div class="metric-grid">
+          <div class="metric"><div class="metric-label">Net lots</div><div class="metric-value up">+148</div></div>
+          <div class="metric"><div class="metric-label">Demand/Supply</div><div class="metric-value up">+3,700</div></div>
+          <div class="metric"><div class="metric-label">Ratio</div><div class="metric-value">1.32</div></div>
+          <div class="metric"><div class="metric-label">Lot size</div><div class="metric-value">25</div></div>
+          <div class="metric"><div class="metric-label">Away from VWAP</div><div class="metric-value up">+43.3</div></div>
+          <div class="metric"><div class="metric-label">OI</div><div class="metric-value">1.84 Cr</div></div>
+          <div class="metric"><div class="metric-label">High</div><div class="metric-value">22,650.0</div></div>
+          <div class="metric"><div class="metric-label">Low</div><div class="metric-value">22,440.5</div></div>
+        </div>
+      </article>
+
+      <article class="index-panel">
+        <div class="index-head">
+          <div>
+            <div class="symbol">BANKNIFTY</div>
+            <div class="expiry">Current expiry | 28 May 2026</div>
+          </div>
+          <div>
+            <div class="price">48,912.30</div>
+            <div class="move down">-86.70 | -0.18%</div>
+          </div>
+        </div>
+        <div class="metric-grid">
+          <div class="metric"><div class="metric-label">Net lots</div><div class="metric-value down">-72</div></div>
+          <div class="metric"><div class="metric-label">Demand/Supply</div><div class="metric-value down">-1,080</div></div>
+          <div class="metric"><div class="metric-label">Ratio</div><div class="metric-value">0.91</div></div>
+          <div class="metric"><div class="metric-label">Lot size</div><div class="metric-value">15</div></div>
+          <div class="metric"><div class="metric-label">Away from VWAP</div><div class="metric-value down">-67.8</div></div>
+          <div class="metric"><div class="metric-label">OI</div><div class="metric-value">92.4 L</div></div>
+          <div class="metric"><div class="metric-label">High</div><div class="metric-value">49,110.0</div></div>
+          <div class="metric"><div class="metric-label">Low</div><div class="metric-value">48,720.2</div></div>
+        </div>
+      </article>
+
+      <article class="index-panel">
+        <div class="index-head">
+          <div>
+            <div class="symbol">SENSEX</div>
+            <div class="expiry">Current expiry | 29 May 2026</div>
+          </div>
+          <div>
+            <div class="price">74,281.40</div>
+            <div class="move up">+188.20 | +0.25%</div>
+          </div>
+        </div>
+        <div class="metric-grid">
+          <div class="metric"><div class="metric-label">Net lots</div><div class="metric-value up">+96</div></div>
+          <div class="metric"><div class="metric-label">Demand/Supply</div><div class="metric-value up">+960</div></div>
+          <div class="metric"><div class="metric-label">Ratio</div><div class="metric-value">1.18</div></div>
+          <div class="metric"><div class="metric-label">Lot size</div><div class="metric-value">10</div></div>
+          <div class="metric"><div class="metric-label">Away from VWAP</div><div class="metric-value up">+174.8</div></div>
+          <div class="metric"><div class="metric-label">OI</div><div class="metric-value">64.2 L</div></div>
+          <div class="metric"><div class="metric-label">High</div><div class="metric-value">74,402.0</div></div>
+          <div class="metric"><div class="metric-label">Low</div><div class="metric-value">73,940.8</div></div>
+        </div>
+      </article>
+    </section>
+
+    <section class="workspace">
+      <div>
+        <section class="data-panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">All Index Data</div>
+              <div class="panel-subtitle">Same metrics as today, compressed into one scan table</div>
+            </div>
+          </div>
+          <div class="comparison-table-wrap">
+            <table class="comparison-table">
+              <thead>
+                <tr>
+                  <th>Metric</th>
+                  <th>NIFTY</th>
+                  <th>BANKNIFTY</th>
+                  <th>SENSEX</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>CMP</td><td>22,608.10</td><td>48,912.30</td><td>74,281.40</td></tr>
+                <tr><td>Net Change</td><td class="up">+102.45</td><td class="down">-86.70</td><td class="up">+188.20</td></tr>
+                <tr><td>% Change</td><td class="up">+0.46%</td><td class="down">-0.18%</td><td class="up">+0.25%</td></tr>
+                <tr><td>Away from VWAP</td><td class="up">+43.3</td><td class="down">-67.8</td><td class="up">+174.8</td></tr>
+                <tr><td>OI / Day Range</td><td>1.84 Cr</td><td>92.4 L</td><td>64.2 L</td></tr>
+                <tr><td>Net Demand/Supply</td><td class="up">+3,700</td><td class="down">-1,080</td><td class="up">+960</td></tr>
+                <tr><td>Net Lots</td><td class="up">+148</td><td class="down">-72</td><td class="up">+96</td></tr>
+                <tr><td>Open / High / Low</td><td>22,480 / 22,650 / 22,440</td><td>49,020 / 49,110 / 48,720</td><td>74,020 / 74,402 / 73,940</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="chart-panel lower-grid">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">NIFTY Net Lots vs Index</div>
+              <div class="panel-subtitle">Fixed 09:00-15:30 axis, five-minute samples</div>
+            </div>
+            <div class="legend">
+              <span class="legend-item"><span class="dot index"></span>Index</span>
+              <span class="legend-item"><span class="dot lots"></span>Net lots</span>
+            </div>
+          </div>
+          <div class="chart-body">
+            <svg class="chart" viewBox="0 0 900 260" role="img" aria-label="NIFTY net lots and index mock chart">
+              <line class="chart-axis" x1="56" y1="22" x2="56" y2="214" />
+              <line class="chart-axis" x1="844" y1="22" x2="844" y2="214" />
+              <line class="chart-axis" x1="56" y1="214" x2="844" y2="214" />
+              <line class="chart-grid" x1="56" y1="70" x2="844" y2="70" />
+              <line class="chart-grid" x1="56" y1="118" x2="844" y2="118" />
+              <line class="chart-grid" x1="56" y1="166" x2="844" y2="166" />
+              <line class="chart-grid" x1="177" y1="22" x2="177" y2="214" />
+              <line class="chart-grid" x1="298" y1="22" x2="298" y2="214" />
+              <line class="chart-grid" x1="419" y1="22" x2="419" y2="214" />
+              <line class="chart-grid" x1="540" y1="22" x2="540" y2="214" />
+              <line class="chart-grid" x1="661" y1="22" x2="661" y2="214" />
+              <line class="chart-grid" x1="782" y1="22" x2="782" y2="214" />
+              <path class="chart-line-index" d="M56 172 L116 154 L177 146 L237 136 L298 122 L358 126 L419 106 L479 100 L540 92 L600 86 L661 72 L721 70 L782 62 L844 54" />
+              <path class="chart-line-lots" d="M56 184 L116 174 L177 166 L237 172 L298 142 L358 136 L419 130 L479 112 L540 104 L600 122 L661 94 L721 86 L782 82 L844 76" />
+              <text class="chart-label" x="56" y="238" text-anchor="middle">09:00</text>
+              <text class="chart-label" x="177" y="238" text-anchor="middle">10:00</text>
+              <text class="chart-label" x="298" y="238" text-anchor="middle">11:00</text>
+              <text class="chart-label" x="419" y="238" text-anchor="middle">12:00</text>
+              <text class="chart-label" x="540" y="238" text-anchor="middle">13:00</text>
+              <text class="chart-label" x="661" y="238" text-anchor="middle">14:00</text>
+              <text class="chart-label" x="782" y="238" text-anchor="middle">15:00</text>
+              <text class="chart-label" x="844" y="238" text-anchor="middle">15:30</text>
+              <text class="chart-label" x="48" y="28" text-anchor="end">22,650</text>
+              <text class="chart-label" x="48" y="214" text-anchor="end">22,420</text>
+              <text class="chart-label" x="852" y="28">+160</text>
+              <text class="chart-label" x="852" y="214">0</text>
+            </svg>
+          </div>
+        </section>
+      </div>
+
+      <aside class="side-stack">
+        <section class="side-panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Lot Swing Alerts</div>
+              <div class="panel-subtitle">Email triggers when swing exceeds threshold</div>
+            </div>
+          </div>
+          <div class="alert-row">
+            <div class="time">12:30</div>
+            <div class="alert-copy">NIFTY demand swing crossed limit</div>
+            <div class="alert-value up">+34 lots</div>
+          </div>
+          <div class="alert-row">
+            <div class="time">12:15</div>
+            <div class="alert-copy">BANKNIFTY supply pressure eased</div>
+            <div class="alert-value up">+18 lots</div>
+          </div>
+          <div class="alert-row">
+            <div class="time">11:55</div>
+            <div class="alert-copy">SENSEX demand swing cooled</div>
+            <div class="alert-value down">-27 lots</div>
+          </div>
+        </section>
+
+        <section class="side-panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Recent Snapshots</div>
+              <div class="panel-subtitle">Last five-minute records</div>
+            </div>
+          </div>
+          <div class="timeline-row">
+            <div class="time">12:35</div>
+            <div class="timeline-copy">NIFTY index</div>
+            <div class="timeline-value">22,608 | +148</div>
+          </div>
+          <div class="timeline-row">
+            <div class="time">12:30</div>
+            <div class="timeline-copy">NIFTY index</div>
+            <div class="timeline-value">22,594 | +114</div>
+          </div>
+          <div class="timeline-row">
+            <div class="time">12:25</div>
+            <div class="timeline-copy">NIFTY index</div>
+            <div class="timeline-value">22,582 | +101</div>
+          </div>
+          <div class="timeline-row">
+            <div class="time">12:20</div>
+            <div class="timeline-copy">NIFTY index</div>
+            <div class="timeline-value">22,570 | +92</div>
+          </div>
+        </section>
+      </aside>
+    </section>
+  </main>
+</body>
+</html>
