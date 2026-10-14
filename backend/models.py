@@ -42,7 +42,10 @@ class User(models.Model):
     market_columns = models.JSONField(null=True, blank=True, default=None, editable=False)
     alerts_enabled = models.BooleanField(default=False)
     alert_email = models.EmailField(blank=True, default="")
+    # alert_lot_threshold is the NIFTY threshold; SENSEX trades far fewer lots, so each index has its own.
     alert_lot_threshold = models.FloatField(default=400.0)
+    banknifty_alert_lot_threshold = models.FloatField(default=400.0)
+    sensex_alert_lot_threshold = models.FloatField(default=40.0)
 
     # started = models.BooleanField(default=False)
     # timeframe = models.CharField(max_length=100, default="Hourly", choices=TIMEFRAMES)

@@ -8,7 +8,7 @@ export function makeDesignData(contractMonth = "current") {
   const offset = ["current", "next", "far"].indexOf(contractMonth);
   const month = ["OCT", "NOV", "DEC"][offset];
   const monthNumber = ["10", "11", "12"][offset];
-  const settings = { contractMonth, alertsEnabled: true, alertLotThreshold: 25, alertEmail: "", symbols: {} };
+  const settings = { contractMonth, alertsEnabled: true, alertLotThreshold: 25, alertLotThresholds: { nifty: 25, banknifty: 25, sensex: 25 }, alertEmail: "", symbols: {} };
   const chartHistory = {};
   const data = {};
   const rawPrice = (i, k) => i * (1.35 + k * 0.7) + Math.sin(i * 0.6) * (5 + k * 4);

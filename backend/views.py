@@ -40,7 +40,12 @@ def health(request):
     except Exception as e:
         return JsonResponse({"status": "db_unavailable", "db": False, "error": repr(e)}, status=503)
 
-DEFAULT_ALERT_LOT_THRESHOLD = 400.0
+DEFAULT_ALERT_LOT_THRESHOLDS = {"nifty": 400.0, "banknifty": 400.0, "sensex": 40.0}
+ALERT_THRESHOLD_FIELDS = {
+    "nifty": "alert_lot_threshold",
+    "banknifty": "banknifty_alert_lot_threshold",
+    "sensex": "sensex_alert_lot_threshold",
+}
 SNAPSHOT_INDEX_KEYS = set(CONTRACT_NAMES.keys())
 MARKET_TZ = ZoneInfo("Asia/Kolkata")
 MARKET_OPEN_MINUTES = 9 * 60
@@ -79,9 +84,16 @@ def apply_contract_month(user, contract_month=None, extra_update_fields=None):
     return contracts
 
 
+def alert_lot_thresholds(user):
+    return {
+        key: getattr(user, field) or DEFAULT_ALERT_LOT_THRESHOLDS[key]
+        for key, field in ALERT_THRESHOLD_FIELDS.items()
+    }
+
+
 def user_settings_payload(user, contracts=None):
     contracts = contracts or resolve_contracts(user.contract_month)
-    alert_lot_threshold = user.alert_lot_threshold or DEFAULT_ALERT_LOT_THRESHOLD
+    thresholds = alert_lot_thresholds(user)
 
     return {
         "contractMonth": user.contract_month,
@@ -91,7 +103,8 @@ def user_settings_payload(user, contracts=None):
         "sensexExpiry": user.sensex_expiry,
         "alertsEnabled": user.alerts_enabled,
         "alertEmail": user.alert_email,
-        "alertLotThreshold": alert_lot_threshold,
+        "alertLotThreshold": thresholds["nifty"],
+        "alertLotThresholds": thresholds,
         "symbols": contracts,
     }
 
@@ -548,25 +561,28 @@ def save_settings(request):
             contract_month = body.get("contractMonth", "current")
             alerts_enabled = bool(body.get("alertsEnabled", False))
             alert_email = body.get("alertEmail", "").strip()
-            alert_lot_threshold = parse_float(
-                body.get("alertLotThreshold"),
-                user.alert_lot_threshold or DEFAULT_ALERT_LOT_THRESHOLD
-            )
+            current_thresholds = alert_lot_thresholds(user)
+            requested_thresholds = body.get("alertLotThresholds")
+            if not isinstance(requested_thresholds, dict):
+                # Older clients only send the single (NIFTY) threshold.
+                requested_thresholds = {"nifty": body.get("alertLotThreshold")}
+            thresholds = {}
+            for key, current in current_thresholds.items():
+                value = parse_float(requested_thresholds.get(key), current)
+                thresholds[key] = DEFAULT_ALERT_LOT_THRESHOLDS[key] if value < 0 else value
 
-            if alert_lot_threshold < 0:
-                alert_lot_threshold = DEFAULT_ALERT_LOT_THRESHOLD
-
-            if alerts_enabled and alert_lot_threshold <= 0:
-                return JsonResponse({"type": "error", "message": "Alert lot threshold must be greater than 0."}, status=400)
+            if alerts_enabled and any(value <= 0 for value in thresholds.values()):
+                return JsonResponse({"type": "error", "message": "Alert lot thresholds must be greater than 0."}, status=400)
 
             user.alerts_enabled = alerts_enabled
             user.alert_email = alert_email
-            user.alert_lot_threshold = alert_lot_threshold
+            for key, field in ALERT_THRESHOLD_FIELDS.items():
+                setattr(user, field, thresholds[key])
 
             contracts = apply_contract_month(
                 user,
                 contract_month,
-                extra_update_fields=["alerts_enabled", "alert_email", "alert_lot_threshold"],
+                extra_update_fields=["alerts_enabled", "alert_email", *ALERT_THRESHOLD_FIELDS.values()],
             )
             settings = user_settings_payload(user, contracts)
 
@@ -594,14 +610,17 @@ def send_lot_swing_alert(request):
         if not user.alerts_enabled:
             return JsonResponse({"type": "info", "message": "Alerts are disabled."}, status=200)
 
-        threshold = parse_float(user.alert_lot_threshold, 0.0)
+        index_key = str(body.get("indexKey") or body.get("indexName", "nifty")).lower()
+        if index_key not in ALERT_THRESHOLD_FIELDS:
+            index_key = "nifty"
+        threshold = parse_float(alert_lot_thresholds(user)[index_key], 0.0)
         swing_lots = parse_float(body.get("swingLots"), 0.0)
         abs_swing_lots = abs(swing_lots)
 
         if threshold <= 0:
             return JsonResponse({"type": "AlertConfigError", "message": "Alert lot threshold is missing."}, status=400)
 
-        if abs_swing_lots <= threshold:
+        if abs_swing_lots < threshold:
             return JsonResponse({"type": "info", "message": "Lot swing is below alert threshold."}, status=200)
 
         if not user.alert_email:

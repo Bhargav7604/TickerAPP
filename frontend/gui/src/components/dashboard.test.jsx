@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import Dashboard from "./dashboard";
-import { makeDesignData } from "../designFixtures";
+import { makeDesignData, PREVIEW_TIME } from "../designFixtures";
 
 const setup = extra => {
   const props = { ...makeDesignData(), handleContractMonthChange: jest.fn(), handleDashboardRefresh: jest.fn(), ...extra };
@@ -106,4 +106,20 @@ test("snapshot preview groups each index over the matching futures and net-lot c
   expect(within(rows[2]).getAllByRole("cell").map(cell => cell.textContent)).toEqual([
     "25,206.8", "+1,262", "56,842.5", "-438", "82,614.7", "+214",
   ]);
+});
+
+test("swing alerts use each index's own threshold, count exact matches and list without popup alerts", () => {
+  const data = makeDesignData();
+  const series = (key, lots) => lots.map((netLots, i) => ({ symbol: data.settings.symbols[key].symbol,
+    time: PREVIEW_TIME - (lots.length - 1 - i) * 300000, indexLevel: 100, netLots, ratio: 1 }));
+  setup({
+    settings: { ...data.settings, alertsEnabled: false, alertLotThresholds: { nifty: 400, banknifty: 400, sensex: 40 } },
+    chartHistory: { nifty: series("nifty", [0, 399, 0]), banknifty: series("banknifty", [0, -400]), sensex: series("sensex", [0, 44, 30]) },
+  });
+  const panel = screen.getByRole("tabpanel");
+  expect(within(panel).getByText("Banknifty 5-min lot swing")).toBeInTheDocument();
+  expect(within(panel).getByText("Sensex 5-min lot swing")).toBeInTheDocument();
+  expect(within(panel).queryByText("Nifty 5-min lot swing")).not.toBeInTheDocument();
+  expect(within(panel).getByText(/SENSEX 40 lots or more/)).toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: "Swing alerts" })).toHaveTextContent("2");
 });

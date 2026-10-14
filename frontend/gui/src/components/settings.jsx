@@ -1,4 +1,5 @@
 import { Component } from "react";
+import { ALERT_INDEXES, alertLotThreshold } from "../alertThresholds";
 
 class Settings extends Component {
   handleSettingsSave = async e => {
@@ -34,22 +35,27 @@ class Settings extends Component {
                     </label>
                   </div>
 
-                  <div className="field">
-                    <label htmlFor="alert-lot-threshold" className="label">Alert Swing Lots</label>
-                    <div className="control">
-                      <input
-                        id="alert-lot-threshold"
-                        type="number"
-                        name="alertLotThreshold"
-                        className="input"
-                        min="0"
-                        step="1"
-                        value={this.props.settings.alertLotThreshold || 400}
-                        onChange={this.props.handleSettingsChange}
-                      />
+                  <fieldset className="field">
+                    <legend className="label">Alert Swing Lots</legend>
+                    <div className="alert-threshold-grid">
+                      {ALERT_INDEXES.map(([key, label]) => (
+                        <div key={key}>
+                          <label htmlFor={`alert-lot-threshold-${key}`} className="alert-threshold-label">{label}</label>
+                          <input
+                            id={`alert-lot-threshold-${key}`}
+                            type="number"
+                            name={`alertLotThresholds.${key}`}
+                            className="input"
+                            min="1"
+                            step="1"
+                            value={this.props.settings.alertLotThresholds?.[key] ?? alertLotThreshold(this.props.settings, key)}
+                            onChange={this.props.handleSettingsChange}
+                          />
+                        </div>
+                      ))}
                     </div>
-                    <p className="help">Popup and sound trigger for lot swings above this value and AC/DD option volume surges above 250%.</p>
-                  </div>
+                    <p className="help">Swing alerts trigger when net lots move by at least this many lots in five minutes. SENSEX trades far fewer lots, so it needs a smaller number. AC/DD alerts trigger on option volume surges above 250%.</p>
+                  </fieldset>
 
                   <div className="field">
                     <label htmlFor="alert-email" className="label">Alert Email</label>

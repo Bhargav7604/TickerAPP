@@ -7,6 +7,7 @@ import "react-toastify/dist/ReactToastify.css";
 // Components
 import MainPage from "./components/mainPage.jsx";
 import LoginForm from "./components/loginForm.jsx";
+import { alertLotThreshold, describeAlertThresholds, DEFAULT_ALERT_LOT_THRESHOLDS } from "./alertThresholds";
 
 toast.configure();
 
@@ -219,6 +220,7 @@ class App extends Component {
         alertsEnabled: false,
         alertEmail: "",
         alertLotThreshold: 400,
+        alertLotThresholds: { ...DEFAULT_ALERT_LOT_THRESHOLDS },
         symbols: {}
       },
       niftyData: emptyTickData(),
@@ -777,7 +779,7 @@ class App extends Component {
     const nextSettings = {
       ...this.state.settings,
       alertsEnabled: true,
-      alertLotThreshold: this.state.settings.alertLotThreshold || 400
+      alertLotThresholds: { ...DEFAULT_ALERT_LOT_THRESHOLDS, ...this.state.settings.alertLotThresholds }
     };
 
     this.setState({
@@ -802,7 +804,11 @@ class App extends Component {
       const newState = { ...prevState };
       const newSettings = { ...newState.settings };
 
-      newSettings[name] = val;
+      if (name.startsWith("alertLotThresholds.")) {
+        newSettings.alertLotThresholds = { ...newSettings.alertLotThresholds, [name.split(".")[1]]: val };
+      } else {
+        newSettings[name] = val;
+      }
       newState.settings = newSettings;
 
       return newState;
@@ -902,9 +908,8 @@ class App extends Component {
 
   processRealtimeLotSwingAlerts = updatedState => {
     const settings = this.state.settings || {};
-    const threshold = Number(settings.alertLotThreshold || 0);
 
-    if (!settings.alertsEnabled || !Number.isFinite(threshold) || threshold <= 0) {
+    if (!settings.alertsEnabled) {
       return;
     }
 
@@ -937,9 +942,10 @@ class App extends Component {
         return;
       }
 
+      const threshold = alertLotThreshold(settings, key);
       const swingLots = Number((currentNetLots - Number(previous.netLots)).toFixed(2));
       const absSwingLots = Math.abs(swingLots);
-      if (absSwingLots <= threshold) {
+      if (absSwingLots < threshold) {
         return;
       }
 
@@ -961,15 +967,11 @@ class App extends Component {
 
   sendLotSwingAlert = async (key, previous, current) => {
     const settings = this.state.settings || {};
-    const threshold = Number(settings.alertLotThreshold || 0);
+    const threshold = alertLotThreshold(settings, key);
     const swingLots = Number((current.netLots - previous.netLots).toFixed(2));
     const absSwingLots = Math.abs(swingLots);
 
-    if (!settings.alertsEnabled || !Number.isFinite(threshold) || threshold <= 0) {
-      return;
-    }
-
-    if (absSwingLots <= threshold) {
+    if (!settings.alertsEnabled || absSwingLots < threshold) {
       return;
     }
 
@@ -989,6 +991,7 @@ class App extends Component {
     }
 
     const json = await this.request("alerts/send/", "POST", {
+      indexKey: key,
       indexName: INDEX_LABELS[key],
       symbol: current.symbol,
       indexLevel: current.indexLevel,
@@ -1287,8 +1290,6 @@ class App extends Component {
       return null;
     }
 
-    const threshold = this.state.settings.alertLotThreshold || 400;
-
     return (
       <div className="lot-alert-overlay" role="dialog" aria-modal="true" aria-labelledby="alert-setup-title">
         <div className="lot-alert-modal alert-setup-modal">
@@ -1302,7 +1303,7 @@ class App extends Component {
 
           <div className="lot-alert-body">
             <p className="alert-setup-copy">
-              Screen popup and sound alerts will trigger for lot swings above {this.formatAlertNumber(threshold)} lots and AC/DD option volume surges above {this.formatAlertNumber(AC_DD_VOLUME_ALERT_THRESHOLD_PCT)}%.
+              Screen popup and sound alerts will trigger when a five-minute lot swing reaches {describeAlertThresholds(this.state.settings, this.formatAlertNumber)} lots, and for AC/DD option volume surges above {this.formatAlertNumber(AC_DD_VOLUME_ALERT_THRESHOLD_PCT)}%.
             </p>
             <p className="alert-setup-copy muted">
               Email is optional and can be added later from Settings.

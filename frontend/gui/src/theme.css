@@ -79,6 +79,10 @@ html, body { background: var(--ui-page); color: var(--ui-ink); }
 .app-settings .button.is-link { background: var(--brand-gradient); border: 0; color: #08101f; font-weight: 700; }
 .app-settings .button.is-link:hover { filter: brightness(1.06); color: #08101f; }
 .app-settings input[type="checkbox"] { accent-color: var(--ui-blue-solid); }
+.app-settings fieldset.field { border: 0; padding: 0; margin-inline: 0; min-width: 0; }
+.alert-threshold-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.alert-threshold-label { display: block; margin-bottom: 4px; font-size: 12px; font-weight: 700; color: var(--ui-muted); }
+@media (max-width: 420px) { .alert-threshold-grid { grid-template-columns: 1fr; } }
 .has-section-nav :is(.snapshot-grid-head, .snapshot-grid-head .snapshot-grid-cell, .acdd-grid-head) { background: var(--ui-subtle); color: var(--ui-muted); }
 .has-section-nav :is(.snapshot-grid-cell, .acdd-grid, .acdd-grid-cell, .acdd-summary-cell) { border-color: var(--ui-line); }
 .has-section-nav .snapshot-time, .has-section-nav .panel-subtitle { color: var(--ui-muted); }
