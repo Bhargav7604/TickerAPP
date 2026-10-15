@@ -63,4 +63,6 @@ phases:
 
 artifacts:
   files:
+    - appspec.yml
     - imagedefinitions.json
+    - deploy/scripts/**/*
