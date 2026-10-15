@@ -1,7 +1,13 @@
+
 version: 0.0
 os: linux
+
 files:
-  - source: /
+  - source: docker/
+    destination: /opt/tickerapp/docker
+  - source: docker-compose.yml
+    destination: /opt/tickerapp
+  - source: .env.example
     destination: /opt/tickerapp
 
 hooks:
@@ -11,7 +17,6 @@ hooks:
       runas: root
 
   AfterInstall:
-    # Refresh images (pull) so the instance uses images pushed by CodeBuild/ECR
     - location: deploy/scripts/refresh_images.sh
       timeout: 600
       runas: root
