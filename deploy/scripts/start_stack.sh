@@ -3,33 +3,38 @@ set -eu
 
 APP_DIR=${APP_DIR:-/opt/tickerapp}
 ENV_FILE=${ENV_FILE:-/etc/tickerapp/env}
+COMPOSE_FILE="$APP_DIR/compose.ec2.yaml"
+PROJECT_NAME="tickerapp"
 
 cd "$APP_DIR"
 
-# Ensure .env is linked
-if [ -f "$ENV_FILE" ]; then
-  ln -sfn "$ENV_FILE" "$APP_DIR/.env"
+if [ ! -f "$COMPOSE_FILE" ]; then
+    echo "ERROR: Compose file not found: $COMPOSE_FILE" >&2
+    exit 1
 fi
 
-echo "Starting docker-compose stack..."
-if command -v docker-compose >/dev/null 2>&1; then
-  docker-compose up -d --remove-orphans
-else
-  docker compose up -d --remove-orphans
+if [ ! -f "$ENV_FILE" ]; then
+    echo "ERROR: Environment file not found: $ENV_FILE" >&2
+    exit 1
 fi
 
-echo "Running Django migrations and collectstatic (if a backend service exists)..."
+ln -sfn "$ENV_FILE" "$APP_DIR/.env"
 
-# Run migrations if backend service exists in compose
-if docker ps -a --format '{{.Names}}' | grep -q backend >/dev/null 2>&1 || true; then
-  # run migrations in a temporary container (compose run)
-  if command -v docker-compose >/dev/null 2>&1; then
-    docker-compose run --rm backend python manage.py migrate || true
-    docker-compose run --rm backend python manage.py collectstatic --noinput || true
-  else
-    docker compose run --rm backend python manage.py migrate || true
-    docker compose run --rm backend python manage.py collectstatic --noinput || true
-  fi
+if ! docker compose version >/dev/null 2>&1; then
+    echo "ERROR: Docker Compose v2 is not installed." >&2
+    exit 1
 fi
 
-echo "Application started."
+echo "Validating $COMPOSE_FILE..."
+docker compose -p "$PROJECT_NAME" -f "$COMPOSE_FILE" config -q
+
+echo "Building and starting TickerAPP..."
+docker compose -p "$PROJECT_NAME" -f "$COMPOSE_FILE" up -d --build
+
+echo "Running database migrations..."
+docker compose -p "$PROJECT_NAME" -f "$COMPOSE_FILE" run --rm backend python manage.py migrate
+
+echo "Collecting static files..."
+docker compose -p "$PROJECT_NAME" -f "$COMPOSE_FILE" run --rm backend python manage.py collectstatic --noinput
+
+echo "TickerAPP deployment completed."
