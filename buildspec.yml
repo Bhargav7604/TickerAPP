@@ -64,5 +64,12 @@ phases:
 artifacts:
   files:
     - appspec.yml
-    - imagedefinitions.json
+    - compose.ec2.yaml
+    - compose.yaml
+    - compose.local.yaml
+    - Dockerfile
     - deploy/scripts/**/*
+    - docker/**/*
+    - deploy-frontend/**/*
+    - '**/*'
+  discard-paths: no
