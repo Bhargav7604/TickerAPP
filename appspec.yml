@@ -1,0 +1,27 @@
+version: 0.0
+os: linux
+files:
+  - source: /
+    destination: /opt/tickerapp
+
+hooks:
+  BeforeInstall:
+    - location: deploy/scripts/bootstrap-runtime.sh
+      timeout: 600
+      runas: root
+
+  AfterInstall:
+    # Refresh images (pull) so the instance uses images pushed by CodeBuild/ECR
+    - location: deploy/scripts/refresh_images.sh
+      timeout: 600
+      runas: root
+
+  ApplicationStart:
+    - location: deploy/scripts/start_stack.sh
+      timeout: 600
+      runas: root
+
+  ValidateService:
+    - location: deploy/scripts/healthcheck.sh
+      timeout: 60
+      runas: root
