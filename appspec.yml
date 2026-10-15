@@ -3,24 +3,10 @@ version: 0.0
 os: linux
 
 files:
-  - source: compose.ec2.yaml
+  - source: /
     destination: /opt/tickerapp
-  - source: backend/
-    destination: /opt/tickerapp/backend
-  - source: docker/
-    destination: /opt/tickerapp/docker
-  - source: frontend/
-    destination: /opt/tickerapp/frontend
-  - source: webapp/
-    destination: /opt/tickerapp/webapp
-  - source: templates/
-    destination: /opt/tickerapp/templates
-  - source: manage.py
-    destination: /opt/tickerapp
-  - source: requirements.txt
-    destination: /opt/tickerapp
-  - source: master_contract.csv
-    destination: /opt/tickerapp
+
+file_exists_behavior: OVERWRITE
 
 hooks:
   BeforeInstall:
