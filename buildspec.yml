@@ -1,66 +1,47 @@
+```yaml
 version: 0.2
 
 env:
   variables:
-    # Can be overridden in CodeBuild project environment variables or pipeline
-    IMAGE_TAG: ""                      # if empty, CODEBUILD_RESOLVED_SOURCE_VERSION short id will be used
-    ECR_REGISTRY: ""                   # must be provided by the pipeline/CodeBuild (e.g. 111122223333.dkr.ecr.us-east-1.amazonaws.com)
-    AWS_DEFAULT_REGION: "ap-south-1"   # override in CodeBuild environment
+    IMAGE_TAG: ""
+    ECR_REGISTRY: "921829859169.dkr.ecr.ap-south-1.amazonaws.com"
+    ECR_REPOSITORY: "ticker-repo"
+    AWS_DEFAULT_REGION: "ap-south-1"
 
 phases:
   install:
     runtime-versions:
       python: 3.11
     commands:
-      - echo "Starting Docker (if CodeBuild managed image requires it) and installing awscli..."
-      - pip install --upgrade awscli >/dev/null
-      - echo "Waiting for docker to be available (if using privileged CodeBuild image)..." || true
-      - timeout 15 sh -c "until docker info >/dev/null 2>&1; do sleep 1; done" || true
+      - pip install --upgrade awscli
+      - timeout 30 sh -c 'until docker info >/dev/null 2>&1; do sleep 1; done'
 
   pre_build:
     commands:
       - set -e
-      - echo "Resolve IMAGE_TAG..."
       - |
         if [ -z "$IMAGE_TAG" ]; then
           if [ -n "$CODEBUILD_RESOLVED_SOURCE_VERSION" ]; then
-            IMAGE_TAG=$(echo ${CODEBUILD_RESOLVED_SOURCE_VERSION} | cut -c1-7)
+            IMAGE_TAG=$(echo "$CODEBUILD_RESOLVED_SOURCE_VERSION" | cut -c1-7)
           else
             IMAGE_TAG=latest
           fi
         fi
       - echo "IMAGE_TAG=$IMAGE_TAG"
-      - echo "Logging in to Amazon ECR ($ECR_REGISTRY) in $AWS_DEFAULT_REGION"
-      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+      - echo "ECR_REGISTRY=$ECR_REGISTRY"
+      - echo "ECR_REPOSITORY=$ECR_REPOSITORY"
+      - aws ecr get-login-password --region "$AWS_DEFAULT_REGION" | docker login --username AWS --password-stdin "$ECR_REGISTRY"
 
   build:
     commands:
       - set -e
-      - echo "Building docker images..."
-      - docker build -f docker/backend/Dockerfile -t $ECR_REGISTRY/tickerapp-backend:$IMAGE_TAG .
-      - docker build -f docker/frontend/Dockerfile -t $ECR_REGISTRY/tickerapp-frontend:$IMAGE_TAG .
-      - |
-        # market-feed may not exist in all repo variants; build if there is a Dockerfile/dir
-        if [ -d "./market-feed" ] || [ -f "./market-feed/Dockerfile" ]; then
-          docker build -t $ECR_REGISTRY/tickerapp-marketfeed:$IMAGE_TAG ./market-feed
-        else
-          echo "No market-feed dir/Dockerfile found; skipping marketfeed build."
-        fi
-      - echo "Pushing images to ECR..."
-      - docker push $ECR_REGISTRY/tickerapp-backend:$IMAGE_TAG
-      - docker push $ECR_REGISTRY/tickerapp-frontend:$IMAGE_TAG
-      - |
-        if docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "$ECR_REGISTRY/tickerapp-marketfeed:$IMAGE_TAG"; then
-          docker push $ECR_REGISTRY/tickerapp-marketfeed:$IMAGE_TAG || true
-        fi
-      - echo "Generating imagedefinitions.json (useful for ECS or later pipeline steps)..."
-      - printf '[{"name":"backend","imageUri":"%s/tickerapp-backend:%s"},{"name":"frontend","imageUri":"%s/tickerapp-frontend:%s"}' $ECR_REGISTRY $IMAGE_TAG $ECR_REGISTRY $IMAGE_TAG > imagedefinitions.json
-      - |
-        if docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "$ECR_REGISTRY/tickerapp-marketfeed:$IMAGE_TAG"; then
-          printf ',{"name":"marketfeed","imageUri":"%s/tickerapp-marketfeed:%s"}' $ECR_REGISTRY $IMAGE_TAG >> imagedefinitions.json
-        fi
-      - printf ']\n' >> imagedefinitions.json
+      - docker build -f docker/backend/Dockerfile -t "$ECR_REGISTRY/$ECR_REPOSITORY:backend-$IMAGE_TAG" .
+      - docker build -f docker/frontend/Dockerfile -t "$ECR_REGISTRY/$ECR_REPOSITORY:frontend-$IMAGE_TAG" .
+      - docker push "$ECR_REGISTRY/$ECR_REPOSITORY:backend-$IMAGE_TAG"
+      - docker push "$ECR_REGISTRY/$ECR_REPOSITORY:frontend-$IMAGE_TAG"
+      - printf '[{"name":"backend","imageUri":"%s/%s:backend-%s"},{"name":"frontend","imageUri":"%s/%s:frontend-%s"}]\n' "$ECR_REGISTRY" "$ECR_REPOSITORY" "$IMAGE_TAG" "$ECR_REGISTRY" "$ECR_REPOSITORY" "$IMAGE_TAG" > imagedefinitions.json
 
 artifacts:
   files:
     - imagedefinitions.json
+```
