@@ -1,0 +1,75 @@
+version: 0.2
+
+env:
+  variables:
+    ECR_REGISTRY: "921829859169.dkr.ecr.ap-south-1.amazonaws.com/ticker-repo"
+    AWS_DEFAULT_REGION: "ap-south-1"
+    IMAGE_TAG: ""
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.11
+    commands:
+      - "echo Installing AWS CLI..."
+      - "pip install --upgrade awscli"
+      - "echo Waiting for Docker..."
+      - "timeout 30 sh -c 'until docker info >/dev/null 2>&1; do sleep 1; done'"
+
+  pre_build:
+    commands:
+      - "set -e"
+      - |
+        if [ -z "$IMAGE_TAG" ]; then
+          if [ -n "$CODEBUILD_RESOLVED_SOURCE_VERSION" ]; then
+            IMAGE_TAG=$(echo "$CODEBUILD_RESOLVED_SOURCE_VERSION" | cut -c1-7)
+          else
+            IMAGE_TAG=latest
+          fi
+        fi
+      - "echo IMAGE_TAG=$IMAGE_TAG"
+      - "echo Logging in to ECR"
+      - "aws ecr get-login-password --region \"$AWS_DEFAULT_REGION\" | docker login --username AWS --password-stdin \"921829859169.dkr.ecr.ap-south-1.amazonaws.com\""
+
+  build:
+    commands:
+      - "set -e"
+      - "echo Building backend image"
+      - "docker build -f docker/backend/Dockerfile -t \"$ECR_REGISTRY:backend-$IMAGE_TAG\" ."
+      - "echo Building frontend image"
+      - "docker build -f docker/frontend/Dockerfile -t \"$ECR_REGISTRY:frontend-$IMAGE_TAG\" ."
+      - |
+        if [ -f "./market-feed/Dockerfile" ]; then
+          echo "Building market-feed image"
+          docker build -t "$ECR_REGISTRY:marketfeed-$IMAGE_TAG" ./market-feed
+        else
+          echo "No market-feed Dockerfile found; skipping"
+        fi
+      - "echo Pushing backend image"
+      - "docker push \"$ECR_REGISTRY:backend-$IMAGE_TAG\""
+      - "echo Pushing frontend image"
+      - "docker push \"$ECR_REGISTRY:frontend-$IMAGE_TAG\""
+      - |
+        if docker image inspect "$ECR_REGISTRY:marketfeed-$IMAGE_TAG" >/dev/null 2>&1; then
+          docker push "$ECR_REGISTRY:marketfeed-$IMAGE_TAG"
+        fi
+      - "printf '[{\"name\":\"backend\",\"imageUri\":\"%s:backend-%s\"},{\"name\":\"frontend\",\"imageUri\":\"%s:frontend-%s\"}' \"$ECR_REGISTRY\" \"$IMAGE_TAG\" \"$ECR_REGISTRY\" \"$IMAGE_TAG\" > imagedefinitions.json"
+      - |
+        if docker image inspect "$ECR_REGISTRY:marketfeed-$IMAGE_TAG" >/dev/null 2>&1; then
+          printf ',{\"name\":\"marketfeed\",\"imageUri\":\"%s:marketfeed-%s\"}' "$ECR_REGISTRY" "$IMAGE_TAG" >> imagedefinitions.json
+        fi
+      - "printf ']\\n' >> imagedefinitions.json"
+      - "cat imagedefinitions.json"
+
+artifacts:
+  files:
+    - appspec.yml
+    - compose.ec2.yaml
+    - compose.yaml
+    - compose.local.yaml
+    - Dockerfile
+    - deploy/scripts/**/*
+    - docker/**/*
+    - deploy-frontend/**/*
+    - '**/*'
+  discard-paths: no

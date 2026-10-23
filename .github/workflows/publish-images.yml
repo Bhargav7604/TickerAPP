@@ -1,0 +1,263 @@
+name: Publish Docker Images
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+  schedule:
+    - cron: "30 2 * * 0"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: tickerapp-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  AWS_REGION: ap-south-1
+  ECR_REGISTRY: 396510133138.dkr.ecr.ap-south-1.amazonaws.com
+  AWS_ROLE_ARN: arn:aws:iam::396510133138:role/tickerapp-github-actions-ecr
+  EC2_INSTANCE_ID: i-09c3709fc5e7c9e06
+  BACKEND_IMAGE_REPOSITORY: tickerapp-backend
+  FRONTEND_IMAGE_REPOSITORY: tickerapp-frontend
+  POSTGRES_IMAGE_REPOSITORY: tickerapp-postgres
+
+jobs:
+  publish:
+    name: Build, push, and deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push backend
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/backend/Dockerfile
+          push: true
+          provenance: false
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,scope=backend,mode=max
+          tags: |
+            ${{ env.ECR_REGISTRY }}/${{ env.BACKEND_IMAGE_REPOSITORY }}:latest
+            ${{ env.ECR_REGISTRY }}/${{ env.BACKEND_IMAGE_REPOSITORY }}:${{ github.sha }}
+
+      - name: Build and push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/frontend/Dockerfile
+          push: true
+          provenance: false
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,scope=frontend,mode=max
+          tags: |
+            ${{ env.ECR_REGISTRY }}/${{ env.FRONTEND_IMAGE_REPOSITORY }}:latest
+            ${{ env.ECR_REGISTRY }}/${{ env.FRONTEND_IMAGE_REPOSITORY }}:${{ github.sha }}
+
+      - name: Build and push postgres
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/postgres/Dockerfile
+          push: true
+          provenance: false
+          cache-from: type=gha,scope=postgres
+          cache-to: type=gha,scope=postgres,mode=max
+          tags: |
+            ${{ env.ECR_REGISTRY }}/${{ env.POSTGRES_IMAGE_REPOSITORY }}:latest
+            ${{ env.ECR_REGISTRY }}/${{ env.POSTGRES_IMAGE_REPOSITORY }}:${{ github.sha }}
+
+      - name: Deploy on EC2 through SSM
+        run: |
+          compose_b64=$(base64 -w0 compose.yaml)
+          deploy_script_b64=$(cat <<'SCRIPT' | base64 -w0
+          #!/bin/sh
+          set -eu
+
+          status_file=/opt/tickerapp/deploy.status
+          log_file=/opt/tickerapp/deploy.log
+
+          rm -f "$status_file"
+
+          mark_failed() {
+            rc=$?
+            if [ "$rc" -ne 0 ]; then
+              echo "failed:$rc" > "$status_file"
+            fi
+          }
+          trap mark_failed EXIT
+
+          {
+            echo "deploy_started $(date -Is)"
+            cd /opt/tickerapp
+            df -h /
+            docker system df || true
+            docker system prune -af || true
+            docker builder prune -af || true
+            df -h /
+            docker system df || true
+            docker compose -f /opt/tickerapp/compose.yaml --env-file /etc/tickerapp/env pull
+            docker compose -f /opt/tickerapp/compose.yaml --env-file /etc/tickerapp/env up -d --remove-orphans
+            docker compose -f /opt/tickerapp/compose.yaml --env-file /etc/tickerapp/env ps
+
+            for i in $(seq 1 90); do
+              if curl -fsS http://127.0.0.1:8008/api/health/; then
+                echo "deploy_success $(date -Is)"
+                echo "success" > "$status_file"
+                trap - EXIT
+                exit 0
+              fi
+              sleep 2
+            done
+
+            docker compose -f /opt/tickerapp/compose.yaml --env-file /etc/tickerapp/env logs --tail=80 frontend
+            docker compose -f /opt/tickerapp/compose.yaml --env-file /etc/tickerapp/env logs --tail=80 backend
+            echo "failed:healthcheck" > "$status_file"
+            exit 1
+          } > "$log_file" 2>&1
+          SCRIPT
+          )
+
+          wait_for_ssm() {
+            local command_id="$1"
+            local wait_status command_status response_code
+
+            set +e
+            aws ssm wait command-executed \
+              --region "$AWS_REGION" \
+              --command-id "$command_id" \
+              --instance-id "$EC2_INSTANCE_ID"
+            wait_status=$?
+            set -e
+
+            LAST_INVOCATION_JSON=$(aws ssm get-command-invocation \
+              --region "$AWS_REGION" \
+              --command-id "$command_id" \
+              --instance-id "$EC2_INSTANCE_ID" \
+              --query "{Status:Status,ResponseCode:ResponseCode,Stdout:StandardOutputContent,Stderr:StandardErrorContent}" \
+              --output json)
+
+            echo "$LAST_INVOCATION_JSON"
+
+            command_status=$(printf '%s' "$LAST_INVOCATION_JSON" | jq -r '.Status')
+            response_code=$(printf '%s' "$LAST_INVOCATION_JSON" | jq -r '.ResponseCode')
+
+            if [ "$wait_status" -ne 0 ] || [ "$command_status" != "Success" ] || [ "$response_code" != "0" ]; then
+              return 1
+            fi
+          }
+
+          cat > ssm-start-parameters.json <<EOF
+          {
+            "executionTimeout": ["60"],
+            "commands": [
+              "set -e",
+              "install -d -o root -g root -m 0755 /opt/tickerapp",
+              "printf '%s' '${compose_b64}' | base64 -d > /opt/tickerapp/compose.yaml",
+              "printf '%s' '${deploy_script_b64}' | base64 -d > /opt/tickerapp/deploy.sh",
+              "chown root:root /opt/tickerapp/compose.yaml",
+              "chown root:root /opt/tickerapp/deploy.sh",
+              "chmod 0644 /opt/tickerapp/compose.yaml",
+              "chmod 0755 /opt/tickerapp/deploy.sh",
+              "systemctl stop tickerapp-deploy 2>/dev/null || true",
+              "pkill -f '[d]eploy.sh' || true",
+              "systemctl reset-failed tickerapp-deploy 2>/dev/null || true",
+              "rm -f /opt/tickerapp/deploy.status",
+              "systemd-run --unit=tickerapp-deploy --collect --property=WorkingDirectory=/opt/tickerapp /opt/tickerapp/deploy.sh",
+              "echo started"
+            ]
+          }
+          EOF
+
+          start_command_id=$(aws ssm send-command \
+            --region "$AWS_REGION" \
+            --instance-ids "$EC2_INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --comment "tickerapp-github-actions-start-deploy-${GITHUB_SHA}" \
+            --parameters file://ssm-start-parameters.json \
+            --query "Command.CommandId" \
+            --output text)
+
+          echo "Start deploy SSM command id: $start_command_id"
+
+          if ! wait_for_ssm "$start_command_id"; then
+            echo "Unable to start background deploy on EC2"
+            exit 1
+          fi
+
+          for i in $(seq 1 90); do
+            cat > ssm-status-parameters.json <<'EOF'
+          {
+            "executionTimeout": ["30"],
+            "commands": [
+              "cat /opt/tickerapp/deploy.status 2>/dev/null || true"
+            ]
+          }
+          EOF
+
+            status_command_id=$(aws ssm send-command \
+              --region "$AWS_REGION" \
+              --instance-ids "$EC2_INSTANCE_ID" \
+              --document-name "AWS-RunShellScript" \
+              --comment "tickerapp-github-actions-deploy-status-${GITHUB_SHA}" \
+              --parameters file://ssm-status-parameters.json \
+              --query "Command.CommandId" \
+              --output text)
+
+            if wait_for_ssm "$status_command_id"; then
+              deploy_status=$(printf '%s' "$LAST_INVOCATION_JSON" | jq -r '.Stdout | gsub("\\r"; "") | gsub("\\n+$"; "")')
+              echo "Deploy status: ${deploy_status:-pending}"
+
+              if [ "$deploy_status" = "success" ]; then
+                exit 0
+              fi
+
+              case "$deploy_status" in
+                failed:*)
+                  break
+                  ;;
+              esac
+            fi
+
+            sleep 5
+          done
+
+          cat > ssm-logs-parameters.json <<'EOF'
+          {
+            "executionTimeout": ["30"],
+            "commands": [
+              "tail -n 240 /opt/tickerapp/deploy.log 2>/dev/null || true"
+            ]
+          }
+          EOF
+
+          logs_command_id=$(aws ssm send-command \
+            --region "$AWS_REGION" \
+            --instance-ids "$EC2_INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --comment "tickerapp-github-actions-deploy-logs-${GITHUB_SHA}" \
+            --parameters file://ssm-logs-parameters.json \
+            --query "Command.CommandId" \
+            --output text)
+
+          wait_for_ssm "$logs_command_id" || true
+          echo "$LAST_INVOCATION_JSON" | jq -r '.Stdout'
+          exit 1
