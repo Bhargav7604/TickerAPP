@@ -1,5 +1,5 @@
 import { Component } from "react";
-import { ChartNoAxesColumn, Layers, LayoutDashboard, LogOut, Moon, RefreshCw, Settings, Sun, UserCircle } from "lucide-react";
+import { Activity, ChartNoAxesColumn, Layers, LayoutDashboard, LogOut, Moon, RefreshCw, Settings, Sun, UserCircle } from "lucide-react";
 import { ThemeContext } from "../theme";
 import brandMark from "../assets/brand/utraders-mark.png";
 import wordmark from "../assets/brand/utraders-wordmark-light.png";
@@ -28,6 +28,8 @@ class Navbar extends Component {
           onClick={() => this.props.changePage("equity")}><ChartNoAxesColumn size={18} /><span>Equity</span></button>
         <button type="button" className={this.props.currentPage === "index-options" ? "active" : ""} aria-current={this.props.currentPage === "index-options" ? "page" : undefined}
           onClick={() => this.props.changePage("index-options")}><Layers size={18} /><span>Index Options</span></button>
+        <button type="button" className={this.props.currentPage === "oi-analysis" ? "active" : ""} aria-current={this.props.currentPage === "oi-analysis" ? "page" : undefined}
+          onClick={() => this.props.changePage("oi-analysis")}><Activity size={18} /><span>OI Analysis</span></button>
         <button type="button" className={this.props.currentPage === "settings" ? "active" : ""} title="Settings" aria-label="Settings"
           onClick={() => this.props.changePage("settings")}><Settings size={19} /><span>Settings</span></button>
       </div>
@@ -36,7 +38,7 @@ class Navbar extends Component {
           aria-label={this.context.theme === "dark" ? "Switch to light mode" : "Switch to dark mode"} onClick={this.context.toggleTheme}>
           {this.context.theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
         </button>
-        {!["equity", "index-options"].includes(this.props.currentPage) && <button className="scan-icon-button mobile-refresh" type="button" title="Refresh market data" aria-label="Refresh market data"
+        {!["equity", "index-options", "oi-analysis"].includes(this.props.currentPage) && <button className="scan-icon-button mobile-refresh" type="button" title="Refresh market data" aria-label="Refresh market data"
           onClick={this.props.handleDashboardRefresh}><RefreshCw size={20} /></button>}
         <button className="scan-icon-button mobile-settings" type="button" title="Settings" aria-label="Settings"
           onClick={() => this.props.changePage("settings")}><Settings size={21} /></button>

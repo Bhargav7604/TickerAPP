@@ -1,12 +1,16 @@
 from django.urls import path
 
 from . import views
-from . import equity
+from . import equity, oi_analysis
 
 urlpatterns = [
     path("index-options/contracts/", equity.contracts, {"index_options": True}, name="index_option_contracts"),
     path("index-options/quotes/", equity.quotes, {"index_options": True}, name="index_option_quotes"),
     path("index-options/history/", equity.history, {"index_options": True}, name="index_option_history"),
+    path("oi/expiries/", oi_analysis.oi_expiries, name="oi_expiries"),
+    path("oi/chain/", oi_analysis.oi_chain, name="oi_chain"),
+    path("oi/live-chain/", oi_analysis.oi_live_chain, name="oi_live_chain"),
+    path("oi/trend/", oi_analysis.oi_trend, name="oi_trend"),
     path("equity/contracts/", equity.contracts, name="equity_contracts"),
     path("equity/quotes/", equity.quotes, name="equity_quotes"),
     path("equity/history/", equity.history, name="equity_history"),

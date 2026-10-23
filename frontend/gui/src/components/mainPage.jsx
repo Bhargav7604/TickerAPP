@@ -6,24 +6,27 @@ import Dashboard from "./dashboard.jsx";
 import "../equity.css";
 import "../brand.css";
 import { makeEquityApi } from "../equityData";
-import { ChartNoAxesColumn, Layers, LayoutDashboard, Settings as SettingsIcon } from "lucide-react";
+import { Activity, ChartNoAxesColumn, Layers, LayoutDashboard, Settings as SettingsIcon } from "lucide-react";
+import { makeOiApi } from "../oiData";
 
 const Equity = lazy(() => import("./equity.jsx"));
+const OiAnalysis = lazy(() => import("./oiAnalysis.jsx"));
 
 class MainPage extends Component {
   constructor(props) {
     super(props);
 
     this.state = {
-      currentPage: ["equity", "index-options", "settings"].includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : "dashboard"
+      currentPage: ["equity", "index-options", "oi-analysis", "settings"].includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : "dashboard"
     }
     this.equityApi = props.equityApi || makeEquityApi(props.request);
     this.indexOptionsApi = props.indexOptionsApi || makeEquityApi(props.request, "index-options");
+    this.oiApi = props.oiApi || makeOiApi(props.request);
   }
 
   componentDidMount() { window.addEventListener("hashchange", this.syncPage); }
   componentWillUnmount() { window.removeEventListener("hashchange", this.syncPage); }
-  syncPage = () => this.setState({ currentPage: ["equity", "index-options", "settings"].includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : "dashboard" });
+  syncPage = () => this.setState({ currentPage: ["equity", "index-options", "oi-analysis", "settings"].includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : "dashboard" });
 
   changePage = page => {
     window.location.hash = page === "dashboard" ? "index" : page;
@@ -57,6 +60,8 @@ class MainPage extends Component {
     } else if (["equity", "index-options"].includes(this.state.currentPage)) {
       const indexOptions = this.state.currentPage === "index-options";
       page = <Suspense fallback={<div className="eq-empty" role="status">Loading {indexOptions ? "Index Options" : "Equity"}...</div>}><Equity key={`${this.props.username}:${this.state.currentPage}`} username={this.props.username} indexOptions={indexOptions} api={indexOptions ? this.indexOptionsApi : this.equityApi} /></Suspense>;
+    } else if (this.state.currentPage === "oi-analysis") {
+      page = <Suspense fallback={<div className="eq-empty" role="status">Loading OI Analysis...</div>}><OiAnalysis api={this.oiApi} /></Suspense>;
     } else if (this.state.currentPage === "settings") {
       page = <Settings
         settings={this.props.settings}
@@ -76,7 +81,7 @@ class MainPage extends Component {
         />
         {page}
         <nav className="eq-mobile-navigation" aria-label="Mobile section navigation">
-          {[["dashboard", "Index", LayoutDashboard], ["equity", "Equity", ChartNoAxesColumn], ["index-options", "Index Options", Layers], ["settings", "Settings", SettingsIcon]].map(([id, label, Icon]) =>
+          {[["dashboard", "Index", LayoutDashboard], ["equity", "Equity", ChartNoAxesColumn], ["index-options", "Index Options", Layers], ["oi-analysis", "OI", Activity], ["settings", "Settings", SettingsIcon]].map(([id, label, Icon]) =>
             <button key={id} type="button" className={this.state.currentPage === id ? "active" : ""} aria-current={this.state.currentPage === id ? "page" : undefined} onClick={() => this.changePage(id)}><Icon size={21} /><span>{label}</span></button>)}
         </nav>
       </div>

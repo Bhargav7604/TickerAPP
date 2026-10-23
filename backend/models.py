@@ -173,3 +173,42 @@ class MarketSnapshot(models.Model):
 #
 #     def __str__(self):
 #         return f"{self.ticker} - {self.date}"
+
+
+class OptionOISnapshot(models.Model):
+    """Open interest for one index option strike, recorded every three minutes (bucket_time is naive IST)."""
+
+    index_key = models.CharField(max_length=20)
+    expiry = models.DateField()
+    strike = models.FloatField()
+    option_type = models.CharField(max_length=2)
+    bucket_time = models.DateTimeField()
+    underlying = models.FloatField(blank=True, null=True)
+    oi = models.FloatField()
+    ltp = models.FloatField(blank=True, null=True)
+    prev_close = models.FloatField(blank=True, null=True)
+    volume = models.FloatField(blank=True, null=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["index_key", "expiry", "strike", "option_type", "bucket_time"],
+                                    name="unique_option_oi_bucket"),
+        ]
+        indexes = [models.Index(fields=["index_key", "expiry", "bucket_time"])]
+
+
+class OptionOIBaseline(models.Model):
+    """Previous trading day's closing OI, so 'OI change' matches broker option chains."""
+
+    index_key = models.CharField(max_length=20)
+    expiry = models.DateField()
+    strike = models.FloatField()
+    option_type = models.CharField(max_length=2)
+    trade_date = models.DateField()
+    prev_oi = models.FloatField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["index_key", "expiry", "strike", "option_type", "trade_date"],
+                                    name="unique_option_oi_baseline"),
+        ]
