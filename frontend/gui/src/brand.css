@@ -28,3 +28,12 @@
 .scan-activity .side-row:has(.side-value.value-down) { box-shadow: inset 3px 0 var(--ui-red); }
 .scan-activity .side-value.value-up { padding: 4px 10px; border-radius: 999px; background: var(--ui-green-soft); }
 .scan-activity .side-value.value-down { padding: 4px 10px; border-radius: 999px; background: var(--ui-red-soft); }
+
+/* In-page alerts: the newest swing / AC/DD signal is highlighted instead of a popup. */
+.scan-activity .side-row.is-latest { background: var(--ui-selected); animation: latest-alert-flash 1.2s ease-out 3; }
+.scan-activity .swing-detail { margin-top: 4px; font-size: 12px; font-weight: 600; color: var(--ui-muted); font-variant-numeric: tabular-nums; }
+.swing-tag { display: inline-block; margin-right: 6px; padding: 1px 7px; border-radius: 999px; vertical-align: 1px; font-size: 10px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; background: var(--ui-subtle); color: var(--ui-muted); }
+.swing-tag.is-latest { background: var(--brand-gradient); color: #08101f; }
+.has-section-nav .acdd-grid-row.is-latest { background: var(--ui-selected); box-shadow: inset 4px 0 var(--ui-blue); animation: latest-alert-flash 1.2s ease-out 3; }
+@keyframes latest-alert-flash { 0% { background: color-mix(in srgb, #f5b83d 38%, var(--ui-surface)); } 100% { background: var(--ui-selected); } }
+@media (prefers-reduced-motion: reduce) { .scan-activity .side-row.is-latest, .has-section-nav .acdd-grid-row.is-latest { animation: none; } }

@@ -10,6 +10,7 @@ from twisted.internet import reactor
 from backend.live_feed import SharedMarketFeed
 from backend.master_contract_updater import fetch_master_contract
 from backend.oi_recorder import record_option_oi
+from backend.alerts import run_alert_cycle
 from backend.snapshot_recorder import record_market_snapshot
 
 
@@ -45,6 +46,8 @@ class Command(BaseCommand):
                           args=[record_market_snapshot], coalesce=True, max_instances=1)
         scheduler.add_job(guarded, "cron", minute="*/3", second=20,
                           args=[record_option_oi], coalesce=True, max_instances=1)
+        scheduler.add_job(guarded, "cron", minute="*/5", second=40,
+                          args=[run_alert_cycle], coalesce=True, max_instances=1)
         scheduler.start()
         self.stdout.write("Shared market-feed worker started.")
         next_configure = 0

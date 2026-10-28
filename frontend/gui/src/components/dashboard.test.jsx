@@ -123,3 +123,32 @@ test("swing alerts use each index's own threshold, count exact matches and list 
   expect(within(panel).getByText(/SENSEX 40 lots or more/)).toBeInTheDocument();
   expect(screen.getByRole("tab", { name: "Swing alerts" })).toHaveTextContent("2");
 });
+
+test("live swing alerts are listed at once, merge into their window and the newest is highlighted", () => {
+  const data = makeDesignData();
+  const series = (key, lots) => lots.map((netLots, i) => ({ symbol: data.settings.symbols[key].symbol,
+    time: PREVIEW_TIME - (lots.length - 1 - i) * 300000, indexLevel: 100, netLots, ratio: 1 }));
+  const sensex = series("sensex", [0, 44, 30]);
+  const banknifty = series("banknifty", [0, -400]);
+  const live = { indexKey: "sensex", indexName: "Sensex", symbol: sensex[2].symbol, previousTime: sensex[2].time,
+    time: sensex[2].time + 60000, previousNetLots: 30, currentNetLots: 154, swingLots: 124, threshold: 40 };
+  const merged = { indexKey: "banknifty", indexName: "Banknifty", symbol: banknifty[0].symbol, previousTime: banknifty[0].time,
+    time: banknifty[0].time + 120000, previousNetLots: 0, currentNetLots: -420, swingLots: -420, threshold: 400 };
+  setup({
+    settings: { ...data.settings, alertsEnabled: true, alertLotThresholds: { nifty: 400, banknifty: 400, sensex: 40 } },
+    chartHistory: { nifty: series("nifty", [0, 0]), banknifty, sensex },
+    swingAlerts: [merged, live],
+  });
+  const panel = screen.getByRole("tabpanel");
+  expect(within(panel).getByText(/Sound alerts are on/)).toBeInTheDocument();
+  const latest = panel.querySelectorAll(".side-row.is-latest");
+  expect(latest).toHaveLength(1);
+  expect(latest[0]).toHaveTextContent("Latest");
+  expect(latest[0]).toHaveTextContent("Live");
+  expect(latest[0]).toHaveTextContent("+30 → +154 lots");
+  expect(latest[0]).toHaveTextContent("+124 lots");
+  const bank = within(panel).getByText("Banknifty 5-min lot swing").closest(".side-row");
+  expect(bank).not.toHaveClass("is-latest");
+  expect(bank).toHaveTextContent(/0 → -400 lots · alert at \d\d:\d\d/);
+  expect(screen.getByRole("tab", { name: "Swing alerts" })).toHaveTextContent("3");
+});

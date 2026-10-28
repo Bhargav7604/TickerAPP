@@ -1,12 +1,24 @@
 from django.urls import path
 
 from . import views
-from . import equity, oi_analysis
+from . import decision, equity, oi_analysis, trader_views
 
 urlpatterns = [
     path("index-options/contracts/", equity.contracts, {"index_options": True}, name="index_option_contracts"),
     path("index-options/quotes/", equity.quotes, {"index_options": True}, name="index_option_quotes"),
     path("index-options/history/", equity.history, {"index_options": True}, name="index_option_history"),
+    path("decision/", decision.decision, name="decision"),
+    path("trader/", trader_views.overview, name="trader_overview"),
+    path("trader/profile/", trader_views.update_profile, name="trader_profile"),
+    path("trader/checkin/", trader_views.checkin, name="trader_checkin"),
+    path("trader/plan/", trader_views.plan, name="trader_plan"),
+    path("trader/trades/", trader_views.trades, name="trader_trades"),
+    path("trader/trades/<int:trade_id>/close/", trader_views.close_trade, name="trader_close_trade"),
+    path("trader/alerts/", trader_views.alerts, name="trader_alerts"),
+    path("trader/replay/", trader_views.replay_day, name="trader_replay"),
+    path("trader/expiry-report/", trader_views.expiry_report, name="trader_expiry_report"),
+    path("trader/mentor-link/", trader_views.mentor_link, name="trader_mentor_link"),
+    path("mentor/<str:token>/", trader_views.mentor_view, name="mentor_view"),
     path("oi/expiries/", oi_analysis.oi_expiries, name="oi_expiries"),
     path("oi/chain/", oi_analysis.oi_chain, name="oi_chain"),
     path("oi/live-chain/", oi_analysis.oi_live_chain, name="oi_live_chain"),

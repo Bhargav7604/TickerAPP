@@ -321,3 +321,32 @@ admin.site.empty_value_display = "-"
 admin.site.site_header = "Ticker Admin"
 admin.site.site_title = "Utraders Ticker Admin"
 admin.site.index_title = "Operations Console"
+
+
+@admin.register(models.MarketNote)
+class MarketNoteAdmin(admin.ModelAdmin):
+    list_display = ("date", "level", "message")
+    list_filter = ("level", "date")
+    search_fields = ("message",)
+
+
+@admin.register(models.TelegramSettings)
+class TelegramSettingsAdmin(admin.ModelAdmin):
+    list_display = ("enabled", "updated_at")
+
+
+@admin.register(models.Alert)
+class AlertAdmin(admin.ModelAdmin):
+    """Read-only: alerts are locked once sent."""
+
+    list_display = ("created_at", "index_key", "kind", "strength", "status", "message", "outcome")
+    list_filter = ("index_key", "strength", "status", "outcome")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

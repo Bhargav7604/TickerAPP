@@ -77,8 +77,8 @@
 .oi-side-put { color: var(--ui-green) !important; }
 .oi-chain .oi-strike, .oi-chain .oi-strike-head { text-align: center; background: var(--ui-subtle); font-weight: 750; border-left: 1px solid var(--ui-line); border-right: 1px solid var(--ui-line); }
 .oi-chain .oi-strike small { display: block; font-size: 10px; color: var(--ui-blue); font-weight: 700; }
-.oi-chain tr.itm-call td:nth-child(-n + 6) { background: color-mix(in srgb, var(--ui-red-soft) 55%, transparent); }
-.oi-chain tr.itm-put td:nth-child(n + 8):nth-child(-n + 13) { background: color-mix(in srgb, var(--ui-green-soft) 55%, transparent); }
+.oi-chain tr.itm-call td:nth-child(-n + 7) { background: color-mix(in srgb, var(--ui-red-soft) 55%, transparent); }
+.oi-chain tr.itm-put td:nth-child(n + 9):nth-child(-n + 15) { background: color-mix(in srgb, var(--ui-green-soft) 55%, transparent); }
 .oi-chain tr.is-atm td, .oi-chain tr.is-atm th { background: var(--ui-selected) !important; }
 .oi-buildup { display: inline-block; min-width: 30px; padding: 2px 6px; border-radius: 6px; font-size: 11px; font-weight: 750; text-align: center; color: #fff; }
 .oi-buildup-lb { background: #0a7c55; }
@@ -124,3 +124,8 @@
   .oi-live-badge::before { animation: none; }
   .oi-chain td { transition: none; }
 }
+
+.oi-decay { color: var(--ui-muted) !important; }
+.oi-lottery { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: 0.03em; background: #f5b83d; color: #3a2600; vertical-align: 1px; }
+.oi-chain-note { padding: 10px 14px; font-size: 12px; color: var(--ui-muted); border-top: 1px solid var(--ui-line); }
+.oi-disclaimer { margin: 4px auto 0; max-width: 760px; text-align: center; font-size: 12px; color: var(--ui-muted); }

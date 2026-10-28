@@ -640,8 +640,8 @@ class Dashboard extends Component {
                 <div className="acdd-grid-cell acdd-number" role="columnheader">Vol Chg</div>
               </div>
 
-              {rows.map(row => (
-                <div className={`acdd-grid-row ${row.signal === "DD" ? "acdd-row-dd" : "acdd-row-ac"}`} role="row" key={`${row.tfLabel}-${row.indexKey}-${row.side}-${row.signal}-${row.time}-${row.symbol}`}>
+              {rows.map((row, index) => (
+                <div className={`acdd-grid-row ${row.signal === "DD" ? "acdd-row-dd" : "acdd-row-ac"}${index === 0 ? " is-latest" : ""}`} role="row" key={`${row.tfLabel}-${row.indexKey}-${row.side}-${row.signal}-${row.time}-${row.symbol}`}>
                   <div className="acdd-grid-cell" role="cell">{row.tfLabel}</div>
                   <div className="acdd-grid-cell" role="cell">{row.indexName}</div>
                   <div className="acdd-grid-cell acdd-signal" role="cell">{row.side}</div>
@@ -664,12 +664,17 @@ class Dashboard extends Component {
     );
   }
 
-  // Five-minute swings are market data, so they are listed whether or not popup/email alerts are on.
+  // Five-minute swings are market data, so they are listed whether or not sound/email alerts are on.
+  // A live alert (fired before its five-minute window closed) is listed straight away and
+  // merges into that window's row once the snapshot arrives.
   getSwingRows = () => {
+    const today = getMarketDateKey(this.props.marketTime || Date.now());
+    const liveAlerts = this.props.swingAlerts || [];
+
     return INDEX_ORDER.flatMap(key => {
       const threshold = alertLotThreshold(this.props.settings, key);
       const points = this.getChartPoints(key);
-      const swings = [];
+      const windows = new Map();
 
       for (let index = 1; index < points.length; index += 1) {
         const previous = points[index - 1];
@@ -680,16 +685,36 @@ class Dashboard extends Component {
           continue;
         }
 
-        swings.push({
-          key: `${key}-${current.time}`,
+        windows.set(previous.time, {
+          key: `${key}-${previous.time}`,
           time: current.time,
           label: `${INDEX_LABELS[key]} 5-min lot swing`,
           symbol: current.symbol,
+          previousNetLots: previous.netLots,
+          currentNetLots: current.netLots,
           swing
         });
       }
 
-      return swings;
+      const symbol = this.getCurrentSymbol(key);
+      liveAlerts
+        .filter(alert => alert.indexKey === key && alert.symbol === symbol && getMarketDateKey(alert.time) === today)
+        .forEach(alert => {
+          const closed = windows.get(alert.previousTime);
+          windows.set(alert.previousTime, closed ? { ...closed, alertedAt: alert.time } : {
+            key: `${key}-${alert.previousTime}`,
+            time: alert.time,
+            alertedAt: alert.time,
+            live: true,
+            label: `${INDEX_LABELS[key]} 5-min lot swing`,
+            symbol: alert.symbol,
+            previousNetLots: alert.previousNetLots,
+            currentNetLots: alert.currentNetLots,
+            swing: alert.swingLots
+          });
+        });
+
+      return Array.from(windows.values());
     }).sort((a, b) => b.time - a.time);
   }
 
@@ -702,8 +727,8 @@ class Dashboard extends Component {
       <section className="side-panel">
         <div className={`swing-alert-status${alertsOn ? " is-on" : ""}`}>
           <span>{alertsOn
-            ? `Popup and sound alerts are on. Thresholds: ${thresholds} lots.`
-            : `Showing swings of ${thresholds} lots or more. Popup and sound alerts are off.`}</span>
+            ? `Sound alerts are on. Thresholds: ${thresholds} lots. The newest swing is highlighted.`
+            : `Showing swings of ${thresholds} lots or more. Sound alerts are off.`}</span>
           {!alertsOn && this.props.openSettings && (
             <button type="button" onClick={this.props.openSettings}>Turn on</button>
           )}
@@ -714,12 +739,20 @@ class Dashboard extends Component {
             <div className="empty-side-row">No five-minute swing has reached its threshold yet today.</div>
           )}
 
-          {rows.map(row => (
-            <div className="side-row" key={row.key}>
+          {rows.map((row, index) => (
+            <div className={`side-row${index === 0 ? " is-latest" : ""}`} key={row.key}>
               <div className="side-time">{this.formatTime(row.time)}</div>
               <div className="side-copy">
-                <div>{row.label}</div>
+                <div>
+                  {index === 0 && <span className="swing-tag is-latest">Latest</span>}
+                  {row.live && <span className="swing-tag">Live</span>}
+                  {row.label}
+                </div>
                 <div className="side-symbol">{row.symbol}</div>
+                <div className="swing-detail">
+                  {this.formatSignedValue(row.previousNetLots)} → {this.formatSignedValue(row.currentNetLots)} lots
+                  {row.alertedAt && row.alertedAt !== row.time ? ` · alert at ${this.formatTime(row.alertedAt)}` : ""}
+                </div>
               </div>
               <div className={`side-value ${this.valueClass(row.swing)}`}>{this.formatSignedValue(row.swing)} lots</div>
             </div>

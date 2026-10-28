@@ -1,5 +1,5 @@
 import { Component } from "react";
-import { Activity, ChartNoAxesColumn, Layers, LayoutDashboard, LogOut, Moon, RefreshCw, Settings, Sun, UserCircle } from "lucide-react";
+import { Activity, ChartNoAxesColumn, House, Layers, LogOut, WalletCards, Moon, RefreshCw, Settings, Sun, UserCircle } from "lucide-react";
 import { ThemeContext } from "../theme";
 import brandMark from "../assets/brand/utraders-mark.png";
 import wordmark from "../assets/brand/utraders-wordmark-light.png";
@@ -22,7 +22,7 @@ class Navbar extends Component {
       <div className="scan-nav-links">
         <button type="button" className={this.props.currentPage === "dashboard" ? "active" : ""}
           onClick={() => this.props.changePage("dashboard")} aria-current={this.props.currentPage === "dashboard" ? "page" : undefined}>
-          <LayoutDashboard size={17} /><span>Index</span>
+          <House size={17} /><span>Home</span>
         </button>
         <button type="button" className={this.props.currentPage === "equity" ? "active" : ""} aria-current={this.props.currentPage === "equity" ? "page" : undefined}
           onClick={() => this.props.changePage("equity")}><ChartNoAxesColumn size={18} /><span>Equity</span></button>
@@ -30,6 +30,8 @@ class Navbar extends Component {
           onClick={() => this.props.changePage("index-options")}><Layers size={18} /><span>Index Options</span></button>
         <button type="button" className={this.props.currentPage === "oi-analysis" ? "active" : ""} aria-current={this.props.currentPage === "oi-analysis" ? "page" : undefined}
           onClick={() => this.props.changePage("oi-analysis")}><Activity size={18} /><span>OI Analysis</span></button>
+        <button type="button" className={this.props.currentPage === "trading" ? "active" : ""} aria-current={this.props.currentPage === "trading" ? "page" : undefined}
+          onClick={() => this.props.changePage("trading")}><WalletCards size={18} /><span>My Trading</span></button>
         <button type="button" className={this.props.currentPage === "settings" ? "active" : ""} title="Settings" aria-label="Settings"
           onClick={() => this.props.changePage("settings")}><Settings size={19} /><span>Settings</span></button>
       </div>
@@ -38,7 +40,7 @@ class Navbar extends Component {
           aria-label={this.context.theme === "dark" ? "Switch to light mode" : "Switch to dark mode"} onClick={this.context.toggleTheme}>
           {this.context.theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
         </button>
-        {!["equity", "index-options", "oi-analysis"].includes(this.props.currentPage) && <button className="scan-icon-button mobile-refresh" type="button" title="Refresh market data" aria-label="Refresh market data"
+        {!["equity", "index-options", "oi-analysis", "trading"].includes(this.props.currentPage) && <button className="scan-icon-button mobile-refresh" type="button" title="Refresh market data" aria-label="Refresh market data"
           onClick={this.props.handleDashboardRefresh}><RefreshCw size={20} /></button>}
         <button className="scan-icon-button mobile-settings" type="button" title="Settings" aria-label="Settings"
           onClick={() => this.props.changePage("settings")}><Settings size={21} /></button>

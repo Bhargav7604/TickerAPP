@@ -70,7 +70,7 @@ class Settings extends Component {
                         onChange={this.props.handleSettingsChange}
                       />
                     </div>
-                    <p className="help">Email is optional. Alerts still show popup and sound without email.</p>
+                    <p className="help">Email is optional. Without email, alerts still play a sound and show in Swing alerts.</p>
                   </div>
                 </form>
               </div>

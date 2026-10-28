@@ -63,21 +63,24 @@ export function chainFlashes(previous, next) {
 function ChainTable({ data, flashes = {} }) {
   const side = (row, key, value) => <>
     {key === "call" && <td><BuildupTag value={value?.buildup} /></td>}
-    {(key === "call" ? ["oi", "oiChange", "iv", "ltp", "ltpChange"] : ["ltpChange", "ltp", "iv", "oiChange", "oi"]).map(field => {
+    {(key === "call" ? ["oi", "oiChange", "iv", "ltp", "ltpChange", "decayPerHour"] : ["decayPerHour", "ltpChange", "ltp", "iv", "oiChange", "oi"]).map(field => {
       const raw = value?.[field];
       const text = field === "oi" ? formatOi(raw) : field === "oiChange" ? formatSignedOi(raw)
-        : field === "iv" ? (raw == null ? "--" : raw.toFixed(1)) : field === "ltpChange" ? formatSignedPrice(raw) : formatPrice(raw);
+        : field === "iv" ? (raw == null ? "--" : raw.toFixed(1)) : field === "ltpChange" ? formatSignedPrice(raw)
+        : field === "decayPerHour" ? (raw == null ? "--" : `₹${formatOi(raw)}`) : formatPrice(raw);
       const flash = flashes[`${row.strike}:${key}:${field}`];
-      return <td key={field} className={`${field.endsWith("Change") ? signClass(raw) : ""}${flash ? ` oi-tick-${flash}` : ""}`}>{text}</td>;
+      return <td key={field} className={`${field.endsWith("Change") ? signClass(raw) : ""}${field === "decayPerHour" ? " oi-decay" : ""}${flash ? ` oi-tick-${flash}` : ""}`}>
+        {text}{field === "ltp" && value?.lottery && <span className="oi-lottery" title="Lottery ticket. Very likely to become zero.">Lottery</span>}
+      </td>;
     })}
     {key === "put" && <td><BuildupTag value={value?.buildup} /></td>}
   </>;
   return <div className="oi-table-scroll"><table className="oi-table oi-chain">
     <caption className="sr-only">Option chain with OI build-up</caption>
     <thead>
-      <tr><th colSpan="6" className="oi-side-call">Calls</th><th rowSpan="2" className="oi-strike-head">Strike</th><th colSpan="6" className="oi-side-put">Puts</th><th rowSpan="2">PCR</th></tr>
-      <tr>{["Build-up", "OI", "OI chg", "IV", "LTP", "LTP chg"].map(label => <th key={`c-${label}`} scope="col">{label}</th>)}
-        {["LTP chg", "LTP", "IV", "OI chg", "OI", "Build-up"].map(label => <th key={`p-${label}`} scope="col">{label}</th>)}</tr>
+      <tr><th colSpan="7" className="oi-side-call">Calls</th><th rowSpan="2" className="oi-strike-head">Strike</th><th colSpan="7" className="oi-side-put">Puts</th><th rowSpan="2">PCR</th></tr>
+      <tr>{["Build-up", "OI", "OI chg", "IV", "LTP", "LTP chg", "Decay/hr"].map(label => <th key={`c-${label}`} scope="col" title={label === "Decay/hr" ? "Rupees one lot loses each hour from time passing, if the index does not move" : undefined}>{label}</th>)}
+        {["Decay/hr", "LTP chg", "LTP", "IV", "OI chg", "OI", "Build-up"].map(label => <th key={`p-${label}`} scope="col" title={label === "Decay/hr" ? "Rupees one lot loses each hour from time passing, if the index does not move" : undefined}>{label}</th>)}</tr>
     </thead>
     <tbody>{data.rows.map(row => {
       const itmCall = data.underlying && row.strike < data.underlying;
@@ -258,7 +261,9 @@ export default function OiAnalysis({ api }) {
           <span className="oi-key"><span className="oi-buildup oi-buildup-lb">LB</span> Long build-up <span className="oi-buildup oi-buildup-sb">SB</span> Short build-up <span className="oi-buildup oi-buildup-lu">LU</span> Long unwinding <span className="oi-buildup oi-buildup-sc">SC</span> Short covering</span>
         </div>
         <ChainTable data={chain} flashes={flashes} />
+        <p className="oi-chain-note">Decay/hr: rupees one lot loses each hour just from time passing, if the index does not move{chain.lotSize ? ` (lot size ${chain.lotSize})` : ""}. Lottery: far from today's price, with under a 5% chance of ending in the money.</p>
       </section>
     </>}
+    <p className="oi-disclaimer">Utraders describes the market. It does not tell you to buy or sell. F&amp;O trading is high risk and most traders lose money. Please talk to a SEBI-registered adviser before you invest.</p>
   </main>;
 }

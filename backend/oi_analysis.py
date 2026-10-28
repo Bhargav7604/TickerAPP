@@ -63,6 +63,21 @@ def implied_volatility(price, spot, strike, years, option_type):
     return round((low + high) / 2 * 100, 2)
 
 
+def decay_and_odds(spot, strike, years, option_type, iv):
+    """(rupees lost per unit per hour from time decay, % chance of finishing in the money) from Black-Scholes."""
+    if not iv or not spot or years <= 0:
+        return None, None
+    vol = iv / 100
+    root = vol * math.sqrt(years)
+    d1 = (math.log(spot / strike) + (RISK_FREE_RATE + vol * vol / 2) * years) / root
+    d2 = d1 - root
+    density = math.exp(-d1 * d1 / 2) / math.sqrt(2 * math.pi)
+    carry = RISK_FREE_RATE * strike * math.exp(-RISK_FREE_RATE * years)
+    theta = -spot * density * vol / (2 * math.sqrt(years)) - (carry * _cdf(d2) if option_type == "CE" else -carry * _cdf(-d2))
+    odds = _cdf(d2) if option_type == "CE" else _cdf(-d2)
+    return -theta / (365 * 24), odds * 100
+
+
 def buildup(ltp_change, oi_change):
     if not ltp_change or not oi_change:
         return None
@@ -138,7 +153,10 @@ def parse_request(request, need_interval=False):
     return index_key, expiry, interval, window
 
 
-def build_chain(latest, base, underlying, at):
+LOTTERY_ODDS_PCT = 5
+
+
+def build_chain(latest, base, underlying, at, lot_size=None):
     """Rows, totals and OI extremes for {(strike, type): quote-like object with oi/ltp/prev_close/volume}."""
     strikes = sorted({strike for strike, _ in latest})
     rows, totals = [], defaultdict(float)
@@ -151,12 +169,17 @@ def build_chain(latest, base, underlying, at):
                 continue
             oi_change = snap.oi - base.get((strike, option_type), snap.oi)
             ltp_change = round(snap.ltp - snap.prev_close, 2) if snap.ltp is not None and snap.prev_close else None
+            iv = implied_volatility(snap.ltp, underlying, strike, snap.years, option_type)
+            decay, odds = decay_and_odds(underlying, strike, snap.years, option_type, iv)
+            out_of_money = underlying is not None and (strike > underlying if option_type == "CE" else strike < underlying)
             row[side] = {
                 "oi": snap.oi, "oiChange": oi_change,
                 "oiChangePct": ratio(oi_change * 100, base.get((strike, option_type))),
                 "ltp": snap.ltp, "ltpChange": ltp_change, "ltpChangePct": ratio(ltp_change * 100, snap.prev_close) if ltp_change is not None else None,
-                "iv": implied_volatility(snap.ltp, underlying, strike, snap.years, option_type),
-                "buildup": buildup(ltp_change, oi_change), "volume": snap.volume,
+                "iv": iv, "buildup": buildup(ltp_change, oi_change), "volume": snap.volume,
+                "decayPerHour": round(decay * lot_size) if decay is not None and lot_size else None,
+                "chanceItm": round(odds, 1) if odds is not None else None,
+                "lottery": bool(out_of_money and odds is not None and odds < LOTTERY_ODDS_PCT),
             }
             totals[side + "Oi"] += snap.oi
             totals[side + "OiChange"] += oi_change
@@ -165,7 +188,7 @@ def build_chain(latest, base, underlying, at):
     calls = [row for row in rows if row["call"]]
     puts = [row for row in rows if row["put"]]
     return {
-        "rows": rows, "underlying": underlying, "atm": atm_strike(strikes, underlying), "bucketTime": epoch(at),
+        "rows": rows, "underlying": underlying, "atm": atm_strike(strikes, underlying), "bucketTime": epoch(at), "lotSize": lot_size,
         "totals": {**{key: round(value) for key, value in totals.items()},
                    "pcr": ratio(totals["putOi"], totals["callOi"]),
                    "changePcr": ratio(totals["putOiChange"], totals["callOiChange"]) if totals["callOiChange"] > 0 else None},
@@ -173,6 +196,15 @@ def build_chain(latest, base, underlying, at):
         "maxPutOiStrike": max(puts, key=lambda row: row["put"]["oi"])["strike"] if puts else None,
         "message": "",
     }
+
+
+def lot_size_for(index_key, expiry):
+    try:
+        frame = catalogue(index_options=True)
+        rows = frame[frame["name"].eq(CONTRACT_NAMES[index_key]) & frame["expiry"].dt.date.eq(expiry)]
+        return int(rows["lot_size"].iloc[0]) if not rows.empty else None
+    except (OSError, KeyError):
+        return None
 
 
 def chain_payload(index_key, expiry):
@@ -186,7 +218,7 @@ def chain_payload(index_key, expiry):
     years = years_to_expiry(expiry, bucket_time)
     for snap in latest.values():
         snap.years = years
-    return {**build_chain(latest, base, underlying, bucket_time), "baseline": baseline_source}
+    return {**build_chain(latest, base, underlying, bucket_time, lot_size_for(index_key, expiry)), "baseline": baseline_source}
 
 
 def live_spot(index_key):
@@ -247,12 +279,13 @@ def live_chain_payload(index_key, expiry):
         baseline_source = "unavailable"
     spot = (entries.get(spot_key, {}).get("data") or {}).get("ltp") or spot
     fetched = [entry["at"] for key, entry in entries.items() if key != spot_key and entry.get("data")]
-    return {**build_chain(latest, base, spot, now), "bucketTime": int(min(fetched)), "baseline": baseline_source,
+    lot_size = int(chosen["lot_size"].iloc[0]) if "lot_size" in chosen and not chosen.empty else lot_size_for(index_key, expiry)
+    return {**build_chain(latest, base, spot, now, lot_size), "bucketTime": int(min(fetched)), "baseline": baseline_source,
             "live": True, "retryAfterMs": retry}
 
 
-def trend_payload(index_key, expiry, interval, window):
-    day = latest_day(index_key, expiry)
+def trend_payload(index_key, expiry, interval, window, day=None):
+    day = day or latest_day(index_key, expiry)
     if not day:
         return {"rows": [], "series": [], "message": NO_DATA}
     buckets = day_snapshots(index_key, expiry, day)

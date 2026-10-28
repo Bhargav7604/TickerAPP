@@ -1,6 +1,9 @@
 import { render, screen, within } from "@testing-library/react";
 import App from "./App";
 
+// These tests cover the Index dashboard tables, which the home screen shows under "More details".
+jest.mock("./components/home", () => ({ __esModule: true, default: ({ details }) => <div>{details}</div> }));
+
 const keys = ["nifty", "banknifty", "sensex"];
 const months = ["current", "next", "far"];
 const spots = [25000, 56000, 81000];
