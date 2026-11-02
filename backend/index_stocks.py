@@ -55,6 +55,12 @@ def percent(value, base):
     return (value - base) / base * 100 if value is not None and base else None
 
 
+def quote_name(member):
+    """Kite names non-EQ series with a suffix, e.g. NSE:EMBASSY-RR for a REIT or NSE:HFCL-BE for trade-for-trade."""
+    series = getattr(member, "series", "") or "EQ"
+    return f"NSE:{member.symbol}" if series == "EQ" else f"NSE:{member.symbol}-{series}"
+
+
 def nearest_futures(symbols):
     """{symbol: (tradingsymbol, instrument_token)} for each stock's nearest-expiry future."""
     frame = catalogue()
@@ -205,7 +211,7 @@ def index_payload(index_key, now=None):
         futures = nearest_futures(symbols)
     except (OSError, KeyError):
         futures = {}
-    cash_keys = {symbol: f"{KEY_PREFIX}NSE:{symbol}" for symbol in symbols}
+    cash_keys = {member.symbol: KEY_PREFIX + quote_name(member) for member in members}
     fut_keys = {symbol: f"{KEY_PREFIX}NFO:{tradingsymbol}" for symbol, (tradingsymbol, _) in futures.items()}
     spot_key = KEY_PREFIX + SPOT_KEYS[index_key]
     keys = [spot_key, *cash_keys.values(), *fut_keys.values()]
@@ -275,7 +281,7 @@ def heatmap_payload(index_key, now=None):
     client, session = broker()
     if not client:
         return {**base, "message": "Live prices are not connected. Please try again in a few minutes."}
-    cash_keys = {member.symbol: f"{KEY_PREFIX}NSE:{member.symbol}" for member in members}
+    cash_keys = {member.symbol: KEY_PREFIX + quote_name(member) for member in members}
     spot_key = KEY_PREFIX + HEATMAP_SPOTS[index_key]
     keys = [spot_key, *cash_keys.values()]
 
@@ -338,8 +344,15 @@ def index_heatmap(request):
 
 
 def parse_nse_list(text, index_key):
-    return [(row["Symbol"].strip(), row["Company Name"].strip(), sector_for(index_key, row["Symbol"].strip(), row["Industry"].strip()))
-            for row in csv.DictReader(io.StringIO(text)) if row.get("Symbol")]
+    """(symbol, company, sector, series) rows. NSE's DUMMY... placeholders stand in for corporate actions and never trade."""
+    rows = []
+    for row in csv.DictReader(io.StringIO(text)):
+        symbol = (row.get("Symbol") or "").strip()
+        if not symbol or symbol.startswith("DUMMY"):
+            continue
+        rows.append((symbol, row["Company Name"].strip(), sector_for(index_key, symbol, row["Industry"].strip()),
+                     (row.get("Series") or "EQ").strip() or "EQ"))
+    return rows
 
 
 def sync_index_constituents(get=requests.get):
@@ -356,9 +369,9 @@ def sync_index_constituents(get=requests.get):
             continue
         with transaction.atomic():
             IndexConstituent.objects.filter(index_key=index_key).exclude(symbol__in=[row[0] for row in rows]).delete()
-            for symbol, company, sector in rows:
+            for symbol, company, sector, series in rows:
                 IndexConstituent.objects.update_or_create(index_key=index_key, symbol=symbol,
-                                                          defaults={"company": company, "sector": sector})
+                                                          defaults={"company": company, "sector": sector, "series": series})
         synced[index_key] = len(rows)
     return synced
 
@@ -372,7 +385,8 @@ def refresh_stock_history(client=None, now=None, max_calls=HISTORY_CALLS_PER_RUN
         if not client:
             return 0
     # Daily history is only for the detailed screens; the NIFTY 500 heatmap needs live prices alone.
-    symbols = sorted(set(IndexConstituent.objects.filter(index_key__in=LABELS).values_list("symbol", flat=True)))
+    members = {member.symbol: member for member in IndexConstituent.objects.filter(index_key__in=LABELS)}
+    symbols = sorted(members)
     fresh = set(StockDailyHistory.objects.filter(symbol__in=symbols, updated_on=today).values_list("symbol", flat=True))
     stale = [symbol for symbol in symbols if symbol not in fresh]
     if not stale:
@@ -381,8 +395,8 @@ def refresh_stock_history(client=None, now=None, max_calls=HISTORY_CALLS_PER_RUN
         futures = nearest_futures(stale)
     except (OSError, KeyError):
         futures = {}
-    tokens = {name.split(":", 1)[1]: quote.get("instrument_token")
-              for name, quote in client.ltp([f"NSE:{symbol}" for symbol in stale]).items()}
+    names = {quote_name(members[symbol]): symbol for symbol in stale}
+    tokens = {names[name]: quote.get("instrument_token") for name, quote in client.ltp(list(names)).items() if name in names}
     start = dt.datetime.combine(today - dt.timedelta(days=HISTORY_DAYS), dt.time.min)
     end = dt.datetime.combine(today, dt.time.min) - dt.timedelta(minutes=1)  # complete sessions only
     calls, saved = 1, 0

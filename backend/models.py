@@ -360,6 +360,8 @@ class IndexConstituent(models.Model):
     symbol = models.CharField(max_length=30, help_text="NSE trading symbol, for example RELIANCE.")
     company = models.CharField(max_length=120, blank=True, default="")
     sector = models.CharField(max_length=60, blank=True, default="")
+    series = models.CharField(max_length=4, blank=True, default="EQ",
+                              help_text="NSE series. Non-EQ stocks (REITs are RR, trade-for-trade is BE) are quoted as SYMBOL-SERIES.")
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

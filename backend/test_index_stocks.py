@@ -180,6 +180,9 @@ class HistoryAndListTests(TestCase):
             return SimpleNamespace(text=bank_csv, raise_for_status=lambda: None)
 
         self.assertEqual(sync_index_constituents(get), {"banknifty": 11})
+        self.assertEqual(index_stocks.parse_nse_list(
+            "Company Name,Industry,Symbol,Series,ISIN Code\nHFCL Ltd.,Telecommunication,HFCL,BE,X\nDummy HEG Ltd.,Capital Goods,DUMMYHEG,EQ,X\n", "nifty500"),
+            [("HFCL", "HFCL Ltd.", "Telecom", "BE")])
         bank = dict(IndexConstituent.objects.filter(index_key="banknifty").values_list("symbol", "sector"))
         self.assertEqual((len(bank), bank["CANBK"], bank["AXISBANK"]), (11, "PSU Banks", "Private Banks"))
         short = SimpleNamespace(text="Company Name,Industry,Symbol,Series,ISIN Code\nA,B,C,EQ,X\n", raise_for_status=lambda: None)
@@ -192,7 +195,8 @@ class SeedTests(TestCase):
     def test_migration_seeds_all_three_indices(self):
         counts = {key: IndexConstituent.objects.filter(index_key=key).count() for key in index_stocks.LABELS}
         self.assertEqual(counts, {"nifty": 50, "banknifty": 14, "sensex": 30})
-        self.assertEqual(IndexConstituent.objects.filter(index_key="nifty500").count(), 501)
+        self.assertEqual(IndexConstituent.objects.filter(index_key="nifty500").count(), 500)
+        self.assertEqual(IndexConstituent.objects.get(index_key="nifty500", symbol="EMBASSY").series, "RR")
         self.assertEqual(IndexConstituent.objects.get(index_key="sensex", symbol="INFY").sector, "IT")
 
 
@@ -214,6 +218,14 @@ class HeatmapTests(TestCase):
                          [("PSU Banks", 39101000, -0.75, 1, 1), ("Private Banks", 1010000, 1.0, 1, 0)])
         self.assertEqual((data["breadth"]["up"], data["breadth"]["down"], data["breadth"]["mood"]), (2, 1, "More stocks rising"))
         self.assertEqual((data["label"], data["spot"]["changePct"], data["missing"]), ("NIFTY 500", 0.47, []))
+
+    def test_non_eq_series_are_quoted_with_their_suffix(self):
+        IndexConstituent.objects.create(index_key="nifty500", symbol="EMBASSY", company="Embassy REIT", sector="Realty", series="RR")
+        self.kite.quotes["NSE:EMBASSY-RR"] = raw_quote(411.5, 405, token=51)
+        with patch("backend.index_stocks.broker", return_value=(self.kite, "session")):
+            data = heatmap_payload("nifty500", NOW)
+        self.assertIn(("EMBASSY", 1.6), [(tile["symbol"], tile["changePct"]) for tile in data["tiles"]])
+        self.assertEqual(data["missing"], [])
 
     def test_quote_requests_stay_within_the_broker_limits(self):
         calls = []
