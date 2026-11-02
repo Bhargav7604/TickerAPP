@@ -1,4 +1,4 @@
-import { marketSummary, t, translate } from "./i18n";
+import { GLOSSARY, LANGUAGES, glossaryText, marketSummary, speechLang, t, translate } from "./i18n";
 import { answerQuestion } from "./components/home";
 
 const card = { key: "nifty", label: "NIFTY", price: 22540.5, direction: { label: "Going up" }, bigPlayers: { label: "Big players are selling" },
@@ -23,4 +23,23 @@ test("summary for voice and WhatsApp, and spoken questions", () => {
   expect(answerQuestion("what is nifty doing", [card, other], "en")).toMatch(/^NIFTY 22,541/);
   expect(answerQuestion("निफ्टी रेंज", [card, other], "hi")).toContain("22,150");
   expect(answerQuestion("hello", [card, other], "en").split("NIFTY").length).toBe(2);
+});
+
+test("Telugu covers labels, templates, the word list and the voice", () => {
+  expect(LANGUAGES.map(([key]) => key)).toEqual(["en", "hi", "kn", "te"]);
+  expect(translate("Going up", "te")).toBe("పైకి వెళ్తోంది");
+  expect(translate("NIFTY: Careful. This rise may not last. Don't chase it.", "te")).toBe("NIFTY: జాగ్రత్త. ఈ పెరుగుదల నిలవకపోవచ్చు. దీని వెంట పడకండి.");
+  expect(translate("In F&O ban today (no new positions allowed): SAIL.", "te")).toBe("ఈరోజు F&O నిషేధంలో ఉన్నవి (కొత్త పొజిషన్లకు అనుమతి లేదు): SAIL.");
+  expect(translate("NIFTY will most likely stay between 22,150 and 23,100 until expiry on 03 Nov (about a 2 in 3 chance).", "te"))
+    .toBe("NIFTY ఎక్స్‌పైరీ వరకు 22,150 నుండి 23,100 మధ్య ఉండే అవకాశం ఎక్కువ (దాదాపు 3లో 2 సార్లు).");
+  expect(t("Must know today", "te")).toBe("ఈరోజు తప్పక తెలుసుకోవాల్సినవి");
+  expect(t("See stocks", "te")).toBe("షేర్లు చూడండి");
+  expect(glossaryText(GLOSSARY.find(([term]) => term === "PCR"), "te").meaning).toContain("పుట్ OIని");
+  expect(GLOSSARY.every(entry => entry.length === 6)).toBe(true);
+  expect(speechLang("te")).toBe("te-IN");
+  expect(translate("Based on the biggest option positions, the index is most likely to close near 22,700 on expiry. Price can move suddenly around 22,800 and 23,000.", "te"))
+    .toBe("అతిపెద్ద ఆప్షన్ పొజిషన్ల ఆధారంగా, ఇండెక్స్ ఎక్స్‌పైరీ రోజు 22,700 దగ్గర ముగిసే అవకాశం ఎక్కువ. 22,800, 23,000 దగ్గర ధర ఒక్కసారిగా మారవచ్చు.");
+  expect(t("since open", "hi")).toBe("शुरुआत से");
+  expect(answerQuestion("నిఫ్టీ రేంజ్ ఎంత", [card], "te")).toBe("NIFTY ఎక్స్‌పైరీ వరకు 22,150 నుండి 23,100 మధ్య ఉండే అవకాశం ఎక్కువ (దాదాపు 3లో 2 సార్లు).");
+  expect(marketSummary([card], "te")).toBe("NIFTY 22,541. పైకి వెళ్తోంది. పెద్ద ఇన్వెస్టర్లు అమ్ముతున్నారు. జాగ్రత్త. ఈ పెరుగుదల నిలవకపోవచ్చు. దీని వెంట పడకండి. ప్రమాదకరమైన సమయం. ఆగడం మంచిది.");
 });

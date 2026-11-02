@@ -204,6 +204,12 @@ class TraderApiTests(TestCase):
     def post(self, url, data):
         return self.client.post(url, json.dumps(data), content_type="application/json", **self.headers)
 
+    def test_telugu_is_a_saved_language(self):
+        self.assertEqual(self.post("/api/trader/profile/", {"language": "te"}).json()["profile"]["language"], "te")
+        self.assertEqual(TraderProfile.objects.get(user=self.user).language, "te")
+        self.post("/api/trader/profile/", {"language": "xx"})
+        self.assertEqual(TraderProfile.objects.get(user=self.user).language, "te")
+
     def test_learners_cannot_place_real_trades_and_practice_balance_moves(self):
         self.post("/api/trader/profile/", {"capital": 200000, "riskPct": 1, "monthlyLossLimit": 10000, "practiceMode": False})
         trade = {"symbol": "TESTFUT", "lotSize": 10, "instrument": "FUT", "side": "buy", "lots": 1, "entry": 100}

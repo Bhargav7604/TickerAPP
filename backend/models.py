@@ -235,7 +235,7 @@ class MarketNote(models.Model):
 class TraderProfile(models.Model):
     """Per-trader money rules, practice account and learner's licence."""
 
-    LANGUAGES = (("en", "English"), ("hi", "हिन्दी"), ("kn", "ಕನ್ನಡ"))
+    LANGUAGES = (("en", "English"), ("hi", "हिन्दी"), ("kn", "ಕನ್ನಡ"), ("te", "తెలుగు"))
     LEVELS = ((0, "Learner: practice money only"), (1, "Small: one lot at a time"), (2, "Standard: full money guard"))
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="trader")

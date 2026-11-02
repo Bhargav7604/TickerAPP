@@ -68,11 +68,11 @@ function IndexCard({ card, lang, onOpenStocks }) {
     <header className="home-card-head">
       <div>
         <h2>{card.label}</h2>
-        {expiry && <span className={`home-expiry${expiry.isToday ? " is-today" : ""}`}>{expiry.isToday ? "Expires today" : `Expiry ${new Date(expiry.date + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}`}</span>}
+        {expiry && <span className={`home-expiry${expiry.isToday ? " is-today" : ""}`}>{expiry.isToday ? t("Expires today", lang) : `${t("Expiry", lang)} ${new Date(expiry.date + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}`}</span>}
       </div>
       <div className="home-price">
         <strong>{money(card.price)}</strong>
-        {change && <span className={tone}>{change.value > 0 ? "+" : ""}{money(change.value)} ({change.pct > 0 ? "+" : ""}{change.pct}%) {change.since === "open" ? "since open" : "today"}</span>}
+        {change && <span className={tone}>{change.value > 0 ? "+" : ""}{money(change.value)} ({change.pct > 0 ? "+" : ""}{change.pct}%) {t(change.since === "open" ? "since open" : "today", lang)}</span>}
       </div>
     </header>
 
@@ -95,7 +95,7 @@ function IndexCard({ card, lang, onOpenStocks }) {
         {Number.isFinite(card.range.support) && <span><i className="is-support" />{t("Market often stops falling near", lang)} <b>{whole(card.range.support)}</b></span>}
         {Number.isFinite(card.range.resistance) && <span><i className="is-resistance" />{t("Market often stops rising near", lang)} <b>{whole(card.range.resistance)}</b></span>}
       </p>
-      {card.expiryLevel && <p className="home-expiry-level">{card.expiryLevel.text}</p>}
+      {card.expiryLevel && <p className="home-expiry-level">{translate(card.expiryLevel.text, lang)}</p>}
     </div>}
 
     <div className="home-card-actions">
@@ -107,16 +107,16 @@ function IndexCard({ card, lang, onOpenStocks }) {
       </button>}
     </div>
     {open && <dl className="home-details">
-      <dt>Why this light</dt><dd>{card.light.reasons.join(" ")}</dd>
-      <dt>Direction</dt><dd>{card.direction.detail}</dd>
-      <dt>Big players</dt><dd>{card.bigPlayers.detail}</dd>
-      {card.trap && <><dt>Trap</dt><dd>{card.trap.detail}</dd></>}
-      {card.range && <><dt>Option prices</dt><dd>Options are priced for about {card.range.iv}% yearly movement (implied volatility).</dd></>}
-      {card.numbers?.pcr != null && <><dt>Put-call ratio</dt><dd>{card.numbers.pcr}</dd></>}
+      <dt>{t("Why this light", lang)}</dt><dd>{card.light.reasons.join(" ")}</dd>
+      <dt>{t("Direction", lang)}</dt><dd>{card.direction.detail}</dd>
+      <dt>{t("Big players", lang)}</dt><dd>{card.bigPlayers.detail}</dd>
+      {card.trap && <><dt>{t("Trap", lang)}</dt><dd>{card.trap.detail}</dd></>}
+      {card.range && <><dt>{t("Option prices", lang)}</dt><dd>Options are priced for about {card.range.iv}% yearly movement (implied volatility).</dd></>}
+      {card.numbers?.pcr != null && <><dt>{t("Put-call ratio", lang)}</dt><dd>{card.numbers.pcr}</dd></>}
     </dl>}
 
     <footer className={`home-card-foot${card.late ? " is-late" : ""}`}>
-      {card.late ? `Data is late · last update ${day(card.asOf)} ${clock(card.asOf)}` : card.live ? `Live · ${clock(card.asOf)} IST` : `Updated ${clock(card.asOf)} IST`}
+      {card.late ? `${t("Data is late · last update", lang)} ${day(card.asOf)} ${clock(card.asOf)}` : card.live ? `${t("Live", lang)} · ${clock(card.asOf)} IST` : `${t("Updated", lang)} ${clock(card.asOf)} IST`}
     </footer>
   </article>;
 }
@@ -132,13 +132,13 @@ function speak(text, lang) {
   return true;
 }
 
-const INDEX_WORDS = { nifty: ["nifty", "निफ्टी", "ನಿಫ್ಟಿ"], banknifty: ["bank", "बैंक", "ಬ್ಯಾಂಕ್"], sensex: ["sensex", "सेंसेक्स", "ಸೆನ್ಸೆಕ್ಸ್"] };
+const INDEX_WORDS = { nifty: ["nifty", "निफ्टी", "ನಿಫ್ಟಿ", "నిఫ్టీ", "నిఫ్టి"], banknifty: ["bank", "बैंक", "ಬ್ಯಾಂಕ್", "బ్యాంక్"], sensex: ["sensex", "सेंसेक्स", "ಸೆನ್ಸೆಕ್ಸ್", "సెన్సెక్స్"] };
 
 export function answerQuestion(question, cards, lang) {
   const text = question.toLowerCase();
   const asked = cards.filter(card => INDEX_WORDS[card.key]?.some(word => text.includes(word)));
   const chosen = asked.length ? asked : cards;
-  const wantsRange = ["range", "रेंज", "दायरा", "ಶ್ರೇಣಿ", "ವ್ಯಾಪ್ತಿ"].some(word => text.includes(word));
+  const wantsRange = ["range", "रेंज", "दायरा", "ಶ್ರೇಣಿ", "ವ್ಯಾಪ್ತಿ", "రేంజ్", "పరిధి"].some(word => text.includes(word));
   return chosen.map(card => wantsRange && card.range ? translate(card.range.text, lang) : marketSummary([card], lang)).join(" ");
 }
 
