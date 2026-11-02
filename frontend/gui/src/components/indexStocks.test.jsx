@@ -37,14 +37,18 @@ async function setup(load = jest.fn(async () => payload())) {
 
 beforeEach(() => { localStorage.clear(); jest.useRealTimers(); });
 
-test("shows breadth, the x-ray, top movers and both tables for the chosen index", async () => {
+test("shows breadth, the gauge, top movers and both tables for the chosen index", async () => {
   const load = await setup();
   expect(load).toHaveBeenCalledWith("banknifty", expect.anything());
   expect(screen.getByRole("tab", { name: "BANK NIFTY" })).toHaveAttribute("aria-selected", "true");
   expect(screen.getByText("56,500.00")).toBeInTheDocument();
   expect(screen.getByRole("img", { name: "3 up, 2 down, 1 unchanged" })).toBeInTheDocument();
   expect(screen.getByText("More stocks rising")).toBeInTheDocument();
-  expect(screen.getByRole("img", { name: /2 bullish, 2 bearish and 2 choppy stocks/ }).querySelectorAll(".ix-dot")).toHaveLength(6);
+  expect(screen.getByRole("img", { name: "Advance and decline: 3 of 6 stocks up, 2 down, 1 unchanged" })).toBeInTheDocument();
+  expect(screen.getByText("50% of stocks are up")).toBeInTheDocument();
+  const gauge = screen.getByRole("region", { name: "Market breadth" });
+  expect(within(gauge).getAllByRole("button", { name: /%$/ }).map(button => button.querySelector("b").textContent))
+    .toEqual(["HDFCBANK", "ICICIBANK", "AXISBANK", "CANBK", "SBIN"]);
 
   const movers = screen.getByRole("region", { name: "Top movers" });
   expect(within(movers).getAllByRole("button").map(button => button.querySelector("b").textContent)).toEqual(
@@ -94,4 +98,24 @@ test("explains when prices are not available", async () => {
 test("shows the error from a failed load", async () => {
   await setup(jest.fn(async () => { throw new Error("Stock prices are unavailable right now."); }));
   expect(screen.getByRole("alert")).toHaveTextContent("Stock prices are unavailable right now.");
+});
+
+test("the breadth chart switches between gauge, movers and sectors and remembers the choice", async () => {
+  await setup();
+  const chart = screen.getByRole("region", { name: "Market breadth" });
+  fireEvent.click(within(chart).getByRole("button", { name: "Movers" }));
+  expect(within(chart).getByRole("button", { name: "Movers" })).toHaveAttribute("aria-pressed", "true");
+  expect(within(chart).getAllByRole("button", { name: /open the stock$/ }).map(button => button.getAttribute("aria-label")))
+    .toEqual(["HDFCBANK +1.20%, open the stock", "ICICIBANK +0.80%, open the stock", "AXISBANK +0.30%, open the stock",
+      "PNB 0.00%, open the stock", "SBIN -0.90%, open the stock", "CANBK -1.60%, open the stock"]);
+  expect(localStorage.getItem("utraders-breadth-chart")).toBe("movers");
+
+  fireEvent.click(within(chart).getByRole("button", { name: "SBIN -0.90%, open the stock" }));
+  const losers = screen.getByRole("region", { name: "Losers" });
+  expect(within(losers).getByRole("button", { name: "SBIN" })).toHaveAttribute("aria-expanded", "true");
+
+  fireEvent.click(within(chart).getByRole("button", { name: "Sectors" }));
+  expect(within(chart).getByText("Private Banks", { selector: ".ix-bar-name" })).toBeInTheDocument();
+  expect(within(chart).getByText("0↑ 2↓")).toBeInTheDocument();
+  expect(within(chart).queryByRole("button", { name: /open the stock$/ })).not.toBeInTheDocument();
 });

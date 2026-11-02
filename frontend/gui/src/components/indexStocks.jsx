@@ -1,6 +1,5 @@
 import React, { Fragment, useEffect, useRef, useState } from "react";
 import "../indexStocks.css";
-import useWidth from "../useWidth";
 import StockHeatmap from "./stockHeatmap";
 import { BUILDUP_NAMES, HEATMAP_INDEXES, clock, price, readStockIndex, readStockView, saveStockIndex, saveStockView, signedNumber, signedPct, tone, whole } from "../indexStocksData";
 
@@ -21,51 +20,102 @@ const BUILDUP_TEXT = {
 };
 const checkText = check => CHECK_TEXT[check.name]?.[check.side] || BUILDUP_TEXT[check.text] || check.text;
 
-// Spreads dots that share a score so they don't sit on one line; stable per symbol.
-const jitter = symbol => {
-  let hash = 0;
-  for (const char of symbol) hash = (hash * 31 + char.charCodeAt(0)) % 997;
-  return hash / 997 - 0.5;
-};
+const CHARTS = [["gauge", "Gauge"], ["movers", "Movers"], ["sectors", "Sectors"]];
+const CHART_KEY = "utraders-breadth-chart";
+const readChart = () => { try { return CHARTS.some(([key]) => key === localStorage.getItem(CHART_KEY)) ? localStorage.getItem(CHART_KEY) : "gauge"; } catch { return "gauge"; } };
+const saveChart = chart => { try { localStorage.setItem(CHART_KEY, chart); } catch { /* storage unavailable */ } };
+const LIST_SIZE = 5;
+const BAR_LIMIT = 10;
 
-function XRay({ stocks, breadth, selected, onSelect }) {
-  const box = useRef(null);
-  const width = useWidth(box);
-  const height = 250;
-  const pad = { left: 14, right: 14, top: 14, bottom: 30 };
-  const plotWidth = width - pad.left - pad.right;
-  const plotHeight = height - pad.top - pad.bottom;
-  const limit = Math.ceil(Math.max(0.5, ...stocks.map(stock => Math.abs(stock.changePct))) * 2) / 2;
-  const step = limit <= 2 ? 0.5 : limit <= 5 ? 1 : 2;
-  const x = value => pad.left + (value + limit) / (2 * limit) * plotWidth;
-  const y = value => pad.top + (5 - value) / 10 * plotHeight;
-  const ticks = [];
-  for (let tick = -limit; tick <= limit + 1e-9; tick += step) ticks.push(Number(tick.toFixed(1)));
-  const marked = new Set([...stocks.slice(0, TOP), ...stocks.slice(-TOP)].map(stock => stock.symbol));
-  return <div className="ix-xray" ref={box}>
-    <svg width={width} height={height} role="img"
-      aria-label={`${breadth.bullish} bullish, ${breadth.bearish} bearish and ${breadth.choppy} choppy stocks, placed by change from yesterday`}>
-      <rect className="ix-band is-bull" x={pad.left} y={pad.top} width={plotWidth} height={y(2) - pad.top} />
-      <rect className="ix-band is-bear" x={pad.left} y={y(-2)} width={plotWidth} height={pad.top + plotHeight - y(-2)} />
-      {ticks.map(tick => <g key={tick}>
-        <line className={tick === 0 ? "ix-zero" : "ix-gridline"} x1={x(tick)} x2={x(tick)} y1={pad.top} y2={pad.top + plotHeight} />
-        <text className="ix-tick" x={x(tick)} y={height - 10} textAnchor="middle">{tick > 0 ? "+" : ""}{tick}%</text>
-      </g>)}
-      <text className="ix-band-label is-bull" x={pad.left + 8} y={pad.top + 16}>▲ {breadth.bullish} bullish</text>
-      <text className="ix-band-label is-bear" x={width - pad.right - 8} y={pad.top + plotHeight - 8} textAnchor="end">▼ {breadth.bearish} bearish</text>
-      {stocks.map(stock => {
-        const cx = x(stock.changePct);
-        // Within one agreement score, stocks nearer today's high sit higher.
-        const lift = Number.isFinite(stock.rangePos) ? (stock.rangePos - 0.5) * 1.4 : 0;
-        const cy = y(Math.max(-4.9, Math.min(4.9, stock.score + lift + jitter(stock.symbol) * 0.3)));
-        return <g key={stock.symbol} className={`ix-dot is-${stock.state}${selected === stock.symbol ? " is-selected" : ""}`}
-          onClick={() => onSelect(stock.symbol)}>
-          {(marked.has(stock.symbol) || selected === stock.symbol) && <circle className="ix-ring" cx={cx} cy={cy} r="9" />}
-          <circle cx={cx} cy={cy} r="5"><title>{`${stock.symbol} ${signedPct(stock.changePct)}, ${stock.state}`}</title></circle>
-        </g>;
-      })}
-    </svg>
+// Half-ring from left (0) to right (1); the up share fills from the left, then unchanged, then down.
+function arc(from, to) {
+  const point = share => {
+    const angle = Math.PI * (1 - share);
+    return `${(120 + 96 * Math.cos(angle)).toFixed(2)} ${(118 - 96 * Math.sin(angle)).toFixed(2)}`;
+  };
+  return `M ${point(from)} A 96 96 0 0 1 ${point(to)}`;
+}
+
+function Gauge({ breadth, stocks, onSelect }) {
+  const total = breadth.up + breadth.down + breadth.flat || 1;
+  const upShare = breadth.up / total;
+  const flatShare = breadth.flat / total;
+  const gainers = stocks.filter(stock => stock.changePct > 0).slice(0, LIST_SIZE);
+  const losers = stocks.filter(stock => stock.changePct < 0).reverse().slice(0, LIST_SIZE);
+  const list = (title, rows, side) => <div className={`ix-gauge-list is-${side}`}>
+    <h3>{title}</h3>
+    {rows.length ? <ol>{rows.map(stock => <li key={stock.symbol}>
+      <button type="button" onClick={() => onSelect(stock.symbol)}><b>{stock.symbol}</b><span className={tone(stock.changePct)}>{signedPct(stock.changePct)}</span></button>
+    </li>)}</ol> : <p className="ix-muted">None right now.</p>}
   </div>;
+  return <div className="ix-gauge">
+    <figure className="ix-gauge-dial">
+      <svg viewBox="0 0 240 132" role="img" aria-label={`Advance and decline: ${breadth.up} of ${total} stocks up, ${breadth.down} down, ${breadth.flat} unchanged`}>
+        <path className="ix-gauge-track" d={arc(0, 1)} />
+        {breadth.up > 0 && <path className="ix-gauge-up" d={arc(0, upShare)} />}
+        {breadth.flat > 0 && <path className="ix-gauge-flat" d={arc(upShare, upShare + flatShare)} />}
+        {breadth.down > 0 && <path className="ix-gauge-down" d={arc(upShare + flatShare, 1)} />}
+        <text className="ix-gauge-big" x="120" y="96" textAnchor="middle">{breadth.up} up</text>
+        <text className="ix-gauge-small" x="120" y="118" textAnchor="middle">{breadth.down} down{breadth.flat ? ` · ${breadth.flat} flat` : ""}</text>
+      </svg>
+      <figcaption className="ix-muted">{Math.round(upShare * 100)}% of stocks are up</figcaption>
+    </figure>
+    {list("Top gainers", gainers, "up")}
+    {list("Top losers", losers, "down")}
+  </div>;
+}
+
+function BarRows({ rows, label, onSelect }) {
+  const largest = Math.max(0.01, ...rows.map(row => Math.abs(row.value)));
+  return <ol className="ix-bars">{rows.map(row => {
+    const width = `${Math.abs(row.value) / largest * 50}%`;
+    const content = <>
+      <span className="ix-bar-name">{row.name}</span>
+      <span className="ix-bar-track"><i className={row.value >= 0 ? "is-up" : "is-down"} style={row.value >= 0 ? { left: "50%", width } : { right: "50%", width }} /></span>
+      <span className={`ix-bar-value ${tone(row.value)}`}>{signedPct(row.value)}</span>
+      {row.note && <span className="ix-bar-note">{row.note}</span>}
+    </>;
+    return <li key={row.name}>{onSelect
+      ? <button type="button" className="ix-bar" aria-label={`${row.name} ${signedPct(row.value)}, ${label}`} onClick={() => onSelect(row.name)}>{content}</button>
+      : <div className="ix-bar">{content}</div>}</li>;
+  })}</ol>;
+}
+
+function MoverBars({ stocks, onSelect }) {
+  const [all, setAll] = useState(false);
+  const trimmed = !all && stocks.length > BAR_LIMIT * 2;
+  const shown = trimmed ? [...stocks.slice(0, BAR_LIMIT), ...stocks.slice(-BAR_LIMIT)] : stocks;
+  return <>
+    <BarRows rows={shown.map(stock => ({ name: stock.symbol, value: stock.changePct }))} label="open the stock" onSelect={onSelect} />
+    {stocks.length > BAR_LIMIT * 2 && <button type="button" className="ix-more" onClick={() => setAll(value => !value)}>
+      {all ? `Show top and bottom ${BAR_LIMIT}` : `Show all ${stocks.length} stocks`}</button>}
+  </>;
+}
+
+function BreadthChart({ data, stocks, onSelect }) {
+  const [chart, setChart] = useState(readChart);
+  const choose = key => { setChart(key); saveChart(key); };
+  const captions = {
+    gauge: "How many stocks in the index are up or down. Tap a name to open the stock.",
+    movers: "Each bar is one stock: right and green for gains, left and red for falls, longest bar is the biggest move. Tap a bar to open the stock.",
+    sectors: "Each bar is a sector's average change, with how many of its stocks rose (↑) and fell (↓).",
+  };
+  return <section className="ix-card" aria-label="Market breadth">
+    <header className="ix-panel-head">
+      <h2>Market breadth</h2>
+      {data.leading && <span>Leading <b>{data.leading.name}</b> <span className={tone(data.leading.avgChangePct)}>{signedPct(data.leading.avgChangePct)}</span>
+        {" · "}Lagging <b>{data.lagging.name}</b> <span className={tone(data.lagging.avgChangePct)}>{signedPct(data.lagging.avgChangePct)}</span></span>}
+      <div className="ix-tabs ix-chart-switch" role="group" aria-label="Chart style">
+        {CHARTS.map(([key, label]) => <button key={key} type="button" aria-pressed={chart === key} className={chart === key ? "active" : ""} onClick={() => choose(key)}>{label}</button>)}
+      </div>
+    </header>
+    <div className="ix-chart-body">
+      {chart === "gauge" && <Gauge breadth={data.breadth} stocks={stocks} onSelect={onSelect} />}
+      {chart === "movers" && <MoverBars stocks={stocks} onSelect={onSelect} />}
+      {chart === "sectors" && <BarRows label="sector" rows={data.sectors.map(sector => ({ name: sector.name, value: sector.avgChangePct, note: `${sector.up}↑ ${sector.down}↓` }))} />}
+    </div>
+    <p className="ix-caption">{captions[chart]}</p>
+  </section>;
 }
 
 function Mover({ stock, place, side, onSelect }) {
@@ -298,7 +348,7 @@ function IndexDetails({ api, index, openRequest }) {
       {data.message && <p className="ix-note" role="status">{data.message}</p>}
 
       {stocks.length > 0 && <>
-        <section className="ix-breadth" aria-label="Market breadth">
+        <section className="ix-breadth" aria-label="Stocks up and down">
           <div className="ix-breadth-bar" role="img" aria-label={`${breadth.up} up, ${breadth.down} down, ${breadth.flat} unchanged`}>
             {breadth.up > 0 && <span className="is-up" style={{ flexGrow: breadth.up }}>{breadth.up} up</span>}
             {breadth.flat > 0 && <span className="is-flat" style={{ flexGrow: breadth.flat }}>{breadth.flat}</span>}
@@ -312,15 +362,7 @@ function IndexDetails({ api, index, openRequest }) {
           </div>
         </section>
 
-        <section className="ix-card" aria-label="Market X-ray">
-          <header className="ix-panel-head">
-            <h2>Market X-ray</h2>
-            {data.leading && <span>Leading <b>{data.leading.name}</b> <span className={tone(data.leading.avgChangePct)}>{signedPct(data.leading.avgChangePct)}</span>
-              {" · "}Lagging <b>{data.lagging.name}</b> <span className={tone(data.lagging.avgChangePct)}>{signedPct(data.lagging.avgChangePct)}</span></span>}
-          </header>
-          <XRay stocks={stocks} breadth={breadth} selected={open} onSelect={select} />
-          <p className="ix-caption">Each dot is one stock. Left to right: change from yesterday. Higher dots have more checks pointing up and sit nearer today's high. Tap a dot to open the stock.</p>
-        </section>
+        <BreadthChart data={data} stocks={stocks} onSelect={select} />
 
         <section className="ix-movers" aria-label="Top movers">
           {gainers.slice(0, TOP).map((stock, position) => <Mover key={stock.symbol} stock={stock} place={position + 1} side="up" onSelect={select} />)}

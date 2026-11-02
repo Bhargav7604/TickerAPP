@@ -41,25 +41,6 @@
 .ix-panel-head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; padding: 12px 14px; border-bottom: 1px solid var(--ui-line); font-size: 12px; color: var(--ui-muted); }
 .ix-panel-head h2 { font-size: 13px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ui-ink); }
 .ix-panel-head b { color: var(--ui-ink); }
-.ix-xray { width: 100%; overflow: hidden; }
-.ix-xray svg { display: block; }
-.ix-band.is-bull { fill: var(--ui-green); opacity: 0.07; }
-.ix-band.is-bear { fill: var(--ui-red); opacity: 0.07; }
-.ix-gridline { stroke: var(--ui-line); stroke-dasharray: 2 4; }
-.ix-zero { stroke: var(--ui-border); }
-.ix-tick { fill: var(--ui-muted); font: 11px var(--ix-mono); }
-.ix-band-label { font: 600 11px var(--ix-mono); }
-.ix-band-label.is-bull { fill: var(--ui-green); }
-.ix-band-label.is-bear { fill: var(--ui-red); }
-.ix-dot { cursor: pointer; }
-.ix-dot circle { fill: var(--ui-muted); opacity: 0.6; }
-.ix-dot.is-bullish circle { fill: var(--ui-green); opacity: 0.9; }
-.ix-dot.is-bearish circle { fill: var(--ui-red); opacity: 0.9; }
-.ix-dot .ix-ring { fill: none; stroke: currentColor; stroke-width: 2; opacity: 0.6; color: var(--ui-muted); }
-.ix-dot.is-bullish .ix-ring { color: var(--ui-green); }
-.ix-dot.is-bearish .ix-ring { color: var(--ui-red); }
-.ix-dot.is-selected .ix-ring { stroke-width: 3; opacity: 1; }
-.ix-dot:hover circle { opacity: 1; }
 .ix-caption { padding: 0 14px 12px; font-size: 12px; color: var(--ui-muted); }
 
 .ix-movers { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-bottom: 14px; }
@@ -163,3 +144,42 @@
 .hm-legend span { flex: 1; text-align: center; }
 @media (prefers-reduced-motion: reduce) { .hm-tile { transition: none; } }
 @media (max-width: 760px) { .hm-info { flex-basis: 100%; } }
+
+/* Market breadth: switchable gauge, movers bars and sector bars. */
+.ix-chart-switch { margin-left: auto; }
+.ix-chart-body { padding: 14px; }
+.ix-gauge { display: grid; grid-template-columns: minmax(220px, 300px) repeat(2, minmax(0, 1fr)); gap: 16px 24px; align-items: start; }
+.ix-gauge-dial { margin: 0; display: grid; justify-items: center; gap: 6px; }
+.ix-gauge-dial svg { display: block; width: 100%; max-width: 300px; height: auto; }
+.ix-gauge-dial figcaption { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 10px; font-size: 12px; }
+.ix-gauge-track, .ix-gauge-up, .ix-gauge-flat, .ix-gauge-down { fill: none; stroke-width: 22; }
+.ix-gauge-track { stroke: var(--ui-subtle); }
+.ix-gauge-up { stroke: var(--ui-green); }
+.ix-gauge-flat { stroke: var(--ui-border); }
+.ix-gauge-down { stroke: var(--ui-red); }
+.ix-gauge-big { fill: var(--ui-green); font: 800 26px var(--ix-mono); }
+.ix-gauge-small { fill: var(--ui-red); font: 600 13px var(--ix-mono); }
+.ix-gauge-list h3 { margin-bottom: 6px; font: 700 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ui-muted); }
+.ix-gauge-list.is-up h3 { color: var(--ui-green); }
+.ix-gauge-list.is-down h3 { color: var(--ui-red); }
+.ix-gauge-list li + li { border-top: 1px solid var(--ui-line); }
+.ix-gauge-list button { display: flex; width: 100%; justify-content: space-between; gap: 10px; padding: 7px 4px; border: 0; background: none; color: var(--ui-ink); font: 13px var(--ix-mono); text-align: left; }
+.ix-gauge-list button:hover { background: var(--ui-hover); }
+.ix-bars { display: grid; gap: 2px; }
+.ix-bar { display: grid; grid-template-columns: minmax(84px, 150px) minmax(0, 1fr) 64px auto; align-items: center; gap: 10px; width: 100%; padding: 3px 4px; border: 0; border-radius: 6px; background: none; color: var(--ui-ink); font: 12.5px var(--ix-mono); text-align: left; }
+button.ix-bar:hover { background: var(--ui-hover); }
+.ix-bar-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.ix-bar-track { position: relative; height: 14px; background: linear-gradient(var(--ui-border), var(--ui-border)) 50% 0 / 1px 100% no-repeat; }
+.ix-bar-track i { position: absolute; top: 1px; bottom: 1px; border-radius: 3px; }
+.ix-bar-track i.is-up { background: var(--ui-green); }
+.ix-bar-track i.is-down { background: var(--ui-red); }
+.ix-bar-value { text-align: right; font-weight: 700; }
+.ix-bar-note { color: var(--ui-muted); font-size: 11.5px; white-space: nowrap; }
+.ix-more { margin-top: 10px; height: 32px; padding: 0 14px; border: 1px solid var(--ui-border); border-radius: 999px; background: var(--ui-surface); color: var(--ui-ink); font-size: 12px; font-weight: 700; }
+@media (max-width: 760px) {
+  .ix-gauge { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .ix-gauge-dial { grid-column: 1 / -1; }
+  .ix-bar { grid-template-columns: 84px minmax(0, 1fr) 58px; }
+  .ix-bar-note { grid-column: 1 / -1; }
+  .ix-chart-switch { margin-left: 0; }
+}
