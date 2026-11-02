@@ -56,6 +56,7 @@ const UI = {
   "Latest swing alert": { hi: "ताज़ा स्विंग अलर्ट", kn: "ಇತ್ತೀಚಿನ ಸ್ವಿಂಗ್ ಅಲರ್ಟ್" },
   "lots": { hi: "लॉट", kn: "ಲಾಟ್" },
   "See all swing alerts": { hi: "सभी स्विंग अलर्ट देखें", kn: "ಎಲ್ಲಾ ಸ್ವಿಂಗ್ ಅಲರ್ಟ್ ನೋಡಿ" },
+  "See stocks": { hi: "शेयर देखें", kn: "ಷೇರುಗಳನ್ನು ನೋಡಿ" },
 };
 
 export function translate(text, lang) {

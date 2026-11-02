@@ -107,3 +107,11 @@ test("yesterday's swing alert is not shown", async () => {
   await renderHome(payload({ expiryToday: [], lastHour: false }), { latestSwing });
   expect(screen.queryByRole("region", { name: "Latest swing alert" })).not.toBeInTheDocument();
 });
+
+test("each card can open its index's stocks", async () => {
+  const onOpenStocks = jest.fn();
+  await renderHome(payload({ expiryToday: [], lastHour: false }), { onOpenStocks });
+  const bank = screen.getByRole("article", { name: "BANKNIFTY summary" });
+  fireEvent.click(within(bank).getByRole("button", { name: /See stocks/ }));
+  expect(onOpenStocks).toHaveBeenCalledWith("banknifty");
+});

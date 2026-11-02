@@ -1,13 +1,14 @@
 from django.urls import path
 
 from . import views
-from . import decision, equity, oi_analysis, trader_views
+from . import decision, equity, index_stocks, oi_analysis, trader_views
 
 urlpatterns = [
     path("index-options/contracts/", equity.contracts, {"index_options": True}, name="index_option_contracts"),
     path("index-options/quotes/", equity.quotes, {"index_options": True}, name="index_option_quotes"),
     path("index-options/history/", equity.history, {"index_options": True}, name="index_option_history"),
     path("decision/", decision.decision, name="decision"),
+    path("index-stocks/", index_stocks.index_stocks, name="index_stocks"),
     path("trader/", trader_views.overview, name="trader_overview"),
     path("trader/profile/", trader_views.update_profile, name="trader_profile"),
     path("trader/checkin/", trader_views.checkin, name="trader_checkin"),

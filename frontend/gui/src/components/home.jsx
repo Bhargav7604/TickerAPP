@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, ArrowDownRight, ArrowRight, ArrowUpRight, BellRing, BookOpen, CalendarDays, ChevronDown, Info, Mic, Share2, ShieldAlert, Users, Volume2 } from "lucide-react";
+import { AlertTriangle, ArrowDownRight, ArrowRight, ArrowUpRight, BellRing, BookOpen, CalendarDays, ChartScatter, ChevronDown, Info, Mic, Share2, ShieldAlert, Users, Volume2 } from "lucide-react";
 import "../home.css";
 import { GLOSSARY, glossaryText, LANGUAGES, marketSummary, readLanguage, saveLanguage, speechLang, t, translate } from "../i18n";
 
@@ -58,7 +58,7 @@ function RangeBar({ range }) {
   </div>;
 }
 
-function IndexCard({ card, lang }) {
+function IndexCard({ card, lang, onOpenStocks }) {
   const [open, setOpen] = useState(false);
   const Direction = DIRECTION_ICONS[card.direction.code];
   const change = card.change;
@@ -98,9 +98,14 @@ function IndexCard({ card, lang }) {
       {card.expiryLevel && <p className="home-expiry-level">{card.expiryLevel.text}</p>}
     </div>}
 
-    <button type="button" className="home-more" aria-expanded={open} onClick={() => setOpen(value => !value)}>
-      {t(open ? "Hide details" : "More details", lang)} <ChevronDown size={16} aria-hidden="true" />
-    </button>
+    <div className="home-card-actions">
+      <button type="button" className="home-more" aria-expanded={open} onClick={() => setOpen(value => !value)}>
+        {t(open ? "Hide details" : "More details", lang)} <ChevronDown size={16} aria-hidden="true" />
+      </button>
+      {onOpenStocks && <button type="button" className="home-more" onClick={() => onOpenStocks(card.key)}>
+        {t("See stocks", lang)} <ChartScatter size={16} aria-hidden="true" />
+      </button>}
+    </div>
     {open && <dl className="home-details">
       <dt>Why this light</dt><dd>{card.light.reasons.join(" ")}</dd>
       <dt>Direction</dt><dd>{card.direction.detail}</dd>
@@ -137,7 +142,7 @@ export function answerQuestion(question, cards, lang) {
   return chosen.map(card => wantsRange && card.range ? translate(card.range.text, lang) : marketSummary([card], lang)).join(" ");
 }
 
-export default function Home({ api, details, latestSwing }) {
+export default function Home({ api, details, latestSwing, onOpenStocks }) {
   const [lang, setLang] = useState(readLanguage);
   const [voiceNote, setVoiceNote] = useState("");
   const [showWords, setShowWords] = useState(false);
@@ -241,7 +246,7 @@ export default function Home({ api, details, latestSwing }) {
       </section>}
 
       <section className="home-cards" aria-label="Index summaries">
-        {data.cards.map(card => <IndexCard key={card.key} card={card} lang={lang} />)}
+        {data.cards.map(card => <IndexCard key={card.key} card={card} lang={lang} onOpenStocks={onOpenStocks} />)}
       </section>
 
       <section className="home-calendar" aria-label="Expiry calendar">

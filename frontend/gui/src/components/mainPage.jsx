@@ -7,12 +7,15 @@ import Home from "./home.jsx";
 import "../equity.css";
 import "../brand.css";
 import { makeEquityApi } from "../equityData";
-import { Activity, ChartNoAxesColumn, House, Layers, Settings as SettingsIcon, WalletCards } from "lucide-react";
+import { Activity, ChartNoAxesColumn, ChartScatter, House, Layers, Settings as SettingsIcon, WalletCards } from "lucide-react";
 import { makeOiApi } from "../oiData";
 import { makeDecisionApi } from "../decisionData";
 import { makeTraderApi } from "../traderData";
+import { makeIndexStocksApi, saveStockIndex } from "../indexStocksData";
 
+const PAGES = ["index-stocks", "equity", "index-options", "oi-analysis", "trading", "settings"];
 const Equity = lazy(() => import("./equity.jsx"));
+const IndexStocks = lazy(() => import("./indexStocks.jsx"));
 const OiAnalysis = lazy(() => import("./oiAnalysis.jsx"));
 const TraderDesk = lazy(() => import("./traderDesk.jsx"));
 
@@ -21,18 +24,19 @@ class MainPage extends Component {
     super(props);
 
     this.state = {
-      currentPage: ["equity", "index-options", "oi-analysis", "trading", "settings"].includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : "dashboard"
+      currentPage: PAGES.includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : "dashboard"
     }
     this.equityApi = props.equityApi || makeEquityApi(props.request);
     this.indexOptionsApi = props.indexOptionsApi || makeEquityApi(props.request, "index-options");
     this.oiApi = props.oiApi || makeOiApi(props.request);
     this.decisionApi = props.decisionApi || makeDecisionApi(props.request);
     this.traderApi = props.traderApi || makeTraderApi(props.request);
+    this.indexStocksApi = props.indexStocksApi || makeIndexStocksApi(props.request);
   }
 
   componentDidMount() { window.addEventListener("hashchange", this.syncPage); }
   componentWillUnmount() { window.removeEventListener("hashchange", this.syncPage); }
-  syncPage = () => this.setState({ currentPage: ["equity", "index-options", "oi-analysis", "trading", "settings"].includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : "dashboard" });
+  syncPage = () => this.setState({ currentPage: PAGES.includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : "dashboard" });
 
   changePage = page => {
     window.location.hash = page === "dashboard" ? "index" : page;
@@ -41,12 +45,17 @@ class MainPage extends Component {
     });
   }
 
+  openStocks = index => {
+    saveStockIndex(index);
+    this.changePage("index-stocks");
+  }
+
   render() {
     let page;
 
     if (this.state.currentPage === "dashboard") {
       const swingAlerts = this.props.swingAlerts || [];
-      page = <Home api={this.decisionApi} latestSwing={swingAlerts[swingAlerts.length - 1]} details={<Dashboard
+      page = <Home api={this.decisionApi} onOpenStocks={this.openStocks} latestSwing={swingAlerts[swingAlerts.length - 1]} details={<Dashboard
         settings={this.props.settings}
         niftyData={this.props.niftyData}
         bankniftyData={this.props.bankniftyData}
@@ -65,6 +74,8 @@ class MainPage extends Component {
         openSettings={() => this.changePage("settings")}
       />} />
 
+    } else if (this.state.currentPage === "index-stocks") {
+      page = <Suspense fallback={<div className="eq-empty" role="status">Loading Index Stocks...</div>}><IndexStocks api={this.indexStocksApi} /></Suspense>;
     } else if (["equity", "index-options"].includes(this.state.currentPage)) {
       const indexOptions = this.state.currentPage === "index-options";
       page = <Suspense fallback={<div className="eq-empty" role="status">Loading {indexOptions ? "Index Options" : "Equity"}...</div>}><Equity key={`${this.props.username}:${this.state.currentPage}`} username={this.props.username} indexOptions={indexOptions} api={indexOptions ? this.indexOptionsApi : this.equityApi} /></Suspense>;
@@ -91,7 +102,7 @@ class MainPage extends Component {
         />
         {page}
         <nav className="eq-mobile-navigation" aria-label="Mobile section navigation">
-          {[["dashboard", "Home", House], ["equity", "Equity", ChartNoAxesColumn], ["index-options", "Options", Layers], ["oi-analysis", "OI", Activity], ["trading", "Trading", WalletCards], ["settings", "Settings", SettingsIcon]].map(([id, label, Icon]) =>
+          {[["dashboard", "Home", House], ["index-stocks", "Stocks", ChartScatter], ["equity", "Equity", ChartNoAxesColumn], ["index-options", "Options", Layers], ["oi-analysis", "OI", Activity], ["trading", "Trading", WalletCards], ["settings", "Settings", SettingsIcon]].map(([id, label, Icon]) =>
             <button key={id} type="button" className={this.state.currentPage === id ? "active" : ""} aria-current={this.state.currentPage === id ? "page" : undefined} onClick={() => this.changePage(id)}><Icon size={21} /><span>{label}</span></button>)}
         </nav>
       </div>

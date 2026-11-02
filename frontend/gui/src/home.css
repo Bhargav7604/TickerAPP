@@ -134,3 +134,4 @@
 @keyframes home-swing-flash { 0% { background: color-mix(in srgb, #f5b83d 38%, var(--ui-surface)); } 100% { background: var(--ui-selected); } }
 @media (prefers-reduced-motion: reduce) { .home-swing { animation: none; } }
 @media (max-width: 700px) { .home-swing-all { margin-left: 0; } }
+.home-card-actions { display: flex; flex-wrap: wrap; gap: 8px; }

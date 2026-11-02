@@ -350,3 +350,12 @@ class AlertAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+@admin.register(models.IndexConstituent)
+class IndexConstituentAdmin(admin.ModelAdmin):
+    """NIFTY 50 and BANK NIFTY refresh from NSE each morning. Keep SENSEX in step with BSE's list here."""
+
+    list_display = ("index_key", "symbol", "company", "sector", "updated_at")
+    list_filter = ("index_key",)
+    search_fields = ("symbol", "company")

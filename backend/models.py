@@ -349,3 +349,32 @@ class TelegramSettings(models.Model):
     class Meta:
         verbose_name = "Telegram settings"
         verbose_name_plural = "Telegram settings"
+
+
+class IndexConstituent(models.Model):
+    """A stock inside NIFTY 50, BANK NIFTY or SENSEX. NSE lists refresh daily; edit SENSEX here after BSE rebalances."""
+
+    INDEXES = (("nifty", "NIFTY 50"), ("banknifty", "BANK NIFTY"), ("sensex", "SENSEX"))
+
+    index_key = models.CharField(max_length=10, choices=INDEXES)
+    symbol = models.CharField(max_length=30, help_text="NSE trading symbol, for example RELIANCE.")
+    company = models.CharField(max_length=120, blank=True, default="")
+    sector = models.CharField(max_length=60, blank=True, default="")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["index_key", "symbol"]
+        constraints = [models.UniqueConstraint(fields=["index_key", "symbol"], name="one_constituent_per_index")]
+
+    def __str__(self):
+        return f"{self.get_index_key_display()}: {self.symbol}"
+
+
+class StockDailyHistory(models.Model):
+    """Recent daily candles for one stock: previous-session pivots and the futures OI change baseline."""
+
+    symbol = models.CharField(max_length=30, unique=True)
+    candles = models.JSONField(default=list, help_text="[[date, open, high, low, close], ...] oldest first, cash market.")
+    futures_symbol = models.CharField(max_length=40, blank=True, default="")
+    futures_oi = models.JSONField(default=dict, help_text="{date: closing OI} for futures_symbol.")
+    updated_on = models.DateField(blank=True, null=True)
