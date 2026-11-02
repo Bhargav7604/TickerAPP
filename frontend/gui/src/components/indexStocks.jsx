@@ -1,6 +1,8 @@
 import React, { Fragment, useEffect, useRef, useState } from "react";
 import "../indexStocks.css";
-import { BUILDUP_NAMES, STOCK_INDEXES, clock, price, readStockIndex, saveStockIndex, signedNumber, signedPct, tone, whole } from "../indexStocksData";
+import useWidth from "../useWidth";
+import StockHeatmap from "./stockHeatmap";
+import { BUILDUP_NAMES, HEATMAP_INDEXES, clock, price, readStockIndex, readStockView, saveStockIndex, saveStockView, signedNumber, signedPct, tone, whole } from "../indexStocksData";
 
 const LIVE_MS = 5000;
 const CLOSED_MS = 60000;
@@ -18,18 +20,6 @@ const BUILDUP_TEXT = {
   "Long Unwinding": "Futures: price down and OI down, buyers exiting",
 };
 const checkText = check => CHECK_TEXT[check.name]?.[check.side] || BUILDUP_TEXT[check.text] || check.text;
-
-function useWidth(ref, fallback = 800) {
-  const [width, setWidth] = useState(fallback);
-  useEffect(() => {
-    const node = ref.current;
-    if (!node || typeof ResizeObserver === "undefined") return undefined;
-    const observer = new ResizeObserver(([entry]) => setWidth(Math.max(280, Math.round(entry.contentRect.width))));
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [ref]);
-  return width;
-}
 
 // Spreads dots that share a score so they don't sit on one line; stable per symbol.
 const jitter = symbol => {
@@ -194,8 +184,48 @@ function SectorFlow({ sectors }) {
   </section>;
 }
 
+const VIEWS = [["details", "Details"], ["heatmap", "Heatmap"]];
+const HEATMAP_ONLY = "nifty500";
+
 export default function IndexStocks({ api }) {
   const [index, setIndex] = useState(readStockIndex);
+  const [view, setView] = useState(readStockView);
+  const [openRequest, setOpenRequest] = useState(null);
+  const shownView = index === HEATMAP_ONLY ? "heatmap" : view;
+  const chooseView = key => { setView(key); saveStockView(key); };
+  const chooseIndex = key => {
+    setIndex(key);
+    saveStockIndex(key);
+    setOpenRequest(null);
+    if (key === HEATMAP_ONLY) chooseView("heatmap");
+  };
+  const openDetails = symbol => { chooseView("details"); setOpenRequest(symbol); };
+
+  return <main className="ix-page">
+    <header className="ix-head">
+      <div>
+        <h1>Index Stocks</h1>
+        <span>Which stocks are moving NIFTY 50, BANK NIFTY, SENSEX and NIFTY 500, and by how much.</span>
+      </div>
+      <div className="ix-controls">
+        <div className="ix-tabs" role="tablist" aria-label="Index">
+          {HEATMAP_INDEXES.map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={index === key}
+            className={index === key ? "active" : ""} onClick={() => chooseIndex(key)}>{label}</button>)}
+        </div>
+        <div className="ix-tabs" role="group" aria-label="View">
+          {VIEWS.map(([key, label]) => <button key={key} type="button" aria-pressed={shownView === key} className={shownView === key ? "active" : ""}
+            disabled={key === "details" && index === HEATMAP_ONLY} title={key === "details" && index === HEATMAP_ONLY ? "Details are available for NIFTY 50, BANK NIFTY and SENSEX" : undefined}
+            onClick={() => chooseView(key)}>{label}</button>)}
+        </div>
+      </div>
+    </header>
+    {shownView === "heatmap"
+      ? <StockHeatmap api={api} index={index} onOpenDetails={index === HEATMAP_ONLY ? undefined : openDetails} />
+      : <IndexDetails api={api} index={index} openRequest={openRequest} />}
+  </main>;
+}
+
+function IndexDetails({ api, index, openRequest }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(null);
@@ -208,8 +238,11 @@ export default function IndexStocks({ api }) {
     setData(null);
     setError("");
     setOpen(null);
+    let first = true;
     const run = async () => {
-      if (document.visibilityState !== "hidden") {
+      // Always load once; after that, skip refreshes while the page is hidden.
+      if (first || document.visibilityState !== "hidden") {
+        first = false;
         try {
           const next = await api.load(index, abort.signal);
           if (stopped) return;
@@ -228,12 +261,20 @@ export default function IndexStocks({ api }) {
     return () => { stopped = true; abort.abort(); clearTimeout(timer); };
   }, [api, index]);
 
-  const chooseIndex = key => { setIndex(key); saveStockIndex(key); };
   const toggle = symbol => setOpen(current => current === symbol ? null : symbol);
   const select = symbol => {
     setOpen(symbol);
     requestAnimationFrame(() => document.getElementById(`ix-row-${symbol}`)?.scrollIntoView?.({ behavior: "smooth", block: "center" }));
   };
+  // A stock tapped in the heatmap opens here once its row has loaded.
+  const pending = useRef(openRequest);
+  useEffect(() => { pending.current = openRequest; }, [openRequest]);
+  useEffect(() => {
+    if (pending.current && data?.stocks?.some(stock => stock.symbol === pending.current)) {
+      select(pending.current);
+      pending.current = null;
+    }
+  }, [data]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const stocks = data?.stocks || [];
   const gainers = stocks.filter(stock => stock.changePct > 0);
@@ -242,18 +283,7 @@ export default function IndexStocks({ api }) {
   const breadth = data?.breadth;
   const spot = data?.spot || {};
 
-  return <main className="ix-page">
-    <header className="ix-head">
-      <div>
-        <h1>Index Stocks</h1>
-        <span>Which stocks are moving NIFTY 50, BANK NIFTY and SENSEX, and by how much.</span>
-      </div>
-      <div className="ix-tabs" role="tablist" aria-label="Index">
-        {STOCK_INDEXES.map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={index === key}
-          className={index === key ? "active" : ""} onClick={() => chooseIndex(key)}>{label}</button>)}
-      </div>
-    </header>
-
+  return <>
     {error && <p className="ix-error" role="alert">{error}</p>}
     {!data && !error && <p className="ix-loading" role="status">Loading stocks…</p>}
 
@@ -316,5 +346,5 @@ export default function IndexStocks({ api }) {
         <p className="ix-muted">Utraders describes the market. It does not tell you to buy or sell.</p>
       </footer>
     </>}
-  </main>;
+  </>;
 }

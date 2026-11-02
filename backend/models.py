@@ -354,7 +354,7 @@ class TelegramSettings(models.Model):
 class IndexConstituent(models.Model):
     """A stock inside NIFTY 50, BANK NIFTY or SENSEX. NSE lists refresh daily; edit SENSEX here after BSE rebalances."""
 
-    INDEXES = (("nifty", "NIFTY 50"), ("banknifty", "BANK NIFTY"), ("sensex", "SENSEX"))
+    INDEXES = (("nifty", "NIFTY 50"), ("banknifty", "BANK NIFTY"), ("sensex", "SENSEX"), ("nifty500", "NIFTY 500"))
 
     index_key = models.CharField(max_length=10, choices=INDEXES)
     symbol = models.CharField(max_length=30, help_text="NSE trading symbol, for example RELIANCE.")

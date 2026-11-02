@@ -9,6 +9,7 @@ urlpatterns = [
     path("index-options/history/", equity.history, {"index_options": True}, name="index_option_history"),
     path("decision/", decision.decision, name="decision"),
     path("index-stocks/", index_stocks.index_stocks, name="index_stocks"),
+    path("index-stocks/heatmap/", index_stocks.index_heatmap, name="index_heatmap"),
     path("trader/", trader_views.overview, name="trader_overview"),
     path("trader/profile/", trader_views.update_profile, name="trader_profile"),
     path("trader/checkin/", trader_views.checkin, name="trader_checkin"),

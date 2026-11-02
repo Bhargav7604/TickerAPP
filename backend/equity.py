@@ -24,6 +24,7 @@ MAX_CONTRACTS = 50
 # bounded, shared REST caches; their leases enforce broker rate limits across workers.
 QUOTE_CACHE_ID = 2
 HISTORY_CACHE_ID = 3
+MAX_CACHED_QUOTES = 1500  # room for the NIFTY 500 heatmap alongside the other screens
 INDEX_OPTION_EXCHANGES = {"NIFTY": "NFO", "BANKNIFTY": "NFO", "SENSEX": "BFO"}
 
 
@@ -237,7 +238,7 @@ def cached_broker_result(cache_id, session, keys, ttl, fetch):
                 for key in missing:
                     # An omitted broker quote is deliberately not replaced with an old value.
                     entries[key] = {"at": fetched_at, "data": values.get(key)}
-                entries = dict(sorted(entries.items(), key=lambda item: item[1]["at"], reverse=True)[:500])
+                entries = dict(sorted(entries.items(), key=lambda item: item[1]["at"], reverse=True)[:MAX_CACHED_QUOTES])
                 LiveMarketFeed.objects.filter(pk=cache_id, owner=owner).update(
                     payload={"session": session, "entries": entries}, lease_until=time.time() + 1.1, updated_at=timezone.now())
             except Exception:

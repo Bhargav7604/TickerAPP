@@ -26,8 +26,13 @@ from .oi_recorder import SPOT_KEYS
 from .views import protected
 
 LABELS = {"nifty": "NIFTY 50", "banknifty": "BANK NIFTY", "sensex": "SENSEX"}
+HEATMAP_LABELS = {**LABELS, "nifty500": "NIFTY 500"}
+HEATMAP_SPOTS = {**SPOT_KEYS, "nifty500": "NSE:NIFTY 500"}
 KEY_PREFIX = "ix|"
 QUOTE_TTL = 3
+HEATMAP_TTL = 6
+QUOTE_BATCH = 450  # Kite accepts up to 500 instruments per quote request
+QUOTE_PAUSE = 1.05  # and one quote request a second
 HISTORY_DAYS = 12
 HISTORY_CALLS_PER_RUN = 45
 HISTORY_PAUSE = 0.35  # Kite allows three historical-data requests a second.
@@ -56,6 +61,15 @@ def nearest_futures(symbols):
     futures = frame[frame["instrument_type"].eq("FUT") & frame["name"].isin(list(symbols))].sort_values("expiry")
     first = futures.drop_duplicates("name")
     return {row["name"]: (row["tradingsymbol"], int(row["instrument_token"])) for _, row in first.iterrows()}
+
+
+def quote_batches(client, names, pause=QUOTE_PAUSE):
+    raw = {}
+    for start in range(0, len(names), QUOTE_BATCH):
+        if start:
+            time.sleep(pause)
+        raw.update(client.quote(names[start:start + QUOTE_BATCH]))
+    return raw
 
 
 def compact_quote(quote):
@@ -134,24 +148,27 @@ def stock_row(member, cash, fut, history, session_date):
     }
 
 
+def mood_for(up, down):
+    share = up / (up + down) if up + down else 0.5
+    if share >= 0.8:
+        return "One-sided rally", "up"
+    if share >= 0.6:
+        return "More stocks rising", "up"
+    if share <= 0.2:
+        return "One-sided fall", "down"
+    if share <= 0.4:
+        return "More stocks falling", "down"
+    return "Mixed: stocks are split", "flat"
+
+
 def breadth(rows):
     up = sum(row["changePct"] > 0 for row in rows)
     down = sum(row["changePct"] < 0 for row in rows)
     moved = up + down
-    share = up / moved if moved else 0.5
-    if share >= 0.8:
-        mood = ("One-sided rally", "up")
-    elif share >= 0.6:
-        mood = ("More stocks rising", "up")
-    elif share <= 0.2:
-        mood = ("One-sided fall", "down")
-    elif share <= 0.4:
-        mood = ("More stocks falling", "down")
-    else:
-        mood = ("Mixed: stocks are split", "flat")
+    mood = mood_for(up, down)
     states = defaultdict(int)
     for row in rows:
-        states[row["state"]] += 1
+        states[row.get("state", "choppy")] += 1
     return {"up": up, "down": down, "flat": len(rows) - moved, "bullish": states["bullish"], "bearish": states["bearish"],
             "choppy": states["choppy"], "mood": mood[0], "moodSide": mood[1],
             "avgChangePct": rounded(sum(row["changePct"] for row in rows) / len(rows)) if rows else None}
@@ -194,7 +211,7 @@ def index_payload(index_key, now=None):
     keys = [spot_key, *cash_keys.values(), *fut_keys.values()]
 
     def fetch(missing):
-        raw = client.quote([key[len(KEY_PREFIX):] for key in missing])
+        raw = quote_batches(client, [key[len(KEY_PREFIX):] for key in missing])
         return {KEY_PREFIX + name: compact_quote(quote) for name, quote in raw.items()}
 
     entries = cached_broker_result(QUOTE_CACHE_ID, session, keys, QUOTE_TTL, fetch)
@@ -248,6 +265,78 @@ def index_stocks(request):
         return JsonResponse({"type": "error", "message": "Stock prices are unavailable right now. Please try again shortly."}, status=503)
 
 
+def heatmap_payload(index_key, now=None):
+    """Every stock's change from yesterday and money traded today: the boxes of the heatmap."""
+    now = now or dt.datetime.now(MARKET_TZ)
+    members = list(IndexConstituent.objects.filter(index_key=index_key))
+    base = {"index": index_key, "label": HEATMAP_LABELS[index_key], "marketOpen": market_open(now), "tiles": [], "sectors": []}
+    if not members:
+        return {**base, "message": "No stocks are set up for this index yet. Add them in admin under Index constituents."}
+    client, session = broker()
+    if not client:
+        return {**base, "message": "Live prices are not connected. Please try again in a few minutes."}
+    cash_keys = {member.symbol: f"{KEY_PREFIX}NSE:{member.symbol}" for member in members}
+    spot_key = KEY_PREFIX + HEATMAP_SPOTS[index_key]
+    keys = [spot_key, *cash_keys.values()]
+
+    def fetch(missing):
+        raw = quote_batches(client, [key[len(KEY_PREFIX):] for key in missing])
+        return {KEY_PREFIX + name: compact_quote(quote) for name, quote in raw.items()}
+
+    entries = cached_broker_result(QUOTE_CACHE_ID, session, keys, HEATMAP_TTL, fetch)
+    retry = cache_retry_ms(QUOTE_CACHE_ID, entries, keys, HEATMAP_TTL)
+
+    def data(key):
+        return (entries.get(key) or {}).get("data")
+
+    tiles = []
+    for member in members:
+        quote = data(cash_keys[member.symbol])
+        if not quote or quote.get("ltp") is None or not quote.get("close"):
+            continue
+        tiles.append({"symbol": member.symbol, "company": member.company, "sector": member.sector or "Other", "ltp": quote["ltp"],
+                      "changePct": rounded(percent(quote["ltp"], quote["close"])),
+                      "value": round(quote["ltp"] * (quote.get("volume") or 0))})
+    tiles.sort(key=lambda tile: -tile["value"])
+    groups = defaultdict(list)
+    for tile in tiles:
+        groups[tile["sector"]].append(tile)
+    sectors = sorted(({"name": name, "count": len(group), "value": sum(tile["value"] for tile in group),
+                       "avgChangePct": rounded(sum(tile["changePct"] for tile in group) / len(group)),
+                       "up": sum(tile["changePct"] > 0 for tile in group), "down": sum(tile["changePct"] < 0 for tile in group)}
+                      for name, group in groups.items()), key=lambda sector: -sector["value"])
+    up = sum(tile["changePct"] > 0 for tile in tiles)
+    down = sum(tile["changePct"] < 0 for tile in tiles)
+    mood, side = mood_for(up, down)
+    spot = data(spot_key) or {}
+    shown = {tile["symbol"] for tile in tiles}
+    fetched = [entry["at"] for entry in entries.values() if entry.get("data")]
+    return {
+        **base, "tiles": tiles, "sectors": sectors,
+        "breadth": {"up": up, "down": down, "flat": len(tiles) - up - down, "mood": mood, "moodSide": side},
+        "spot": {"ltp": spot.get("ltp"), "change": rounded(spot["ltp"] - spot["close"]) if spot.get("ltp") and spot.get("close") else None,
+                 "changePct": rounded(percent(spot.get("ltp"), spot.get("close")))},
+        "asOf": int(min(fetched)) if fetched else None, "missing": [symbol for symbol in cash_keys if symbol not in shown],
+        "retryAfterMs": retry,
+        "message": "" if tiles else ("Loading live stock prices..." if retry else "Live stock prices are not available right now."),
+    }
+
+
+@never_cache
+@require_GET
+def index_heatmap(request):
+    auth = protected(request)
+    if isinstance(auth, JsonResponse):
+        return auth
+    index_key = request.GET.get("index", "nifty")
+    if index_key not in HEATMAP_LABELS:
+        return JsonResponse({"type": "error", "message": "Select NIFTY 50, BANK NIFTY, SENSEX or NIFTY 500."}, status=400)
+    try:
+        return JsonResponse({"type": "success", **heatmap_payload(index_key)})
+    except Exception:
+        return JsonResponse({"type": "error", "message": "Stock prices are unavailable right now. Please try again shortly."}, status=503)
+
+
 def parse_nse_list(text, index_key):
     return [(row["Symbol"].strip(), row["Company Name"].strip(), sector_for(index_key, row["Symbol"].strip(), row["Industry"].strip()))
             for row in csv.DictReader(io.StringIO(text)) if row.get("Symbol")]
@@ -282,7 +371,8 @@ def refresh_stock_history(client=None, now=None, max_calls=HISTORY_CALLS_PER_RUN
         client, _ = broker()
         if not client:
             return 0
-    symbols = sorted(set(IndexConstituent.objects.values_list("symbol", flat=True)))
+    # Daily history is only for the detailed screens; the NIFTY 500 heatmap needs live prices alone.
+    symbols = sorted(set(IndexConstituent.objects.filter(index_key__in=LABELS).values_list("symbol", flat=True)))
     fresh = set(StockDailyHistory.objects.filter(symbol__in=symbols, updated_on=today).values_list("symbol", flat=True))
     stale = [symbol for symbol in symbols if symbol not in fresh]
     if not stale:

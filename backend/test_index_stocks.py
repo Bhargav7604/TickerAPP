@@ -7,8 +7,8 @@ import pandas as pd
 from django.test import TestCase
 
 from . import index_stocks
-from .index_stocks import (breadth, index_payload, nearest_futures, previous_candle, refresh_stock_history, sector_flow,
-                           stock_row, sync_index_constituents)
+from .index_stocks import (breadth, heatmap_payload, index_payload, nearest_futures, previous_candle, quote_batches,
+                           refresh_stock_history, sector_flow, stock_row, sync_index_constituents)
 from .market_contracts import MARKET_TZ
 from .models import IndexConstituent, StockDailyHistory, User
 
@@ -192,4 +192,48 @@ class SeedTests(TestCase):
     def test_migration_seeds_all_three_indices(self):
         counts = {key: IndexConstituent.objects.filter(index_key=key).count() for key in index_stocks.LABELS}
         self.assertEqual(counts, {"nifty": 50, "banknifty": 14, "sensex": 30})
+        self.assertEqual(IndexConstituent.objects.filter(index_key="nifty500").count(), 501)
         self.assertEqual(IndexConstituent.objects.get(index_key="sensex", symbol="INFY").sector, "IT")
+
+
+class HeatmapTests(TestCase):
+    def setUp(self):
+        IndexConstituent.objects.all().delete()
+        for symbol, sector in (("HDFCBANK", "Private Banks"), ("SBIN", "PSU Banks"), ("PNB", "PSU Banks")):
+            IndexConstituent.objects.create(index_key="nifty500", symbol=symbol, company=symbol, sector=sector)
+        self.kite = FakeKite()
+        self.kite.quotes["NSE:NIFTY 500"] = raw_quote(21500, 21400, token=41)
+        self.kite.quotes["NSE:SBIN"]["volume"] = 50000
+
+    def test_boxes_are_sized_by_money_traded_and_grouped_by_sector(self):
+        with patch("backend.index_stocks.broker", return_value=(self.kite, "session")):
+            data = heatmap_payload("nifty500", NOW)
+        self.assertEqual([(tile["symbol"], tile["value"], tile["changePct"]) for tile in data["tiles"]],
+                         [("SBIN", 39000000, -2.5), ("HDFCBANK", 1010000, 1.0), ("PNB", 101000, 1.0)])
+        self.assertEqual([(sector["name"], sector["value"], sector["avgChangePct"], sector["up"], sector["down"]) for sector in data["sectors"]],
+                         [("PSU Banks", 39101000, -0.75, 1, 1), ("Private Banks", 1010000, 1.0, 1, 0)])
+        self.assertEqual((data["breadth"]["up"], data["breadth"]["down"], data["breadth"]["mood"]), (2, 1, "More stocks rising"))
+        self.assertEqual((data["label"], data["spot"]["changePct"], data["missing"]), ("NIFTY 500", 0.47, []))
+
+    def test_quote_requests_stay_within_the_broker_limits(self):
+        calls = []
+        client = SimpleNamespace(quote=lambda names: calls.append(len(names)) or {})
+        with patch("backend.index_stocks.time.sleep") as sleep:
+            quote_batches(client, [f"NSE:S{n}" for n in range(502)])
+        self.assertEqual((calls, sleep.call_count), ([450, 52], 1))
+
+    def test_daily_history_skips_heatmap_only_stocks(self):
+        IndexConstituent.objects.create(index_key="nifty", symbol="HDFCBANK")
+        with patch("backend.index_stocks.nearest_futures", return_value={}), patch("backend.index_stocks.time.sleep"):
+            self.assertEqual(refresh_stock_history(self.kite, NOW), 1)
+        self.assertEqual(list(StockDailyHistory.objects.values_list("symbol", flat=True)), ["HDFCBANK"])
+
+    def test_api_accepts_nifty500(self):
+        user = User(username="heat-user")
+        user.set_password("test-password")
+        user.save()
+        login = self.client.post("/api/login/", json.dumps({"username": "heat-user", "password": "test-password"}), content_type="application/json")
+        headers = {"HTTP_AUTHORIZATION": "jwt-token " + login.json()["jwtToken"]}
+        with patch("backend.index_stocks.heatmap_payload", return_value={"tiles": []}):
+            self.assertEqual(self.client.get("/api/index-stocks/heatmap/?index=nifty500", **headers).json()["type"], "success")
+        self.assertEqual(self.client.get("/api/index-stocks/heatmap/?index=midcap", **headers).status_code, 400)

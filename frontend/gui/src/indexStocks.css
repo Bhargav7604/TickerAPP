@@ -138,3 +138,28 @@
   .ix-grid { grid-template-columns: minmax(0, 1fr); }
   .ix-movers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+.ix-controls { display: flex; flex-wrap: wrap; gap: 8px; max-width: 100%; }
+.ix-tabs button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Heatmap: one box per stock, grouped by sector, coloured by change from yesterday. */
+.hm-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin-bottom: 8px; }
+.hm-info { flex: 1 1 360px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; min-height: 34px; padding: 6px 12px; border: 1px solid var(--ui-line); border-radius: 10px; background: var(--ui-surface); font: 13px var(--ix-mono); }
+.hm-info b { font-size: 14px; }
+.hm-open { margin-left: auto; height: 26px; padding: 0 12px; border: 0; border-radius: 999px; background: var(--brand-gradient); color: #08101f; font: 700 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.hm-map { position: relative; width: 100%; overflow: hidden; border-radius: 10px; background: #0b111d; user-select: none; }
+.hm-sector { position: absolute; box-sizing: border-box; border: 1px solid #0b111d; background: #141c2b; }
+.hm-sector-name { position: absolute; top: 0; left: 0; right: 0; height: 18px; padding: 0 6px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font: 600 11px/18px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #c9d3e3; }
+.hm-sector-name i { font-style: normal; font-family: var(--ix-mono); }
+.hm-sector-name i.is-up { color: #5fe3a6 !important; }
+.hm-sector-name i.is-down { color: #ff7b86 !important; }
+.hm-tile { position: absolute; box-sizing: border-box; overflow: hidden; cursor: pointer; transition: filter 0.12s; }
+.hm-tile:hover { filter: brightness(1.18); }
+.hm-tile.is-pinned { outline: 2px solid #ffffff; outline-offset: -2px; z-index: 1; }
+.hm-label { display: flex; flex-direction: column; gap: 1px; padding: 3px 5px; font-family: var(--ix-mono); line-height: 1.15; }
+.hm-label b { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hm-label span { font-size: 0.82em; opacity: 0.9; }
+.hm-legend { display: flex; margin-top: 8px; max-width: 420px; border-radius: 6px; overflow: hidden; font: 600 11px/22px var(--ix-mono); }
+.hm-legend span { flex: 1; text-align: center; }
+@media (prefers-reduced-motion: reduce) { .hm-tile { transition: none; } }
+@media (max-width: 760px) { .hm-info { flex-basis: 100%; } }
