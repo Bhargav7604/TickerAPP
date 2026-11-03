@@ -7,5 +7,12 @@ export function makeDecisionApi(request) {
       }
       return result;
     },
+    // Today's five-minute candles for the index future of the chosen contract month.
+    candles: async (index, contract, signal) => {
+      const query = new URLSearchParams({ index, contract }).toString();
+      const result = await request(`market/candles/?${query}`, "GET", null, true, false, true, signal);
+      if (result?.type !== "success" || !Array.isArray(result.candles)) throw new Error(result?.message || "Candles unavailable.");
+      return result;
+    },
   };
 }

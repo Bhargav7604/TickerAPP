@@ -211,6 +211,31 @@ class EquityTests(TestCase):
         self.assertEqual(response.status_code, 503)
         self.assertNotIn("secret", response.content.decode())
 
+    def test_index_future_candles_need_login_and_a_known_index(self):
+        self.assertEqual(self.client.get("/api/market/candles/", {"index": "nifty"}).json()["type"], "TokenException")
+        for params in ({"index": "reliance"}, {"index": "nifty", "contract": "weekly"}, {}):
+            self.assertEqual(self.client.get("/api/market/candles/", params, **self.headers).status_code, 400)
+
+    @patch("backend.equity.dt")
+    @patch("backend.equity.cached_broker_result")
+    @patch("backend.equity.broker")
+    @patch("backend.equity.resolve_contract_rows")
+    def test_index_future_candles_use_the_chosen_month_future(self, rows, broker, cached, clock):
+        now = dt.datetime(2026, 10, 13, 11, 30, tzinfo=dt.timezone(dt.timedelta(hours=5, minutes=30)))
+        clock.datetime.now.return_value = now
+        future = pd.Series(dict(exchange="BFO", tradingsymbol="SENSEX26OCTFUT", instrument_token=777, lot_size=20))
+        rows.return_value = {("next", "sensex"): future}
+        client = Mock()
+        broker.return_value = (client, "test-session")
+        client.historical_data.return_value = [{"date": now, "open": 81000, "high": 81100, "low": 80950, "close": 81050, "volume": 400}]
+        cached.side_effect = lambda cache_id, session, keys, ttl, fetch: {key: {"data": value, "at": time.time()} for key, value in fetch(keys).items()}
+        response = self.client.get("/api/market/candles/", {"index": "sensex", "contract": "next"}, **self.headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["symbol"], "SENSEX26OCTFUT")
+        self.assertEqual(client.historical_data.call_args.args[0], 777)
+        self.assertEqual(response.json()["candles"], [{"time": int(now.timestamp()), "open": 81000, "high": 81100, "low": 80950, "close": 81050, "volume": 20}])
+        self.assertEqual(self.client.get("/api/market/candles/", {"index": "nifty"}, **self.headers).status_code, 503)
+
     def test_history_accepts_exactly_one_active_stock_contract(self):
         for ids in ("", "NSE:RELIANCE", "NFO:RELIANCE0FUT,NFO:RELIANCE1CE"):
             self.assertEqual(self.client.get("/api/equity/history/", {"ids": ids}, **self.headers).status_code, 400)

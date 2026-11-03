@@ -94,7 +94,8 @@ test.each(months)("shows all three spot/futures differences for %s without a bro
     expect(differenceCells()[i]).toHaveTextContent((value > 0 ? "+" : "") + value.toLocaleString("en-IN"));
   });
   expect(websocket).not.toHaveBeenCalled();
-  expect(app.request.mock.calls.every(([route]) => route.startsWith("market-data/"))).toBe(true);
+  // Only server-side market routes: the browser never talks to the broker or holds its token.
+  expect(app.request.mock.calls.every(([route]) => route.startsWith("market-data/") || route.startsWith("market/candles/"))).toBe(true);
   expect(app.state.accessToken).toBeUndefined();
 });
 

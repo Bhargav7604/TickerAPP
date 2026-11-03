@@ -1,6 +1,6 @@
-import "./App.css";
-import Cookies from "js-cookie";
 import { Component } from "react";
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Typography } from "@mui/material";
+import { BellRing, X } from "lucide-react";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -33,7 +33,7 @@ const options = {
   position: "bottom-right",
   pauseOnHover: true,
   closeOnClick: true,
-  theme: "dark",
+  theme: "light",
   autoClose: 2500
 }
 
@@ -171,10 +171,7 @@ const getContractMonthCode = value => {
 
   return `${match[1].slice(-2)}${MONTH_CODES[monthIndex]}`;
 };
-// const struct = require("cstruct");
 // const Buffer = require("buffer");
-// const bufferify = require("json-bufferify");
-// let KiteTicker = require("kiteconnect").KiteTicker;
 
 class App extends Component {
   constructor(props) {
@@ -337,7 +334,7 @@ class App extends Component {
 
     if (this.state.loggedIn) {
       this.startAuthCheck();
-      const json = await this.request("current-user/", "GET");
+      const json = await this.request("current-user/", "GET", null, true, false);
 
       if (json.type === "success") {
         this.setState({ username: json.username });
@@ -430,7 +427,8 @@ class App extends Component {
   }
 
   getCsrfCookie = () => {
-    return Cookies.get("csrftoken");
+    const match = document.cookie.split("; ").find(row => row.startsWith("csrftoken="));
+    return match ? decodeURIComponent(match.slice("csrftoken=".length)) : undefined;
   }
 
   formatAlertNumber = value => {
@@ -558,7 +556,7 @@ class App extends Component {
       this.setState({loggedIn: true});
       this.startAuthCheck();
 
-      const user_json = await this.request("current-user/", "GET");
+      const user_json = await this.request("current-user/", "GET", null, true, false);
 
       if (user_json.type === "success") {
         this.setState({
@@ -571,6 +569,8 @@ class App extends Component {
   }
 
   handleLogout = () => {
+    // End the session on the server as well, so the old token cannot be reused.
+    if (localStorage.getItem("jwt-token")) this.request("logout/", "POST", null, false, false, true);
     localStorage.removeItem("jwt-token");
     this.stopMarketData();
     this.settingsVersion += 1;
@@ -596,7 +596,7 @@ class App extends Component {
   getSettings = async () => {
     const version = this.settingsVersion;
     const columnVersion = this.columnPreferencesVersion;
-    const json = await this.request("settings/", "GET");
+    const json = await this.request("settings/", "GET", null, true, false);
 
     if (json.type === "success" && this.state.loggedIn && version === this.settingsVersion) {
       await new Promise(resolve => this.setState(previous => ({ settings: {
@@ -1104,31 +1104,25 @@ class App extends Component {
     }
 
     return (
-      <div className="lot-alert-overlay" role="dialog" aria-modal="true" aria-labelledby="alert-setup-title">
-        <div className="lot-alert-modal alert-setup-modal">
-          <div className="lot-alert-head">
-            <div>
-              <div className="lot-alert-label">Alert Setup</div>
-              <h2 id="alert-setup-title">Enable sound alerts?</h2>
-            </div>
-            <button className="lot-alert-close" type="button" onClick={this.dismissAlertSetupPrompt} aria-label="Close alert setup">x</button>
-          </div>
-
-          <div className="lot-alert-body">
-            <p className="alert-setup-copy">
-              A sound plays and the swing is highlighted in Swing alerts when a five-minute lot swing reaches {describeAlertThresholds(this.state.settings, this.formatAlertNumber)} lots, and for AC/DD option volume surges above {this.formatAlertNumber(AC_DD_VOLUME_ALERT_THRESHOLD_PCT)}%.
-            </p>
-            <p className="alert-setup-copy muted">
-              Email is optional and can be added later from Settings.
-            </p>
-          </div>
-
-          <div className="lot-alert-actions">
-            <button className="secondary" type="button" onClick={this.dismissAlertSetupPrompt}>Not now</button>
-            <button type="button" onClick={this.enableAlertsFromPrompt}>Enable alerts</button>
-          </div>
-        </div>
-      </div>
+      <Dialog open onClose={this.dismissAlertSetupPrompt} aria-labelledby="alert-setup-title" maxWidth="xs" fullWidth>
+        <DialogTitle id="alert-setup-title" sx={{ display: "flex", alignItems: "center", gap: 1.5, pr: 6 }}>
+          <Box sx={{ width: 40, height: 40, flex: "none", borderRadius: "50%", display: "grid", placeItems: "center", bgcolor: "rgba(74,111,224,0.12)", color: "primary.main" }}>
+            <BellRing size={20} aria-hidden="true" />
+          </Box>
+          Enable sound alerts?
+          <IconButton onClick={this.dismissAlertSetupPrompt} aria-label="Close alert setup" sx={{ position: "absolute", right: 10, top: 10 }}><X size={18} /></IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 1.5 }}>
+            A sound plays and the swing is highlighted in Swing alerts when a five-minute lot swing reaches {describeAlertThresholds(this.state.settings, this.formatAlertNumber)} lots, and for AC/DD option volume surges above {this.formatAlertNumber(AC_DD_VOLUME_ALERT_THRESHOLD_PCT)}%.
+          </Typography>
+          <Typography variant="body2" color="text.secondary">Email is optional and can be added later from Settings.</Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button onClick={this.dismissAlertSetupPrompt}>Not now</Button>
+          <Button variant="contained" onClick={this.enableAlertsFromPrompt}>Enable alerts</Button>
+        </DialogActions>
+      </Dialog>
     );
   }
 
@@ -1171,10 +1165,10 @@ class App extends Component {
     }
 
     return (
-      <div className="App">
+      <>
         {page}
         {this.renderAlertSetupPrompt()}
-      </div>
+      </>
     );
   }
 }

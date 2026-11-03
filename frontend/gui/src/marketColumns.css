@@ -1,0 +1,41 @@
+/* Column picker for Market overview cards: white sheet, no border lines. */
+.market-columns-control { flex: 0 0 auto; }
+.scan-icon-button { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; background: transparent; border: 0; border-radius: 50%; color: var(--ui-ink); cursor: pointer; }
+.scan-icon-button:hover { background: var(--ui-hover); color: var(--ui-blue); }
+.scan-icon-button:focus-visible, .market-columns-dialog :focus-visible { outline: 2px solid var(--ui-blue); outline-offset: 2px; }
+.market-columns-backdrop { position: fixed; inset: 0; z-index: 1300; background: var(--ui-overlay); display: grid; place-items: center; padding: 12px; }
+.market-columns-dialog { width: min(560px, 100%); max-height: calc(100dvh - 24px); display: flex; flex-direction: column; min-height: 0; background: #fff; border: 0; border-radius: 20px; box-shadow: 0 24px 64px rgba(16, 24, 40, 0.22); font-family: inherit; color: var(--ui-ink); }
+.market-columns-dialog button { font: inherit; cursor: pointer; }
+.market-columns-dialog header { padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.market-columns-dialog header h2 { font-size: 18px; margin: 0; }
+.market-columns-presets { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 0 18px 12px; }
+.market-columns-presets button { border: 0; background: var(--ui-blue-soft); color: var(--ui-blue); padding: 6px 14px; border-radius: 999px; font-weight: 700; }
+.market-columns-scroll { overflow-y: auto; min-height: 0; }
+.market-columns-options { padding: 0 12px 12px; margin: 0; border: 0; min-width: 0; display: grid; gap: 4px; }
+.market-columns-options label { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 0; cursor: pointer; min-width: 0; }
+.market-columns-options input { width: 17px; height: 17px; accent-color: var(--ui-blue); margin: 0; flex: 0 0 auto; }
+.market-columns-options small { color: var(--ui-muted); font-size: 12px; }
+.market-columns-options .market-column-locked { color: var(--ui-muted); padding-left: 40px; flex-wrap: wrap; }
+.market-column-option { display: grid; grid-template-columns: 32px minmax(0, 1fr) 72px; gap: 8px; align-items: center; min-height: 48px; padding: 0 6px; border-radius: 12px; background: var(--ui-subtle); }
+.market-column-option.is-dragging { opacity: .35; }
+.market-column-option label span { min-width: 0; overflow-wrap: anywhere; }
+.market-column-option button { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 36px; padding: 0; border: 0; border-radius: 8px; color: var(--ui-muted); background: transparent; }
+.market-column-option button:hover:not(:disabled) { background: var(--ui-blue-soft); color: var(--ui-blue); }
+.market-column-option .market-column-drag { cursor: grab; touch-action: none; }
+.market-column-option .market-column-drag:active { cursor: grabbing; }
+.market-column-moves { display: flex; gap: 8px; }
+.market-column-overlay { display: flex; align-items: center; gap: 12px; padding: 12px; min-height: 48px; border: 0; background: #fff; border-radius: 12px; box-shadow: 0 10px 28px rgba(16, 24, 40, 0.18); color: var(--ui-ink); cursor: grabbing; }
+.market-columns-dialog footer { display: flex; align-items: center; gap: 10px; padding: 14px 18px; background: var(--ui-subtle); border-radius: 0 0 20px 20px; }
+.market-columns-dialog footer span { color: var(--ui-muted); font-size: 12px; margin-right: auto; }
+.market-columns-dialog footer button { border: 0; background: var(--ui-hover); border-radius: 999px; padding: 9px 16px; color: var(--ui-ink); font-weight: 700; white-space: nowrap; }
+.market-columns-dialog footer .market-columns-save { color: #fff; background: var(--brand-gradient); }
+.market-columns-dialog button:disabled { opacity: .55; cursor: default; }
+.market-columns-dialog p[role="alert"] { color: var(--ui-red); padding: 0 18px 12px; margin: 0; }
+.market-columns-dialog header, .market-columns-presets, .market-columns-dialog footer { flex-shrink: 0; }
+.market-columns-options legend { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+@media (max-width: 600px) {
+  .market-columns-dialog header { padding: 10px 14px; }
+  .market-columns-dialog header h2 { font-size: 16px; }
+  .market-columns-presets { padding: 0 14px 10px; font-size: 13px; }
+  .market-columns-dialog footer { padding: 12px 14px; gap: 8px; }
+}

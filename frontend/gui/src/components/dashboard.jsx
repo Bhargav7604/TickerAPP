@@ -1,9 +1,10 @@
 import { Component, Fragment as ReactFragment } from "react";
+import { Alert, Box, Button, Chip, IconButton, Paper, Stack, Tab, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tabs, TextField, Tooltip, Typography } from "@mui/material";
 import { RefreshCw } from "lucide-react";
+import { Segmented, mono } from "../ui/Glass";
 import MarketComparison from "./marketComparison";
 import MarketChart from "./marketChart";
 import MarketColumnSelector from "./marketColumnSelector";
-import "../scan-dashboard.css";
 import { alertLotThreshold, describeAlertThresholds } from "../alertThresholds";
 
 const INDEX_LABELS = {
@@ -439,81 +440,76 @@ class Dashboard extends Component {
     const sessionDate = new Date(this.props.marketTime || Date.now()).toLocaleDateString("en-GB", {
       timeZone: MARKET_TIME_ZONE, day: "2-digit", month: "short", year: "numeric"
     });
+    const statusColor = { live: "success", delayed: "warning", stale: "error" }[heartbeat.status] || "default";
     return (
-      <section className="scan-command-bar">
-        <div className="scan-command-copy">
-          <h1>Market overview</h1>
-          <span className="scan-session-date">{sessionDate}</span>
-          <span className="scan-session-state">
-            {this.props.previewLabel || heartbeat.label || "Checking"}
-            <span className="mobile-session-date"> · {sessionDate}</span>
-            {latest !== null && latest !== undefined ? ` · ${this.formatTime(latest)} IST` : ""}
-          </span>
-        </div>
-        <div className="scan-command-actions">
-          <div className="contract-segmented" aria-label="contract month">
-            {CONTRACT_OPTIONS.map(([value, label]) => (
-              <button type="button" key={value}
-                className={contractMonth === value ? "contract-segment active" : "contract-segment"}
-                aria-pressed={contractMonth === value} onClick={() => this.handleContractMonthClick(value)}>
-                {label}
-              </button>
-            ))}
-          </div>
+      <Stack component="section" className="scan-command-bar" direction={{ xs: "column", md: "row" }} spacing={1.25}
+        justifyContent="space-between" alignItems={{ md: "center" }}>
+        <Stack direction="row" spacing={1.25} useFlexGap flexWrap="wrap" alignItems="center" sx={{ minWidth: 0 }}>
+          <Typography variant="h2" component="h1" sx={{ fontSize: "1.15rem" }}>Market overview</Typography>
+          <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+            <Chip size="small" variant="outlined" label={sessionDate} />
+            <Chip size="small" color={statusColor} variant={statusColor === "default" ? "outlined" : "filled"}
+              label={`${this.props.previewLabel || heartbeat.label || "Checking"}${latest !== null && latest !== undefined ? ` · ${this.formatTime(latest)} IST` : ""}`} />
+          </Stack>
+        </Stack>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Segmented label="contract month" value={contractMonth} options={CONTRACT_OPTIONS} onChange={value => this.handleContractMonthClick(value)} />
           <MarketColumnSelector value={this.props.settings.marketColumns} onSave={this.props.handleMarketColumnsSave} />
-          <button className="scan-icon-button" type="button" title="Refresh market data" aria-label="Refresh market data"
-            onClick={this.props.handleDashboardRefresh}><RefreshCw size={19} /></button>
-        </div>
-      </section>
+          <Tooltip title="Refresh market data">
+            <IconButton aria-label="Refresh market data" onClick={this.props.handleDashboardRefresh}><RefreshCw size={19} /></IconButton>
+          </Tooltip>
+        </Stack>
+      </Stack>
     );
   }
 
   renderSnapshotPreview = () => {
     const times = [...new Set(INDEX_ORDER.flatMap(key => this.getChartPoints(key).map(p => p.time)))].sort((a, b) => b - a).slice(0, 5);
     const byIndex = Object.fromEntries(INDEX_ORDER.map(key => [key, new Map(this.getChartPoints(key).map(p => [p.time, p]))]));
-    return <section className="scan-snapshot-preview" aria-label="Five-minute snapshot preview">
-      <div className="scan-section-heading"><h2>Five-minute snapshots</h2>
-        <button type="button" className="scan-text-button" onClick={() => this.setState({ selectedActivityTab: "snapshots" })}>Full session</button>
-      </div>
-      <div className="scan-preview-scroll">
-        <table className="scan-preview-table"><thead>
-          <tr><th scope="col" rowSpan="2">Time</th>{INDEX_ORDER.map(key => <th scope="colgroup" colSpan="2" key={key}>{INDEX_LABELS[key]}</th>)}</tr>
-          <tr>{INDEX_ORDER.map(key => <ReactFragment key={key}><th scope="col">Futures</th><th scope="col">Net lots</th></ReactFragment>)}</tr>
-        </thead><tbody>
-          {times.map(time => <tr key={time}><th scope="row">{this.formatTime(time)}</th>
-            {INDEX_ORDER.map(key => { const point = byIndex[key].get(time);
-              return <ReactFragment key={key}><td>{this.formatValue(point?.indexLevel)}</td>
-                <td className={this.valueClass(point?.netLots)}>{this.formatSignedValue(point?.netLots)}</td></ReactFragment>;
-            })}</tr>)}
-          {!times.length && <tr><td colSpan="7" className="scan-empty">No snapshots yet</td></tr>}
-        </tbody></table>
-      </div>
-    </section>;
+    const tone = value => this.valueClass(value) === "value-up" ? "success.main" : this.valueClass(value) === "value-down" ? "error.main" : "text.primary";
+    return <Paper component="section" className="scan-snapshot-preview" aria-label="Five-minute snapshot preview" sx={{ gridArea: "preview", overflow: "hidden", minWidth: 0 }}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ px: 2, pt: 1.5, pb: 1 }}>
+        <Typography variant="h3" component="h2">Five-minute snapshots</Typography>
+        <Button size="small" onClick={() => this.setState({ selectedActivityTab: "snapshots" })}>Full session</Button>
+      </Stack>
+      <TableContainer>
+        <Table size="small" sx={{ "& td, & tbody th": { ...mono, fontSize: 13 }, "& td, & th": { whiteSpace: "nowrap" } }}>
+          <TableHead>
+            <TableRow><TableCell scope="col" rowSpan={2}>Time</TableCell>
+              {INDEX_ORDER.map(key => <TableCell scope="colgroup" colSpan={2} key={key} align="center">{INDEX_LABELS[key]}</TableCell>)}</TableRow>
+            <TableRow>{INDEX_ORDER.map(key => <ReactFragment key={key}><TableCell scope="col" align="right">Futures</TableCell><TableCell scope="col" align="right">Net lots</TableCell></ReactFragment>)}</TableRow>
+          </TableHead>
+          <TableBody>
+            {times.map(time => <TableRow key={time} hover><TableCell component="th" scope="row">{this.formatTime(time)}</TableCell>
+              {INDEX_ORDER.map(key => { const point = byIndex[key].get(time);
+                return <ReactFragment key={key}><TableCell align="right">{this.formatValue(point?.indexLevel)}</TableCell>
+                  <TableCell align="right" className={this.valueClass(point?.netLots)} sx={{ color: tone(point?.netLots), fontWeight: 700 }}>{this.formatSignedValue(point?.netLots)}</TableCell></ReactFragment>;
+              })}</TableRow>)}
+            {!times.length && <TableRow><TableCell colSpan={7} sx={{ color: "text.secondary" }}>No snapshots yet</TableCell></TableRow>}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Paper>;
   }
 
   renderActivity = () => {
     const selected = this.state.selectedActivityTab;
     const swingCount = this.getSwingRows().length;
-    return <aside className="scan-activity">
-      <div className="scan-activity-head">
-        <div role="tablist" aria-label="Market activity">
+    // contain: size lets the panel fill the rows beside the chart without making them taller; it scrolls inside.
+    return <Paper component="aside" className="scan-activity" sx={{ gridArea: "activity", minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden",
+      contain: "size", alignSelf: "stretch", height: { xs: 520, lg: "auto" }, minHeight: { lg: 520 } }}>
+      <Box sx={{ bgcolor: "background.subtle", flex: "none" }}>
+        <Tabs value={selected} onChange={(_, value) => this.setState({ selectedActivityTab: value })} aria-label="Market activity" variant="fullWidth">
           {[["alerts", "Swing alerts"], ["snapshots", "Snapshots"]].map(([value, label]) =>
-            <button key={value} type="button" role="tab" id={`activity-tab-${value}`} aria-selected={selected === value}
-              aria-controls="activity-panel" tabIndex={selected === value ? 0 : -1}
-              onKeyDown={event => { if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) {
-                event.preventDefault();
-                const next = event.key === "Home" ? "alerts" : event.key === "End" ? "snapshots" : selected === "alerts" ? "snapshots" : "alerts";
-                this.setState({ selectedActivityTab: next }, () => document.getElementById(`activity-tab-${next}`)?.focus());
-              } }}
-              onClick={() => this.setState({ selectedActivityTab: value })}>{label}
-              {value === "alerts" && swingCount > 0 && <span className="scan-tab-count" aria-hidden="true">{swingCount}</span>}</button>)}
-        </div>
-        <span className={`scan-threshold${this.props.settings.alertsEnabled ? " is-on" : ""}`}>{this.props.settings.alertsEnabled ? "Alerts on" : "Alerts off"}</span>
-      </div>
-      <div id="activity-panel" role="tabpanel" aria-labelledby={`activity-tab-${selected}`} tabIndex="0">
+            <Tab key={value} value={value} id={`activity-tab-${value}`} aria-controls="activity-panel"
+              label={<Stack direction="row" spacing={0.75} alignItems="center"><span>{label}</span>
+                {value === "alerts" && swingCount > 0 && <Chip size="small" color="primary" label={swingCount} aria-hidden="true" sx={{ height: 20 }} />}</Stack>} />)}
+        </Tabs>
+      </Box>
+      <Box id="activity-panel" role="tabpanel" aria-labelledby={`activity-tab-${selected}`} tabIndex={0} sx={{ outline: "none", flex: 1, minHeight: 0, overflow: "auto" }}>
         {selected === "alerts" ? this.renderAlertPanel() : this.renderRecentSnapshots()}
-      </div>
-    </aside>;
+      </Box>
+    </Paper>;
   }
 
   // Classify an ATM-area option by its moneyness and strike offset from the
@@ -591,86 +587,57 @@ class Dashboard extends Component {
     rows = rows.sort((a, b) => b.time - a.time);
     const hasOptionData = Object.keys(hasOptionDataByIndex).length > 0;
 
+    const tone = value => this.valueClass(value) === "value-up" ? "success.main" : this.valueClass(value) === "value-down" ? "error.main" : "text.primary";
     return (
-      <section className="data-panel acdd-panel">
-        <div className="panel-head">
-          <div>
-            <div className="panel-title">AC/DD Signals - ATM Options</div>
-            <div className="panel-subtitle">
-              {contractLabel} ATM options | 5 and 15 min | Price {this.formatPercent(priceThreshold)} | Vol {this.formatPercent(volumeThreshold)}
-            </div>
-          </div>
-        </div>
+      <Paper component="section" className="data-panel acdd-panel" aria-label="AC/DD signals" sx={{ gridArea: "acdd", overflow: "hidden", minWidth: 0 }}>
+        <Box sx={{ px: 2, pt: 1.75, pb: 1 }}>
+          <Typography variant="h3" component="h2">AC/DD Signals - ATM Options</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {contractLabel} ATM options | 5 and 15 min | Price {this.formatPercent(priceThreshold)} | Vol {this.formatPercent(volumeThreshold)}
+          </Typography>
+        </Box>
+        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ px: 2, pb: 1.5 }}>
+          {INDEX_ORDER.map(key => <Chip key={key} variant="outlined" label={`${INDEX_LABELS[key]} ATM ${strikeByIndex[key] ? this.formatValue(strikeByIndex[key]) : "-"}`} />)}
+          <Chip color="success" variant="outlined" label={`Total AC ${totalAc}`} />
+          <Chip color="error" variant="outlined" label={`Total DD ${totalDd}`} />
+        </Stack>
 
-        <div className="acdd-summary-grid">
-          {INDEX_ORDER.map(key => (
-            <div className="acdd-summary-cell" key={key}>
-              <span>{INDEX_LABELS[key]} ATM</span>
-              <strong className="value-neutral">{strikeByIndex[key] ? this.formatValue(strikeByIndex[key]) : "-"}</strong>
-            </div>
-          ))}
-          <div className="acdd-summary-cell">
-            <span>Total AC</span>
-            <strong className="value-up">{totalAc}</strong>
-          </div>
-          <div className="acdd-summary-cell">
-            <span>Total DD</span>
-            <strong className="value-down">{totalDd}</strong>
-          </div>
-        </div>
-
-        {!hasOptionData && (
-          <div className="empty-side-row">Waiting for ATM option snapshots. Contract data must include CE/PE instruments.</div>
-        )}
-
-        {hasOptionData && !hasVolume && (
-          <div className="empty-side-row">Waiting for volume-backed ATM option snapshots.</div>
-        )}
-
-        {hasVolume && rows.length === 0 && (
-          <div className="empty-side-row">Waiting for the next AC/DD threshold signal.</div>
-        )}
+        {!hasOptionData && <Typography variant="body2" color="text.secondary" sx={{ px: 2, pb: 2 }}>Waiting for ATM option snapshots. Contract data must include CE/PE instruments.</Typography>}
+        {hasOptionData && !hasVolume && <Typography variant="body2" color="text.secondary" sx={{ px: 2, pb: 2 }}>Waiting for volume-backed ATM option snapshots.</Typography>}
+        {hasVolume && rows.length === 0 && <Typography variant="body2" color="text.secondary" sx={{ px: 2, pb: 2 }}>Waiting for the next AC/DD threshold signal.</Typography>}
 
         {rows.length > 0 && (
-          <div className="acdd-grid-wrap">
-            <div className="acdd-grid acdd-grid-tf" role="table" aria-label="ATM option accumulation distribution signals">
-              <div className="acdd-grid-row acdd-grid-head" role="row">
-                <div className="acdd-grid-cell" role="columnheader">Timeframe</div>
-                <div className="acdd-grid-cell" role="columnheader">Index</div>
-                <div className="acdd-grid-cell" role="columnheader">Side</div>
-                <div className="acdd-grid-cell" role="columnheader">Signal</div>
-                <div className="acdd-grid-cell" role="columnheader">Time</div>
-                <div className="acdd-grid-cell" role="columnheader">Option</div>
-                <div className="acdd-grid-cell" role="columnheader">Moneyness</div>
-                <div className="acdd-grid-cell acdd-number" role="columnheader">Price</div>
-                <div className="acdd-grid-cell acdd-number" role="columnheader">Price Chg</div>
-                <div className="acdd-grid-cell acdd-number" role="columnheader">VWAP?</div>
-                <div className="acdd-grid-cell acdd-number" role="columnheader">Prev Vol</div>
-                <div className="acdd-grid-cell acdd-number" role="columnheader">Curr Vol</div>
-                <div className="acdd-grid-cell acdd-number" role="columnheader">Vol Chg</div>
-              </div>
-
-              {rows.map((row, index) => (
-                <div className={`acdd-grid-row ${row.signal === "DD" ? "acdd-row-dd" : "acdd-row-ac"}${index === 0 ? " is-latest" : ""}`} role="row" key={`${row.tfLabel}-${row.indexKey}-${row.side}-${row.signal}-${row.time}-${row.symbol}`}>
-                  <div className="acdd-grid-cell" role="cell">{row.tfLabel}</div>
-                  <div className="acdd-grid-cell" role="cell">{row.indexName}</div>
-                  <div className="acdd-grid-cell acdd-signal" role="cell">{row.side}</div>
-                  <div className={`acdd-grid-cell acdd-signal ${row.signal === "DD" ? "acdd-signal-dd" : "acdd-signal-ac"}`} role="cell">{row.signal}</div>
-                  <div className="acdd-grid-cell" role="cell">{this.formatTime(row.time)}</div>
-                  <div className="acdd-grid-cell acdd-symbol-cell" role="cell" title={row.symbol}>{row.symbol}</div>
-                  <div className="acdd-grid-cell acdd-moneyness-cell" role="cell">{this.formatMoneyness(row.strike, strikeByIndex[row.indexKey], row.side, row.indexKey)}</div>
-                  <div className="acdd-grid-cell acdd-number" role="cell">{this.formatValue(row.indexLevel)}</div>
-                  <div className={`acdd-grid-cell acdd-number ${this.valueClass(row.priceChangePct)}`} role="cell">{this.formatPercent(row.priceChangePct, true)}</div>
-                  <div className="acdd-grid-cell acdd-number" role="cell">{row.vwapYN}</div>
-                  <div className="acdd-grid-cell acdd-number" role="cell">{this.formatValue(row.previousIntervalVolume)}</div>
-                  <div className="acdd-grid-cell acdd-number" role="cell">{this.formatValue(row.intervalVolume)}</div>
-                  <div className={`acdd-grid-cell acdd-number ${this.valueClass(row.volumeDiffPct)}`} role="cell">{this.formatPercent(row.volumeDiffPct, true)}</div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <TableContainer sx={{ maxHeight: 460 }}>
+            <Table stickyHeader size="small" aria-label="ATM option accumulation distribution signals" sx={{ "& td": { ...mono, fontSize: 12.5, whiteSpace: "nowrap" }, "& th": { whiteSpace: "nowrap" } }}>
+              <TableHead><TableRow>
+                {["Timeframe", "Index", "Side", "Signal", "Time", "Option", "Moneyness"].map(label => <TableCell key={label}>{label}</TableCell>)}
+                {["Price", "Price Chg", "VWAP?", "Prev Vol", "Curr Vol", "Vol Chg"].map(label => <TableCell key={label} align="right">{label}</TableCell>)}
+              </TableRow></TableHead>
+              <TableBody>
+                {rows.map((row, index) => (
+                  <TableRow hover className={`${row.signal === "DD" ? "acdd-row-dd" : "acdd-row-ac"}${index === 0 ? " is-latest" : ""}`}
+                    key={`${row.tfLabel}-${row.indexKey}-${row.side}-${row.signal}-${row.time}-${row.symbol}`}
+                    sx={index === 0 ? { bgcolor: "rgba(74,111,224,0.10)" } : undefined}>
+                    <TableCell>{row.tfLabel}</TableCell>
+                    <TableCell>{row.indexName}</TableCell>
+                    <TableCell>{row.side}</TableCell>
+                    <TableCell><Chip size="small" color={row.signal === "DD" ? "error" : "success"} label={row.signal} /></TableCell>
+                    <TableCell>{this.formatTime(row.time)}</TableCell>
+                    <TableCell title={row.symbol}>{row.symbol}</TableCell>
+                    <TableCell>{this.formatMoneyness(row.strike, strikeByIndex[row.indexKey], row.side, row.indexKey)}</TableCell>
+                    <TableCell align="right">{this.formatValue(row.indexLevel)}</TableCell>
+                    <TableCell align="right" sx={{ color: tone(row.priceChangePct), fontWeight: 700 }}>{this.formatPercent(row.priceChangePct, true)}</TableCell>
+                    <TableCell align="right">{row.vwapYN}</TableCell>
+                    <TableCell align="right">{this.formatValue(row.previousIntervalVolume)}</TableCell>
+                    <TableCell align="right">{this.formatValue(row.intervalVolume)}</TableCell>
+                    <TableCell align="right" sx={{ color: tone(row.volumeDiffPct), fontWeight: 700 }}>{this.formatPercent(row.volumeDiffPct, true)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
-      </section>
+      </Paper>
     );
   }
 
@@ -742,41 +709,44 @@ class Dashboard extends Component {
     const alertsOn = Boolean(this.props.settings.alertsEnabled);
 
     return (
-      <section className="side-panel">
-        <div className={`swing-alert-status${alertsOn ? " is-on" : ""}`}>
-          <span>{alertsOn
+      <Box component="section" className="side-panel">
+        <Alert severity={alertsOn ? "success" : "warning"} role="note" sx={{ m: 1, py: 0.25, fontSize: 12.5 }}
+          action={!alertsOn && this.props.openSettings ? <Button size="small" variant="contained" onClick={this.props.openSettings}>Turn on</Button> : undefined}>
+          {alertsOn
             ? `Sound alerts are on. Thresholds: ${thresholds} lots. The newest swing is highlighted.`
-            : `Showing swings of ${thresholds} lots or more. Sound alerts are off.`}</span>
-          {!alertsOn && this.props.openSettings && (
-            <button type="button" onClick={this.props.openSettings}>Turn on</button>
-          )}
-        </div>
+            : `Showing swings of ${thresholds} lots or more. Sound alerts are off.`}
+        </Alert>
 
-        <div className="side-panel-body">
+        <Box className="side-panel-body" sx={{ display: "grid", gap: 0.5, px: 1, pb: 1 }}>
           {rows.length === 0 && (
-            <div className="empty-side-row">No five-minute swing has reached its threshold yet today.</div>
+            <Typography color="text.secondary" sx={{ p: 2.5, fontSize: 14 }}>No five-minute swing has reached its threshold yet today.</Typography>
           )}
 
-          {rows.map((row, index) => (
-            <div className={`side-row${index === 0 ? " is-latest" : ""}`} key={row.key}>
-              <div className="side-time">{this.formatTime(row.time)}</div>
-              <div className="side-copy">
-                <div>
-                  {index === 0 && <span className="swing-tag is-latest">Latest</span>}
-                  {row.live && <span className="swing-tag">Live</span>}
-                  {row.label}
-                </div>
-                <div className="side-symbol">{row.symbol}</div>
-                <div className="swing-detail">
-                  {this.formatSignedValue(row.previousNetLots)} → {this.formatSignedValue(row.currentNetLots)} lots
-                  {row.alertedAt && row.alertedAt !== row.time ? ` · alert at ${this.formatTime(row.alertedAt)}` : ""}
-                </div>
-              </div>
-              <div className={`side-value ${this.valueClass(row.swing)}`}>{this.formatSignedValue(row.swing)} lots</div>
-            </div>
-          ))}
-        </div>
-      </section>
+          {rows.map((row, index) => {
+            const up = row.swing > 0;
+            return <Box className={`side-row${index === 0 ? " is-latest" : ""}`} key={row.key} sx={{
+              display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", alignItems: "center", gap: "4px 10px", px: 1.5, py: 1.1,
+              borderRadius: 2.5, bgcolor: up ? "rgba(14,159,110,0.05)" : "rgba(224,68,90,0.05)",
+              ...(index === 0 && { bgcolor: "rgba(74,111,224,0.10)", animation: "latestFlash 1.2s ease-out 3",
+                "@keyframes latestFlash": { "0%": { backgroundColor: "rgba(245,184,61,0.35)" }, "100%": { backgroundColor: "rgba(74,111,224,0.10)" } } }),
+            }}>
+              <Box className="side-copy" sx={{ minWidth: 0, display: "flex", alignItems: "center", flexWrap: "wrap", gap: 0.75 }}>
+                {index === 0 && <Chip size="small" color="primary" label="Latest" className="swing-tag is-latest" sx={{ height: 20 }} />}
+                {row.live && <Chip size="small" variant="outlined" label="Live" className="swing-tag" sx={{ height: 20 }} />}
+                <Typography component="span" sx={{ fontSize: 13.5, fontWeight: 800 }}>{row.label}</Typography>
+              </Box>
+              <Chip className={`side-value ${this.valueClass(row.swing)}`} label={`${this.formatSignedValue(row.swing)} lots`} size="small"
+                sx={{ ...mono, fontWeight: 800, bgcolor: up ? "rgba(14,159,110,0.12)" : "rgba(224,68,90,0.12)", color: up ? "success.main" : "error.main" }} />
+              <Typography className="swing-detail" sx={{ gridColumn: "1 / -1", ...mono, fontSize: 11.5, color: "text.secondary" }}>
+                <Box component="span" className="side-time" sx={{ fontWeight: 800, color: "text.primary" }}>{this.formatTime(row.time)}</Box>
+                {" · "}<span className="side-symbol">{row.symbol}</span>{" · "}
+                {this.formatSignedValue(row.previousNetLots)} → {this.formatSignedValue(row.currentNetLots)} lots
+                {row.alertedAt && row.alertedAt !== row.time ? ` · alert at ${this.formatTime(row.alertedAt)}` : ""}
+              </Typography>
+            </Box>;
+          })}
+        </Box>
+      </Box>
     );
   }
 
@@ -810,60 +780,49 @@ class Dashboard extends Component {
         b.time - a.time || INDEX_ORDER.indexOf(a.indexKey) - INDEX_ORDER.indexOf(b.indexKey)
       ));
 
+    const tone = value => this.valueClass(value) === "value-up" ? "success.main" : this.valueClass(value) === "value-down" ? "error.main" : "text.primary";
     return (
-      <section className="side-panel">
-        <div className="panel-head">
-          <div>
-            <div className="panel-title">Recent Snapshots</div>
-            <div className="panel-subtitle">All indices, five-minute records</div>
-          </div>
-          <select
-            className="snapshot-index-select"
-            aria-label="recent snapshots index"
-            value={selectedSnapshotIndex}
-            onChange={this.handleSnapshotIndexChange}
-          >
+      <Box component="section" className="side-panel">
+        <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ px: 2, pt: 1.5, pb: 1 }}>
+          <Box>
+            <Typography variant="h3" component="p">Recent snapshots</Typography>
+            <Typography variant="caption" color="text.secondary">All indices, five-minute records</Typography>
+          </Box>
+          <TextField select size="small" value={selectedSnapshotIndex} onChange={this.handleSnapshotIndexChange}
+            SelectProps={{ native: true }} inputProps={{ "aria-label": "recent snapshots index" }} sx={{ minWidth: 140 }}>
             <option value="all">All indices</option>
-            {INDEX_ORDER.map(key => (
-              <option key={key} value={key}>{INDEX_LABELS[key]}</option>
-            ))}
-          </select>
-        </div>
+            {INDEX_ORDER.map(key => <option key={key} value={key}>{INDEX_LABELS[key]}</option>)}
+          </TextField>
+        </Stack>
 
-        <div className="side-panel-body">
-          {rows.length === 0 && (
-            <div className="empty-side-row">No snapshots yet</div>
-          )}
+        {rows.length === 0 && <Typography color="text.secondary" sx={{ p: 2.5, fontSize: 14 }}>No snapshots yet</Typography>}
 
-          {rows.length > 0 && (
-            <div className="snapshot-grid-wrap">
-              <div className="snapshot-grid" role="table" aria-label="Recent snapshots across all indices">
-                <div className="snapshot-grid-row snapshot-grid-head" role="row">
-                  <div className="snapshot-grid-cell" role="columnheader">Time</div>
-                  <div className="snapshot-grid-cell" role="columnheader">Index</div>
-                  <div className="snapshot-grid-cell snapshot-number" role="columnheader">Level</div>
-                  <div className="snapshot-grid-cell snapshot-number" role="columnheader">Net Lots</div>
-                  <div className="snapshot-grid-cell snapshot-number" role="columnheader">Lot Chg</div>
-                  <div className="snapshot-grid-cell snapshot-number" role="columnheader">Ratio</div>
-                </div>
-
+        {rows.length > 0 && (
+          <TableContainer>
+            <Table stickyHeader size="small" aria-label="Recent snapshots across all indices" sx={{ "& td": { ...mono, fontSize: 12.5, whiteSpace: "nowrap" } }}>
+              <TableHead><TableRow>
+                <TableCell>Time</TableCell><TableCell>Index</TableCell>
+                <TableCell align="right">Level</TableCell><TableCell align="right">Net Lots</TableCell>
+                <TableCell align="right">Lot Chg</TableCell><TableCell align="right">Ratio</TableCell>
+              </TableRow></TableHead>
+              <TableBody>
                 {rows.map(row => (
-                  <div className="snapshot-grid-row" role="row" key={`${row.symbol}-${row.time}`}>
-                    <div className="snapshot-grid-cell snapshot-time" role="cell">{this.formatTime(row.time)}</div>
-                    <div className="snapshot-grid-cell snapshot-index-cell" role="cell">{row.indexLabel}</div>
-                    <div className="snapshot-grid-cell snapshot-number" role="cell">{this.formatValue(row.indexLevel)}</div>
-                    <div className={`snapshot-grid-cell snapshot-number ${this.valueClass(row.netLots)}`} role="cell">{this.formatSignedValue(row.netLots)}</div>
-                    <div className={`snapshot-grid-cell snapshot-number ${row.incrementalChange === null ? "value-neutral" : this.valueClass(row.incrementalChange)}`} role="cell">
+                  <TableRow hover key={`${row.symbol}-${row.time}`}>
+                    <TableCell sx={{ color: "text.secondary" }}>{this.formatTime(row.time)}</TableCell>
+                    <TableCell sx={{ fontFamily: "inherit !important", fontWeight: 700 }}>{row.indexLabel}</TableCell>
+                    <TableCell align="right">{this.formatValue(row.indexLevel)}</TableCell>
+                    <TableCell align="right" sx={{ color: tone(row.netLots), fontWeight: 700 }}>{this.formatSignedValue(row.netLots)}</TableCell>
+                    <TableCell align="right" sx={{ color: row.incrementalChange === null ? "text.secondary" : tone(row.incrementalChange), fontWeight: 700 }}>
                       {row.incrementalChange === null ? "-" : this.formatSignedValue(row.incrementalChange)}
-                    </div>
-                    <div className="snapshot-grid-cell snapshot-number" role="cell">{this.formatValue(row.ratio)}</div>
-                  </div>
+                    </TableCell>
+                    <TableCell align="right">{this.formatValue(row.ratio)}</TableCell>
+                  </TableRow>
                 ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Box>
     );
   }
 
@@ -871,11 +830,7 @@ class Dashboard extends Component {
     const heartbeat = this.props.snapshotHeartbeat || {};
 
     if (this.props.feedStatus === "offline") {
-      return (
-        <div className="snapshot-stale-banner" role="status">
-          Live prices are unavailable. Reconnecting automatically.
-        </div>
-      );
+      return <Alert severity="warning" role="status" sx={{ mb: 1.5 }}>Live prices are unavailable. Reconnecting automatically.</Alert>;
     }
 
     if (heartbeat.status !== "stale" || !heartbeat.marketOpen) {
@@ -896,29 +851,28 @@ class Dashboard extends Component {
     }
 
     return (
-      <div className="snapshot-stale-banner" role="alert">
+      <Alert severity="error" sx={{ mb: 1.5 }}>
         <strong>Live market data is temporarily unavailable.</strong>
         {detail} The chart and history panels will resume automatically
         once the feed is restored.
-      </div>
+      </Alert>
     );
   }
 
+  // Each section names its grid area; Home lays them out next to its own summary tiles (display: contents).
   render() {
     return (
-      <main className="dashboard-page scan-dashboard">
-        {this.renderSnapshotBanner()}
-        {this.renderCommandBar()}
+      <Box className="market-desk" sx={{ display: "contents" }}>
+        <Box sx={{ gridArea: "bar", minWidth: 0 }}>
+          {this.renderSnapshotBanner()}
+          {this.renderCommandBar()}
+        </Box>
         <MarketComparison dashboard={this} />
-        <section className="scan-workspace">
-          <div className="scan-main">
-            <MarketChart dashboard={this} />
-            {this.renderSnapshotPreview()}
-          </div>
-          {this.renderActivity()}
-        </section>
+        <MarketChart dashboard={this} sx={{ gridArea: "chart" }} />
+        {this.renderActivity()}
+        {this.renderSnapshotPreview()}
         {this.renderAcDdPanel()}
-      </main>
+      </Box>
     );
   }
 }

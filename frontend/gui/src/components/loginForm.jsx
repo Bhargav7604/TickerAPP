@@ -1,144 +1,62 @@
-import { Component } from "react";
-import { BellRing, ChartCandlestick, LayoutDashboard } from "lucide-react";
-import "../login.css";
+import React, { useState } from "react";
+import { Box, Button, Fade, InputAdornment, Paper, Stack, TextField, Typography } from "@mui/material";
+import { ArrowRight, BellRing, ChartCandlestick, LayoutDashboard, LockKeyhole, UserRound } from "lucide-react";
 import brandMark from "../assets/brand/utraders-mark.png";
+import logo from "../assets/brand/utraders-logo-dark.png";
 import logoOnDark from "../assets/brand/utraders-logo-light.png";
-import logoOnLight from "../assets/brand/utraders-logo-dark.png";
+import { useTheme } from "../theme";
 
 const FEATURES = [
   [LayoutDashboard, "Live index futures", "NIFTY, BANKNIFTY and SENSEX across all three expiries."],
   [ChartCandlestick, "Stock F&O watchlists", "Futures and options with depth and five-minute charts."],
-  [BellRing, "Lot-swing alerts", "Screen, sound and email alerts when net lots move."],
+  [BellRing, "Lot-swing alerts", "A sound and a highlighted alert when net lots move."],
 ];
 
-class LoginForm extends Component {
-  constructor(props) {
-    super(props);
+export default function LoginForm({ handleLogin }) {
+  const [form, setForm] = useState({ username: "", password: "" });
+  const { theme } = useTheme();
+  const change = event => setForm(previous => ({ ...previous, [event.target.name]: event.target.value }));
+  const submit = event => { event.preventDefault(); handleLogin(form); };
 
-    this.state = {
-      username: "",
-      password: ""
-    }
-  }
+  return <Box component="main" sx={{ minHeight: "100vh", display: "grid", placeItems: "center", px: 2, py: 4 }}>
+    <Fade in appear timeout={320}>
+      <Paper component="section" aria-label="Ticker login" sx={{ width: "100%", maxWidth: 960, display: "grid", gridTemplateColumns: { xs: "1fr", md: "1.05fr 0.95fr" }, overflow: "hidden", borderRadius: 6 }}>
+        <Box sx={{ p: { xs: 3, sm: 5 } }}>
+          <Box component="img" src={theme === "dark" ? logoOnDark : logo} alt="Utraders" sx={{ height: 56, mb: 4 }} />
+          <Typography variant="h1" component="h1" sx={{ mb: 1 }}>Sign in to Utraders Ticker</Typography>
+          <Typography color="text.secondary" sx={{ mb: 4 }}>Use the username and password from your administrator.</Typography>
+          <Stack component="form" id="login-form" spacing={2.25} onSubmit={submit}>
+            <TextField required autoFocus label="Username" name="username" id="username-input" placeholder="Enter username"
+              autoComplete="username" value={form.username} onChange={change} fullWidth
+              InputProps={{ startAdornment: <InputAdornment position="start"><UserRound size={18} /></InputAdornment> }} />
+            <TextField required type="password" label="Password" name="password" id="password-input" placeholder="Enter password"
+              autoComplete="current-password" value={form.password} onChange={change} fullWidth
+              InputProps={{ startAdornment: <InputAdornment position="start"><LockKeyhole size={18} /></InputAdornment> }} />
+            <Button type="submit" variant="contained" size="large" endIcon={<ArrowRight size={18} />} sx={{ height: 50, fontSize: "1rem" }}>
+              Sign in
+            </Button>
+          </Stack>
+        </Box>
 
-  handleChange = e => {
-    const name = e.target.name;
-    const value = e.target.value;
-
-    this.setState(prevstate => {
-      const newState = { ...prevstate };
-      newState[name] = value;
-      return newState;
-    });
-  }
-
-  handleLoginFormSubmit = e => {
-    e.preventDefault();
-    this.props.handleLogin(this.state);
-  }
-
-  render() {
-    return (
-      <main className="login-page">
-        <section className="login-shell" aria-label="Ticker login">
-          <div className="login-panel">
-            <div className="login-brand">
-              <img className="login-logo login-logo-on-dark" src={logoOnDark} alt="Utraders" />
-              <img className="login-logo login-logo-on-light" src={logoOnLight} alt="Utraders" />
-            </div>
-
-            <div className="login-heading">
-              <h1>Sign in to Utraders Ticker</h1>
-              <p>Use the username and password from your administrator.</p>
-            </div>
-
-            <form onSubmit={this.handleLoginFormSubmit} className="login-form" id="login-form">
-              <div className="login-field">
-                <label htmlFor="username-input">Username</label>
-                <div className="login-input-wrap">
-                  <span className="login-input-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                      <path d="M20 21a8 8 0 0 0-16 0" />
-                      <circle cx="12" cy="7" r="4" />
-                    </svg>
-                  </span>
-                  <input
-                    required
-                    autoFocus
-                    type="text"
-                    name="username"
-                    id="username-input"
-                    placeholder="Enter username"
-                    autoComplete="username"
-                    value={this.state.username}
-                    onChange={this.handleChange}
-                  />
-                </div>
-              </div>
-
-              <div className="login-field">
-                <label htmlFor="password-input">Password</label>
-                <div className="login-input-wrap">
-                  <span className="login-input-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                      <rect x="4" y="10" width="16" height="10" rx="2" />
-                      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-                    </svg>
-                  </span>
-                  <input
-                    required
-                    type="password"
-                    name="password"
-                    id="password-input"
-                    placeholder="Enter password"
-                    autoComplete="current-password"
-                    value={this.state.password}
-                    onChange={this.handleChange}
-                  />
-                </div>
-              </div>
-
-              <button className="login-submit" type="submit">
-                <span>Sign in</span>
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M5 12h14" />
-                  <path d="m13 6 6 6-6 6" />
-                </svg>
-              </button>
-            </form>
-          </div>
-
-          <div className="login-brand-panel" aria-hidden="true">
-            <img className="login-hero-mark" src={brandMark} alt="" />
-            <p className="login-tagline">Every tick. Every trade. Everywhere.</p>
-            <ul className="login-features">
-              {FEATURES.map(([Icon, title, text]) => (
-                <li key={title}>
-                  <span className="login-feature-icon"><Icon size={18} /></span>
-                  <span><strong>{title}</strong>{text}</span>
-                </li>
-              ))}
-            </ul>
-            <svg className="login-wave" viewBox="0 0 420 120" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="login-wave-stroke" x1="0" x2="1" y1="0" y2="0">
-                  <stop offset="0%" stopColor="#67d5da" />
-                  <stop offset="50%" stopColor="#5fa8de" />
-                  <stop offset="100%" stopColor="#647de2" />
-                </linearGradient>
-                <linearGradient id="login-wave-fill" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor="#5fa8de" stopOpacity="0.28" />
-                  <stop offset="100%" stopColor="#5fa8de" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              <path fill="url(#login-wave-fill)" d="M0 92 L42 86 L84 90 L126 66 L168 74 L210 50 L252 58 L294 30 L336 44 L378 20 L420 28 L420 120 L0 120 Z" />
-              <path fill="none" stroke="url(#login-wave-stroke)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" d="M0 92 L42 86 L84 90 L126 66 L168 74 L210 50 L252 58 L294 30 L336 44 L378 20 L420 28" />
-            </svg>
-          </div>
-        </section>
-      </main>
-    );
-  }
+        <Box aria-hidden="true" sx={{
+          display: { xs: "none", md: "flex" }, flexDirection: "column", justifyContent: "center", gap: 3, p: 5, position: "relative",
+          background: "linear-gradient(160deg, rgba(43,179,173,0.16), rgba(91,110,225,0.20))",
+        }}>
+          <Box component="img" src={brandMark} alt="" sx={{ width: 84, filter: "drop-shadow(0 12px 24px rgba(74,111,224,0.35))" }} />
+          <Typography variant="h2" sx={{ fontSize: "1.5rem" }}>Every tick. Every trade. Everywhere.</Typography>
+          <Stack spacing={2}>
+            {FEATURES.map(([Icon, title, text]) => <Stack key={title} direction="row" spacing={1.5} alignItems="flex-start">
+              <Box sx={{ flex: "none", width: 36, height: 36, borderRadius: "50%", display: "grid", placeItems: "center", bgcolor: "background.paper", color: "primary.main" }}>
+                <Icon size={18} />
+              </Box>
+              <Box>
+                <Typography variant="subtitle1" component="p">{title}</Typography>
+                <Typography variant="body2" color="text.secondary">{text}</Typography>
+              </Box>
+            </Stack>)}
+          </Stack>
+        </Box>
+      </Paper>
+    </Fade>
+  </Box>;
 }
-
-export default LoginForm;

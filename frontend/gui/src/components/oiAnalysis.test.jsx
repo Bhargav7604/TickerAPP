@@ -72,10 +72,25 @@ test("option chain streams live quotes with build-up labels, ATM row and OI bars
   const table = screen.getByRole("table", { name: "Option chain with OI build-up" });
   expect(within(table).getByTitle("Short Build-up")).toHaveTextContent("SB");
   expect(within(table).getByText("ATM").closest("tr")).toHaveClass("is-atm");
+  const headers = within(table).getAllByRole("columnheader").map(cell => cell.textContent);
+  expect(headers.slice(4)).toEqual(["Build-up", "OI %", "OI", "OI chg", "IV", "LTP", "LTP %", "LTP chg", "Decay/hr",
+    "Decay/hr", "LTP chg", "LTP %", "LTP", "IV", "OI chg", "OI", "OI %", "Build-up"]);
+  const atmCells = within(within(table).getByText("ATM").closest("tr")).getAllByRole("cell").map(cell => cell.textContent);
+  expect(atmCells[1]).toBe("+5.0%");
+  expect(atmCells[6]).toBe("+2.0%");
+  expect(atmCells[atmCells.length - 3]).toBe("+5.0%");
   expect(screen.getByRole("img", { name: "Open interest by strike for 2 strikes" })).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "OI change today" }));
   expect(screen.getByRole("img", { name: "OI change by strike for 2 strikes" })).toBeInTheDocument();
   expect(screen.getByText("Support (max put OI)")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "OI %" }));
+  const oiPct = screen.getByRole("img", { name: "OI change % by strike for 2 strikes" });
+  expect(oiPct.querySelector("title")).toHaveTextContent(/: \+5%$/);
+  expect(screen.getByText(/OI % = today's OI change/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "LTP %" }));
+  const ltpPct = screen.getByRole("img", { name: "LTP change % by strike for 2 strikes" });
+  expect(ltpPct.querySelector("title")).toHaveTextContent(/: \+2%$/);
+  expect(screen.getByRole("button", { name: "LTP %" })).toHaveAttribute("aria-pressed", "true");
 });
 
 test("shows the recorder message when an expiry has no data", async () => {

@@ -14,7 +14,7 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET
 from kiteconnect import KiteConnect
 
-from .market_contracts import get_master_contract, market_today
+from .market_contracts import CONTRACT_MONTH_INDEX, CONTRACT_NAMES, get_master_contract, market_today, resolve_contract_rows
 from .models import KiteSettings, LiveMarketFeed
 from .views import protected
 
@@ -286,6 +286,30 @@ def quotes(request, index_options=False):
         return failure("Quotes unavailable. Check the broker session and market-data access in admin.", 503)
 
 
+def candle_response(row):
+    """Today's five-minute candles for one contract, through the shared rate-limited cache."""
+    client, session = broker()
+    if not client:
+        return JsonResponse({"type": "success", "candles": [], "message": "Connect Zerodha to load the chart."})
+    now = dt.datetime.now(IST)
+    start = now.replace(hour=9, minute=15, second=0, microsecond=0)
+    end = min(now, now.replace(hour=15, minute=30, second=0, microsecond=0))
+    if end < start or now.weekday() >= 5:
+        return JsonResponse({"type": "success", "candles": [], "message": "No candles for today's session yet."})
+    key = row["exchange"] + ":" + row["tradingsymbol"] + ":ohlc:" + now.date().isoformat()
+    def fetch(_):
+        candles = client.historical_data(int(row["instrument_token"]), start, end, "5minute", oi=True)
+        return {key: [{"time": int(candle["date"].timestamp()), "close": number(candle.get("close")),
+                       "open": number(candle.get("open")), "high": number(candle.get("high")),
+                       "low": number(candle.get("low")),
+                       "volume": number(candle.get("volume")) / int(row["lot_size"])}
+                      for candle in candles if number(candle.get("close")) is not None and number(candle.get("volume")) is not None]}
+    entries = cached_broker_result(HISTORY_CACHE_ID, session, [key], 60, fetch)
+    return JsonResponse({"type": "success", "symbol": row["tradingsymbol"], "candles": entries.get(key, {}).get("data") or [],
+                         "retryAfterMs": cache_retry_ms(HISTORY_CACHE_ID, entries, [key], 60),
+                         "message": "" if key in entries else "Loading chart. Please wait."})
+
+
 @never_cache
 @require_GET
 def history(request, index_options=False):
@@ -296,28 +320,27 @@ def history(request, index_options=False):
         ids = read_ids(request)
         if len(ids) != 1:
             raise ValueError("Select one contract for the chart.")
-        row = selected_rows(ids, index_options).iloc[0]
-        client, session = broker()
-        if not client:
-            return JsonResponse({"type": "success", "candles": [], "message": "Connect Zerodha to load the chart."})
-        now = dt.datetime.now(IST)
-        start = now.replace(hour=9, minute=15, second=0, microsecond=0)
-        end = min(now, now.replace(hour=15, minute=30, second=0, microsecond=0))
-        if end < start or now.weekday() >= 5:
-            return JsonResponse({"type": "success", "candles": [], "message": "No candles for today's session yet."})
-        key = ids[0] + ":ohlc:" + now.date().isoformat()
-        def fetch(_):
-            candles = client.historical_data(int(row["instrument_token"]), start, end, "5minute", oi=True)
-            return {key: [{"time": int(candle["date"].timestamp()), "close": number(candle.get("close")),
-                           "open": number(candle.get("open")), "high": number(candle.get("high")),
-                           "low": number(candle.get("low")),
-                           "volume": number(candle.get("volume")) / int(row["lot_size"])}
-                          for candle in candles if number(candle.get("close")) is not None and number(candle.get("volume")) is not None]}
-        entries = cached_broker_result(HISTORY_CACHE_ID, session, [key], 60, fetch)
-        return JsonResponse({"type": "success", "candles": entries.get(key, {}).get("data") or [],
-                             "retryAfterMs": cache_retry_ms(HISTORY_CACHE_ID, entries, [key], 60),
-                             "message": "" if key in entries else "Loading chart. Please wait."})
+        return candle_response(selected_rows(ids, index_options).iloc[0])
     except ValueError as exc:
         return failure(str(exc))
+    except Exception:
+        return failure("Chart unavailable. Historical-data access or a fresh broker session may be required.", 503)
+
+
+@never_cache
+@require_GET
+def index_future_history(request):
+    """Candles for the Home chart: the NIFTY, BANKNIFTY or SENSEX future of the chosen month."""
+    auth = protected(request)
+    if isinstance(auth, JsonResponse):
+        return auth
+    index_key, contract_month = request.GET.get("index", ""), request.GET.get("contract", "current")
+    if index_key not in CONTRACT_NAMES or contract_month not in CONTRACT_MONTH_INDEX:
+        return failure("Select NIFTY, BANKNIFTY or SENSEX and a contract month.")
+    try:
+        row = resolve_contract_rows().get((contract_month, index_key))
+        if row is None:
+            return failure("This futures contract is not in the contract list yet.", 503)
+        return candle_response(row)
     except Exception:
         return failure("Chart unavailable. Historical-data access or a fresh broker session may be required.", 503)

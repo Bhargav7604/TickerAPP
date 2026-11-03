@@ -60,16 +60,31 @@ export function chainFlashes(previous, next) {
   return flashes;
 }
 
+// Calls read outward-in to the strike; puts mirror them. Decay/hr stays next to the strike.
+const CALL_FIELDS = ["oiChangePct", "oi", "oiChange", "iv", "ltp", "ltpChangePct", "ltpChange", "decayPerHour"];
+const PUT_FIELDS = [...CALL_FIELDS].reverse();
+const FIELD_LABELS = { oiChangePct: "OI %", oi: "OI", oiChange: "OI chg", iv: "IV", ltp: "LTP", ltpChangePct: "LTP %", ltpChange: "LTP chg", decayPerHour: "Decay/hr" };
+const FIELD_TITLES = {
+  oiChangePct: "OI change today as a % of yesterday's closing OI",
+  ltpChangePct: "Price change today as a % of yesterday's closing price",
+  decayPerHour: "Rupees one lot loses each hour from time passing, if the index does not move",
+};
+// One decimal is enough to compare strikes; thousands get separators (tiny opening OI can jump 2,000%+).
+const chainPct = value => Number.isFinite(value)
+  ? `${value > 0 ? "+" : ""}${value.toLocaleString("en-IN", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%` : "--";
+
 function ChainTable({ data, flashes = {} }) {
   const side = (row, key, value) => <>
     {key === "call" && <td><BuildupTag value={value?.buildup} /></td>}
-    {(key === "call" ? ["oi", "oiChange", "iv", "ltp", "ltpChange", "decayPerHour"] : ["decayPerHour", "ltpChange", "ltp", "iv", "oiChange", "oi"]).map(field => {
+    {(key === "call" ? CALL_FIELDS : PUT_FIELDS).map(field => {
       const raw = value?.[field];
       const text = field === "oi" ? formatOi(raw) : field === "oiChange" ? formatSignedOi(raw)
+        : field.endsWith("Pct") ? chainPct(raw)
         : field === "iv" ? (raw == null ? "--" : raw.toFixed(1)) : field === "ltpChange" ? formatSignedPrice(raw)
         : field === "decayPerHour" ? (raw == null ? "--" : `₹${formatOi(raw)}`) : formatPrice(raw);
       const flash = flashes[`${row.strike}:${key}:${field}`];
-      return <td key={field} className={`${field.endsWith("Change") ? signClass(raw) : ""}${field === "decayPerHour" ? " oi-decay" : ""}${flash ? ` oi-tick-${flash}` : ""}`}>
+      const signed = field.endsWith("Change") || field.endsWith("Pct");
+      return <td key={field} className={`${signed ? signClass(raw) : ""}${field === "decayPerHour" ? " oi-decay" : ""}${flash ? ` oi-tick-${flash}` : ""}`}>
         {text}{field === "ltp" && value?.lottery && <span className="oi-lottery" title="Lottery ticket. Very likely to become zero.">Lottery</span>}
       </td>;
     })}
@@ -78,9 +93,11 @@ function ChainTable({ data, flashes = {} }) {
   return <div className="oi-table-scroll"><table className="oi-table oi-chain">
     <caption className="sr-only">Option chain with OI build-up</caption>
     <thead>
-      <tr><th colSpan="7" className="oi-side-call">Calls</th><th rowSpan="2" className="oi-strike-head">Strike</th><th colSpan="7" className="oi-side-put">Puts</th><th rowSpan="2">PCR</th></tr>
-      <tr>{["Build-up", "OI", "OI chg", "IV", "LTP", "LTP chg", "Decay/hr"].map(label => <th key={`c-${label}`} scope="col" title={label === "Decay/hr" ? "Rupees one lot loses each hour from time passing, if the index does not move" : undefined}>{label}</th>)}
-        {["Decay/hr", "LTP chg", "LTP", "IV", "OI chg", "OI", "Build-up"].map(label => <th key={`p-${label}`} scope="col" title={label === "Decay/hr" ? "Rupees one lot loses each hour from time passing, if the index does not move" : undefined}>{label}</th>)}</tr>
+      <tr><th colSpan={CALL_FIELDS.length + 1} className="oi-side-call">Calls</th><th rowSpan="2" className="oi-strike-head">Strike</th><th colSpan={PUT_FIELDS.length + 1} className="oi-side-put">Puts</th><th rowSpan="2">PCR</th></tr>
+      <tr><th scope="col">Build-up</th>
+        {CALL_FIELDS.map(field => <th key={`c-${field}`} scope="col" title={FIELD_TITLES[field]}>{FIELD_LABELS[field]}</th>)}
+        {PUT_FIELDS.map(field => <th key={`p-${field}`} scope="col" title={FIELD_TITLES[field]}>{FIELD_LABELS[field]}</th>)}
+        <th scope="col">Build-up</th></tr>
     </thead>
     <tbody>{data.rows.map(row => {
       const itmCall = data.underlying && row.strike < data.underlying;

@@ -1,13 +1,11 @@
 import { Component, lazy, Suspense } from "react";
 
-import Navbar from "./navbar.jsx";
+import { BottomNavigation, BottomNavigationAction, Box, Paper } from "@mui/material";
+import Navbar, { NAV_ITEMS } from "./navbar.jsx";
 import Settings from "./settings.jsx";
 import Dashboard from "./dashboard.jsx";
 import Home from "./home.jsx";
-import "../equity.css";
-import "../brand.css";
 import { makeEquityApi } from "../equityData";
-import { Activity, ChartNoAxesColumn, ChartScatter, House, Layers, Settings as SettingsIcon, WalletCards } from "lucide-react";
 import { makeOiApi } from "../oiData";
 import { makeDecisionApi } from "../decisionData";
 import { makeTraderApi } from "../traderData";
@@ -72,6 +70,7 @@ class MainPage extends Component {
         handleMarketColumnsSave={this.props.handleMarketColumnsSave}
         handleDashboardRefresh={this.props.handleDashboardRefresh}
         openSettings={() => this.changePage("settings")}
+        loadCandles={this.decisionApi.candles}
       />} />
 
     } else if (this.state.currentPage === "index-stocks") {
@@ -92,7 +91,7 @@ class MainPage extends Component {
     }
 
     return (
-      <div className="has-section-nav">
+      <Box className="has-section-nav" sx={{ minHeight: "100vh" }}>
         <Navbar
           username={this.props.username}
           handleLogout={this.props.handleLogout}
@@ -101,11 +100,14 @@ class MainPage extends Component {
           handleDashboardRefresh={this.props.handleDashboardRefresh}
         />
         {page}
-        <nav className="eq-mobile-navigation" aria-label="Mobile section navigation">
-          {[["dashboard", "Home", House], ["index-stocks", "Stocks", ChartScatter], ["equity", "Equity", ChartNoAxesColumn], ["index-options", "Options", Layers], ["oi-analysis", "OI", Activity], ["trading", "Trading", WalletCards], ["settings", "Settings", SettingsIcon]].map(([id, label, Icon]) =>
-            <button key={id} type="button" className={this.state.currentPage === id ? "active" : ""} aria-current={this.state.currentPage === id ? "page" : undefined} onClick={() => this.changePage(id)}><Icon size={21} /><span>{label}</span></button>)}
-        </nav>
-      </div>
+        <Paper component="nav" aria-label="Mobile section navigation" elevation={0} square
+          sx={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 1100, display: { xs: "block", lg: "none" }, pb: "env(safe-area-inset-bottom, 0px)", borderRadius: 0 }}>
+          <BottomNavigation showLabels value={this.state.currentPage} onChange={(_, page) => this.changePage(page)}>
+            {NAV_ITEMS.map(([id, , shortLabel, Icon]) => <BottomNavigationAction key={id} value={id} label={shortLabel} icon={<Icon size={20} />}
+              aria-current={this.state.currentPage === id ? "page" : undefined} />)}
+          </BottomNavigation>
+        </Paper>
+      </Box>
     );
   }
 }

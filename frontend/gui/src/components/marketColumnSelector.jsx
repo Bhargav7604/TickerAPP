@@ -4,6 +4,7 @@ import { closestCenter, DndContext, DragOverlay, KeyboardSensor, PointerSensor, 
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { DEFAULT_MARKET_COLUMNS, ESSENTIAL_MARKET_COLUMNS, MARKET_COLUMNS, selectedMarketColumns } from "../marketColumns";
+import "../marketColumns.css";
 
 const ALL_IDS = MARKET_COLUMNS.map(column => column.id);
 const BY_ID = new Map(MARKET_COLUMNS.map(column => [column.id, column]));

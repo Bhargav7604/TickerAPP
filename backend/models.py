@@ -27,12 +27,6 @@ class User(models.Model):
     active_session_token = models.CharField(max_length=100, blank=True, default="")
     valid_until = models.DateField(blank=True, null=True)
 
-    broker_username = models.CharField(max_length=20, blank=True, default="")
-    broker_password = models.CharField(max_length=50, blank=True, default="")
-    broker_twofa = models.CharField(max_length=10, blank=True, default="")
-    broker_api_key = models.CharField(max_length=100, blank=True, default="")
-    broker_api_secret = models.CharField(max_length=100, blank=True, default="")
-    broker_access_token = models.CharField(max_length=100, blank=True, default="")
 
     nifty_expiry = models.DateField(default=timezone.now)
     banknifty_expiry = models.DateField(default=timezone.now)
@@ -380,3 +374,12 @@ class StockDailyHistory(models.Model):
     futures_symbol = models.CharField(max_length=40, blank=True, default="")
     futures_oi = models.JSONField(default=dict, help_text="{date: closing OI} for futures_symbol.")
     updated_on = models.DateField(blank=True, null=True)
+
+
+class RequestThrottle(models.Model):
+    """Recent attempts per key (a login name, or one user's alert emails) so guessing and spam are slowed down."""
+
+    key = models.CharField(max_length=120, unique=True)
+    count = models.PositiveIntegerField(default=0)
+    window_start = models.DateTimeField()
+    blocked_until = models.DateTimeField(blank=True, null=True)

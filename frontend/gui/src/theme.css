@@ -1,112 +1,76 @@
-/* Utraders brand: teal -> sky -> indigo, taken from the logo mark. */
+/* Utraders light and dark tokens (kept in step with the Material UI theme in ui/theme.js). */
 :root {
-  --brand-teal: #67d5da;
-  --brand-cyan: #5fc0dc;
-  --brand-sky: #5fa8de;
-  --brand-blue: #6091e0;
-  --brand-indigo: #647de2;
-  --brand-gradient: linear-gradient(135deg, #67d5da 0%, #5fa8de 50%, #647de2 100%);
-  --brand-gradient-strong: linear-gradient(135deg, #3fbac4 0%, #4a86d8 50%, #4a5fdc 100%);
   color-scheme: light;
-  --ui-page: #edf1f7;
+  --brand-teal: #2bb3ad;
+  --brand-cyan: #3aa6c9;
+  --brand-sky: #4a8fe7;
+  --brand-blue: #4a6fe0;
+  --brand-indigo: #5b6ee1;
+  --brand-gradient: linear-gradient(135deg, #2bb3ad 0%, #4a8fe7 55%, #5b6ee1 100%);
+  --brand-gradient-strong: linear-gradient(135deg, #1f9e98 0%, #3d7fd8 55%, #4c5fd4 100%);
+  --ui-page: #f3f5fa;
   --ui-surface: #ffffff;
-  --ui-subtle: #f1f4fa;
-  --ui-hover: #e9eef8;
-  --ui-line: #e1e7f0;
-  --ui-border: #c5cedd;
-  --ui-ink: #0f1629;
-  --ui-muted: #5b6579;
-  --ui-blue: #3653d4;
-  --ui-blue-solid: #4360df;
-  --ui-blue-soft: #edf1ff;
-  --ui-selected: #e0e8ff;
-  --ui-green: #0a7c55;
-  --ui-red: #c8303b;
-  --ui-warning-bg: #fff8ed;
-  --ui-warning-ink: #885517;
-  --ui-warning-line: #efdcbd;
-  --ui-overlay: #0f162966;
-  --ui-shadow: #0f16291a;
-  --ui-grid: #e9edf4;
-  --ui-green-soft: #e3f6ee;
-  --ui-red-soft: #fdecee;
-  --ui-success-bg: #e7f8f1;
+  --ui-subtle: #f7f8fc;
+  --ui-hover: #eef1f7;
+  --ui-line: rgba(20, 33, 61, 0.06);
+  --ui-border: rgba(20, 33, 61, 0.10);
+  --ui-ink: #14213d;
+  --ui-muted: #5b6478;
+  --ui-blue: #3f63d8;
+  --ui-blue-solid: #4a6fe0;
+  --ui-blue-soft: rgba(74, 111, 224, 0.12);
+  --ui-selected: rgba(74, 111, 224, 0.14);
+  --ui-green: #0a8a5f;
+  --ui-red: #d63a51;
+  --ui-warning-bg: rgba(214, 139, 18, 0.12);
+  --ui-warning-ink: #8a5a0d;
+  --ui-warning-line: rgba(214, 139, 18, 0.32);
+  --ui-overlay: rgba(20, 33, 61, 0.32);
+  --ui-shadow: rgba(16, 24, 40, 0.08);
+  --ui-grid: rgba(20, 33, 61, 0.07);
+  --ui-green-soft: rgba(14, 159, 110, 0.12);
+  --ui-red-soft: rgba(224, 68, 90, 0.12);
+  --ui-success-bg: rgba(14, 159, 110, 0.10);
   --ui-success-ink: #0a6b49;
-  --ui-success-line: #b7e6d2;
-  --card-shadow: 0 1px 2px rgba(15, 22, 41, 0.05), 0 8px 24px rgba(15, 22, 41, 0.06);
+  --ui-success-line: rgba(14, 159, 110, 0.30);
+  --ui-glass-blur: blur(14px) saturate(160%);
+  --card-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 6px 20px rgba(16, 24, 40, 0.06);
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --ui-page: #070a12;
-  --ui-surface: #0e1320;
-  --ui-subtle: #141b2b;
-  --ui-hover: #1a2336;
-  --ui-line: #212b40;
-  --ui-border: #34405a;
-  --ui-ink: #e9eef6;
-  --ui-muted: #95a1b7;
-  --ui-blue: #86abf4;
-  --ui-blue-solid: #4a63dd;
-  --ui-blue-soft: #16203a;
-  --ui-selected: #1b2a4d;
-  --ui-green: #4fd1a5;
-  --ui-red: #ff7b86;
-  --ui-warning-bg: #2e2617;
+  --ui-page: #0a0f1a;
+  --ui-surface: #121a2a;
+  --ui-subtle: #172033;
+  --ui-hover: #1c2640;
+  --ui-line: rgba(232, 237, 246, 0.07);
+  --ui-border: rgba(232, 237, 246, 0.14);
+  --ui-ink: #e8edf6;
+  --ui-muted: #97a3b8;
+  --ui-blue: #9db4ff;
+  --ui-blue-solid: #5b7be6;
+  --ui-blue-soft: rgba(124, 155, 242, 0.14);
+  --ui-selected: rgba(124, 155, 242, 0.20);
+  --ui-green: #34c795;
+  --ui-red: #ff6b7d;
+  --ui-warning-bg: rgba(240, 176, 74, 0.12);
   --ui-warning-ink: #f2c787;
-  --ui-warning-line: #5f4a2c;
-  --ui-overlay: #000000a6;
-  --ui-shadow: #00000059;
-  --ui-grid: #1a2232;
-  --ui-green-soft: #10302a;
-  --ui-red-soft: #3a1c22;
-  --ui-success-bg: #10291f;
+  --ui-warning-line: rgba(240, 176, 74, 0.30);
+  --ui-overlay: rgba(0, 0, 0, 0.6);
+  --ui-shadow: rgba(0, 0, 0, 0.4);
+  --ui-grid: rgba(232, 237, 246, 0.06);
+  --ui-green-soft: rgba(52, 199, 149, 0.14);
+  --ui-red-soft: rgba(255, 107, 125, 0.14);
+  --ui-success-bg: rgba(52, 199, 149, 0.12);
   --ui-success-ink: #7fe0bb;
-  --ui-success-line: #1f4d3c;
-  --card-shadow: 0 1px 0 rgba(255, 255, 255, 0.02), 0 12px 30px rgba(0, 0, 0, 0.35);
+  --ui-success-line: rgba(52, 199, 149, 0.30);
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.30), 0 8px 24px rgba(0, 0, 0, 0.28);
 }
-html, body { background: var(--ui-page); color: var(--ui-ink); }
+html, body { background-color: var(--ui-page); color: var(--ui-ink); }
 ::selection { background: var(--ui-selected); color: var(--ui-ink); }
-.has-section-nav { min-height: 100vh; background: var(--ui-page); color: var(--ui-ink); }
-.scan-topbar strong, .scan-dashboard strong { color: inherit; }
-.app-settings { overflow-x: clip; padding: 16px 12px; }
-.app-settings .card { background: var(--ui-surface); color: var(--ui-ink); border: 1px solid var(--ui-line); box-shadow: none; }
-.app-settings .card-header { box-shadow: none; border-bottom: 1px solid var(--ui-line); }
-.app-settings :is(.card-header-title, .label, .checkbox, .settings-section-title) { color: var(--ui-ink); }
-.app-settings .help { color: var(--ui-muted); }
-.app-settings .input { background: var(--ui-surface); border-color: var(--ui-border); color: var(--ui-ink); box-shadow: none; }
-.app-settings .input::placeholder { color: var(--ui-muted); }
-.app-settings .card-footer { border-color: var(--ui-line); }
-.app-settings .button.is-link { background: var(--brand-gradient); border: 0; color: #08101f; font-weight: 700; }
-.app-settings .button.is-link:hover { filter: brightness(1.06); color: #08101f; }
-.app-settings input[type="checkbox"] { accent-color: var(--ui-blue-solid); }
-.app-settings fieldset.field { border: 0; padding: 0; margin-inline: 0; min-width: 0; }
-.alert-threshold-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.alert-threshold-label { display: block; margin-bottom: 4px; font-size: 12px; font-weight: 700; color: var(--ui-muted); }
-@media (max-width: 420px) { .alert-threshold-grid { grid-template-columns: 1fr; } }
-.has-section-nav :is(.snapshot-grid-head, .snapshot-grid-head .snapshot-grid-cell, .acdd-grid-head) { background: var(--ui-subtle); color: var(--ui-muted); }
-.has-section-nav :is(.snapshot-grid-cell, .acdd-grid, .acdd-grid-cell, .acdd-summary-cell) { border-color: var(--ui-line); }
-.has-section-nav .snapshot-time, .has-section-nav .panel-subtitle { color: var(--ui-muted); }
-.has-section-nav .acdd-row-ac, .has-section-nav .acdd-row-dd { background: var(--ui-surface); }
-.has-section-nav .acdd-signal-ac { color: var(--ui-green); }
-.has-section-nav .acdd-signal-dd { color: var(--ui-red); }
-.lot-alert-modal { background: var(--ui-surface); border-color: var(--ui-line); color: var(--ui-ink); }
-.lot-alert-head { background: var(--ui-subtle); color: var(--ui-ink); border-bottom: 1px solid var(--ui-line); }
-.lot-alert-close { background: var(--ui-hover); border-color: var(--ui-border); color: var(--ui-ink); }
-.lot-alert-modal :is(h2, strong) { color: var(--ui-ink); }
-.lot-alert-modal :is(p, label) { color: var(--ui-muted); }
-.lot-alert-modal :is(.lot-alert-label, .lot-alert-symbol, .lot-alert-time) { color: var(--ui-muted); }
-.lot-alert-modal .lot-alert-grid div { background: var(--ui-subtle); border-color: var(--ui-line); }
-.lot-alert-modal .lot-alert-grid span { color: var(--ui-muted); }
-.lot-alert-modal :is(.acdd-candle-table th, .acdd-candle-table td) { border-color: var(--ui-line); color: var(--ui-ink); }
-.lot-alert-modal .acdd-candle-table th { background: var(--ui-subtle); }
-.lot-alert-modal .value-up { color: var(--ui-green); }
-.lot-alert-modal .value-down { color: var(--ui-red); }
-.lot-alert-modal .value-neutral { color: var(--ui-ink); }
-.lot-alert-actions { border-color: var(--ui-line); }
-.lot-alert-actions button { background: var(--brand-gradient); color: #08101f; font-weight: 700; }
-.lot-alert-actions button.secondary { background: var(--ui-surface); border-color: var(--ui-border); color: var(--ui-ink); }
-@media (min-width: 601px) and (max-width: 700px) {
-  .has-section-nav .scan-topbar { padding: 0 12px; gap: 12px; }
-  .has-section-nav .scan-nav-links { display: none; }
-  .scan-nav-end .mobile-settings, .scan-nav-end .mobile-refresh { display: inline-flex; }
-}
+
+/* Notifications: white, borderless, soft shadow. */
+.Toastify__toast { border-radius: 14px; background: var(--ui-surface); color: var(--ui-ink); border: 0;
+  box-shadow: 0 12px 32px rgba(16, 24, 40, 0.16);
+  font-family: "Plus Jakarta Sans Variable", "Segoe UI", system-ui, sans-serif; font-weight: 600; font-size: 14px; }
+.Toastify__progress-bar { background: var(--brand-gradient); }
+.Toastify__close-button { color: var(--ui-muted); }

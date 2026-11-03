@@ -4,6 +4,8 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { ThemeProvider } from './theme';
+import '@fontsource-variable/plus-jakarta-sans';
+import '@fontsource-variable/jetbrains-mono';
 
 // Sample data is compiled in only for explicitly enabled local design builds.
 const Root = process.env.REACT_APP_DESIGN_PREVIEW === 'true'

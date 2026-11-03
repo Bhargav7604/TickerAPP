@@ -93,7 +93,7 @@ class UserSecurityTests(TestCase):
         self.assertNotIn("dummy-token", response.content.decode())
         self.assertNotIn("access_token", response.content.decode())
         response = self.client.post("/api/set-access-token/", {"requestToken": "anything"}, **headers)
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 404)  # the endpoint no longer exists
         broker.assert_not_called()
         self.kite.refresh_from_db()
         self.assertEqual(self.kite.access_token, "dummy-token")
@@ -104,7 +104,7 @@ class UserSecurityTests(TestCase):
         data = {"snapshots": [{"key": "nifty", "symbol": record.symbol, "contractMonth": "current",
                               "time": 1791174600000, "indexLevel": 1, "netLots": 999999}]}
         response = self.client.post("/api/snapshots/save/", json.dumps(data), content_type="application/json", **self.headers())
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 404)  # the endpoint no longer exists
         record.refresh_from_db()
         self.assertEqual((record.index_level, record.net_lots, MarketSnapshot.objects.count()), (25000, 100, 1))
 

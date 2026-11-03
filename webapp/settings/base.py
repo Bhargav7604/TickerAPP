@@ -55,5 +55,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 STATIC_URL = "/static/"
 
 TIME_ZONE = "UTC"
+# Datetimes are stored as plain India (IST) clock times. Django 5 changed this default to True, so pin it.
+USE_TZ = False
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 5000

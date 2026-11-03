@@ -5,11 +5,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 DEBUG = False
 
+# Public hostnames come from DJANGO_ALLOWED_HOSTS in /etc/tickerapp/env; localhost is for in-container health checks.
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
-    "3.109.16.25",
-    "ticker.quantlab.co.in",
 ]
 ALLOWED_HOSTS.extend(
     host.strip()
@@ -18,10 +17,7 @@ ALLOWED_HOSTS.extend(
 )
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-CSRF_TRUSTED_ORIGINS = [
-    "https://ticker.quantlab.co.in",
-    "https://3.109.16.25",
-]
+CSRF_TRUSTED_ORIGINS = []
 CSRF_TRUSTED_ORIGINS.extend(
     f"https://{host.strip()}"
     for host in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",")
@@ -29,6 +25,8 @@ CSRF_TRUSTED_ORIGINS.extend(
 )
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
+# Browsers remember to use HTTPS only (180 days). Subdomains are left out on purpose.
+SECURE_HSTS_SECONDS = 15552000
 
 TEMPLATES = [
     {
@@ -76,4 +74,7 @@ STATICFILES_DIRS = [
 
 STATIC_ROOT = Path.joinpath(BASE_DIR, "staticfiles")
 
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+}

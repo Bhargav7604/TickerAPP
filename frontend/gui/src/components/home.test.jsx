@@ -71,15 +71,14 @@ test("must-know box, expiry calendar and disclaimer", async () => {
   expect(screen.getByText(/does not tell you to buy or sell/)).toBeInTheDocument();
 });
 
-test("details stay hidden until the trader asks", async () => {
+test("card details open on request and the market desk is always on the page", async () => {
   await renderHome();
   const nifty = screen.getByRole("article", { name: "NIFTY summary" });
   expect(within(nifty).queryByText("Why this light")).not.toBeInTheDocument();
   fireEvent.click(within(nifty).getByRole("button", { name: /More details/ }));
   expect(within(nifty).getByText("Why this light")).toBeInTheDocument();
-  expect(screen.queryByRole("heading", { name: "Full tables" })).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: /full market tables/ }));
   expect(screen.getByRole("heading", { name: "Full tables" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /full market tables/ })).not.toBeInTheDocument();
 });
 
 test("normal days have no expiry banner", async () => {
@@ -88,7 +87,7 @@ test("normal days have no expiry banner", async () => {
   expect(screen.queryByText(/Last hour of expiry/)).not.toBeInTheDocument();
 });
 
-test("the latest swing alert shows as a quiet strip, not a popup, and opens the full tables", async () => {
+test("the latest swing alert shows as a quiet strip, not a popup, and jumps to the swing list", async () => {
   const latestSwing = { indexKey: "sensex", indexName: "Sensex", symbol: "SENSEX26OCTFUT", time: Date.now(),
     previousNetLots: -50, currentNetLots: 74, swingLots: 124, threshold: 40, indexLevel: 73300 };
   await renderHome(payload({ expiryToday: [], lastHour: false }), { latestSwing });
@@ -96,9 +95,13 @@ test("the latest swing alert shows as a quiet strip, not a popup, and opens the 
   const strip = screen.getByRole("region", { name: "Latest swing alert" });
   expect(strip).toHaveTextContent("SENSEX +124 lots");
   expect(strip).toHaveTextContent("-50 → +74 · SENSEX26OCTFUT");
+  const panel = document.createElement("div");
+  panel.className = "scan-activity";
+  panel.scrollIntoView = jest.fn();
+  document.body.appendChild(panel);
   fireEvent.click(within(strip).getByRole("button", { name: "See all swing alerts" }));
-  expect(screen.getByRole("heading", { name: "Full tables" })).toBeInTheDocument();
-  expect(localStorage.getItem("utraders-home-tables")).toBe("open");
+  expect(panel.scrollIntoView).toHaveBeenCalled();
+  panel.remove();
 });
 
 test("yesterday's swing alert is not shown", async () => {

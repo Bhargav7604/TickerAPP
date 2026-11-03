@@ -153,3 +153,33 @@ test("live swing alerts are listed at once, merge into their window and the newe
   expect(bank).toHaveTextContent(/0 → -400 lots · alert at \d\d:\d\d/);
   expect(screen.getByRole("tab", { name: "Swing alerts" })).toHaveTextContent("3");
 });
+
+test("the chart switches between candles, line, area and columns and remembers the choice", () => {
+  localStorage.clear();
+  setup();
+  const types = screen.getByRole("group", { name: "chart type" });
+  expect(within(types).getAllByRole("button").map(button => button.textContent)).toEqual(["Candles", "Line", "Area", "Columns"]);
+  expect(within(types).getByRole("button", { name: "Candles" })).toHaveAttribute("aria-pressed", "true");
+  expect(screen.getByText("Candles built from 5-minute snapshots")).toBeInTheDocument();
+  const svg = () => screen.getByRole("img", { name: /NIFTY26OCTFUT index/ });
+  expect(svg().querySelectorAll("rect").length).toBeGreaterThan(5);
+  fireEvent.click(within(types).getByRole("button", { name: "Columns" }));
+  expect(svg().querySelectorAll("rect").length).toBeGreaterThan(5);
+  expect(screen.getByText("Net lots up")).toBeInTheDocument();
+  fireEvent.click(within(types).getByRole("button", { name: "Area" }));
+  expect(svg().querySelector('path[fill^="url("]')).not.toBeNull();
+  fireEvent.click(within(types).getByRole("button", { name: "Line" }));
+  expect(svg().querySelectorAll("rect")).toHaveLength(0);
+  expect(localStorage.getItem("utraders-chart-type")).toBe("line");
+});
+
+test("candles come from the broker when available and only for the charted contract", async () => {
+  localStorage.setItem("utraders-chart-type", "candles");
+  const start = new Date("2026-10-09T14:00:00+05:30").getTime() / 1000;
+  const candle = (index, open, close) => ({ time: start + index * 300, open, high: Math.max(open, close) + 10, low: Math.min(open, close) - 10, close, volume: 5 });
+  const loadCandles = jest.fn(async () => ({ type: "success", symbol: "NIFTY26OCTFUT", candles: [candle(0, 25150, 25180), candle(1, 25180, 25170)] }));
+  setup({ loadCandles });
+  expect(await screen.findByText("Zerodha 5-minute futures candles")).toBeInTheDocument();
+  expect(loadCandles).toHaveBeenCalledWith("nifty", "current", expect.anything());
+  expect(screen.getByRole("img", { name: /NIFTY26OCTFUT index/ }).querySelectorAll("rect")).toHaveLength(2);
+});

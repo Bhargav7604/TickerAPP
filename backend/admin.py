@@ -33,17 +33,6 @@ class TickerUserAdminForm(forms.ModelForm):
         self._stored_password = self.instance.password
         self.initial["password"] = ""
         self.fields["password"].required = not self.instance.pk
-        optional_fields = [
-            "broker_username",
-            "broker_password",
-            "broker_twofa",
-            "broker_api_key",
-            "broker_api_secret",
-            "broker_access_token",
-        ]
-        for field_name in optional_fields:
-            if field_name in self.fields:
-                self.fields[field_name].required = False
 
     def save(self, commit=True):
         user = super().save(commit=False)

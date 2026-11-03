@@ -1,64 +1,74 @@
-import { Component } from "react";
-import { Activity, ChartNoAxesColumn, ChartScatter, House, Layers, LogOut, WalletCards, Moon, RefreshCw, Settings, Sun, UserCircle } from "lucide-react";
-import { ThemeContext } from "../theme";
+import React, { useState } from "react";
+import { AppBar, Box, Button, Divider, IconButton, ListItemIcon, Menu, MenuItem, Toolbar, Tooltip, Typography } from "@mui/material";
+import { Activity, ChartNoAxesColumn, ChartScatter, House, Layers, LogOut, Moon, RefreshCw, Settings, Sun, UserCircle, WalletCards } from "lucide-react";
+import logo from "../assets/brand/utraders-logo-dark.png";
+import logoOnDark from "../assets/brand/utraders-logo-light.png";
+import { useTheme } from "../theme";
 import brandMark from "../assets/brand/utraders-mark.png";
-import wordmark from "../assets/brand/utraders-wordmark-light.png";
 
-class Navbar extends Component {
-  static contextType = ThemeContext;
-  state = { isMenuOpen: false };
-  accountRef = null;
-  componentDidMount() { document.addEventListener("pointerdown", this.closeOutside); }
-  componentWillUnmount() { document.removeEventListener("pointerdown", this.closeOutside); }
-  closeOutside = event => {
-    if (this.accountRef && !this.accountRef.contains(event.target)) this.setState({ isMenuOpen: false });
-  };
-  render() {
-    return <nav className="scan-topbar" aria-label="Main navigation">
-      <button className="scan-brand" type="button" onClick={() => this.props.changePage("dashboard")} aria-label="Utraders dashboard">
-        <img className="brand-logo-mark" src={brandMark} alt="" />
-        <img className="brand-wordmark" src={wordmark} alt="" />
-      </button>
-      <div className="scan-nav-links">
-        <button type="button" className={this.props.currentPage === "dashboard" ? "active" : ""}
-          onClick={() => this.props.changePage("dashboard")} aria-current={this.props.currentPage === "dashboard" ? "page" : undefined}>
-          <House size={17} /><span>Home</span>
-        </button>
-        <button type="button" className={this.props.currentPage === "index-stocks" ? "active" : ""} aria-current={this.props.currentPage === "index-stocks" ? "page" : undefined}
-          onClick={() => this.props.changePage("index-stocks")}><ChartScatter size={18} /><span>Index Stocks</span></button>
-        <button type="button" className={this.props.currentPage === "equity" ? "active" : ""} aria-current={this.props.currentPage === "equity" ? "page" : undefined}
-          onClick={() => this.props.changePage("equity")}><ChartNoAxesColumn size={18} /><span>Equity</span></button>
-        <button type="button" className={this.props.currentPage === "index-options" ? "active" : ""} aria-current={this.props.currentPage === "index-options" ? "page" : undefined}
-          onClick={() => this.props.changePage("index-options")}><Layers size={18} /><span>Index Options</span></button>
-        <button type="button" className={this.props.currentPage === "oi-analysis" ? "active" : ""} aria-current={this.props.currentPage === "oi-analysis" ? "page" : undefined}
-          onClick={() => this.props.changePage("oi-analysis")}><Activity size={18} /><span>OI Analysis</span></button>
-        <button type="button" className={this.props.currentPage === "trading" ? "active" : ""} aria-current={this.props.currentPage === "trading" ? "page" : undefined}
-          onClick={() => this.props.changePage("trading")}><WalletCards size={18} /><span>My Trading</span></button>
-        <button type="button" className={this.props.currentPage === "settings" ? "active" : ""} title="Settings" aria-label="Settings"
-          onClick={() => this.props.changePage("settings")}><Settings size={19} /><span>Settings</span></button>
-      </div>
-      <div className="scan-nav-end">
-        <button className="scan-icon-button" type="button" title={this.context.theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-          aria-label={this.context.theme === "dark" ? "Switch to light mode" : "Switch to dark mode"} onClick={this.context.toggleTheme}>
-          {this.context.theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
-        </button>
-        {!["index-stocks", "equity", "index-options", "oi-analysis", "trading"].includes(this.props.currentPage) && <button className="scan-icon-button mobile-refresh" type="button" title="Refresh market data" aria-label="Refresh market data"
-          onClick={this.props.handleDashboardRefresh}><RefreshCw size={20} /></button>}
-        <button className="scan-icon-button mobile-settings" type="button" title="Settings" aria-label="Settings"
-          onClick={() => this.props.changePage("settings")}><Settings size={21} /></button>
-        <div className="scan-account" ref={element => { this.accountRef = element; }}>
-          <button type="button" className="scan-icon-button" title="Account" aria-label="Account menu" aria-expanded={this.state.isMenuOpen}
-            onClick={() => this.setState(state => ({ isMenuOpen: !state.isMenuOpen }))}
-            onKeyDown={event => { if (event.key === "Escape") this.setState({ isMenuOpen: false }); }}>
-            <UserCircle size={23} />
-          </button>
-          {this.state.isMenuOpen && <div className="scan-account-popover">
-            <strong>{this.props.username}</strong>
-            <button type="button" onClick={this.props.handleLogout}><LogOut size={16} />Log out</button>
-          </div>}
-        </div>
-      </div>
-    </nav>;
-  }
+export const NAV_ITEMS = [
+  ["dashboard", "Home", "Home", House],
+  ["index-stocks", "Index Stocks", "Stocks", ChartScatter],
+  ["equity", "Equity", "Equity", ChartNoAxesColumn],
+  ["index-options", "Index Options", "Options", Layers],
+  ["oi-analysis", "OI Analysis", "OI", Activity],
+  ["trading", "My Trading", "Trading", WalletCards],
+  ["settings", "Settings", "Settings", Settings],
+];
+// Pages that poll their own data; the dashboard refresh button only applies to Home's market tables.
+const OWN_REFRESH = ["index-stocks", "equity", "index-options", "oi-analysis", "trading", "settings"];
+
+export default function Navbar({ username, handleLogout, changePage = () => {}, currentPage, handleDashboardRefresh }) {
+  const [anchor, setAnchor] = useState(null);
+  const { theme, toggleTheme } = useTheme();
+  const dark = theme === "dark";
+  const themeLabel = dark ? "Switch to light mode" : "Switch to dark mode";
+  return <AppBar position="sticky" sx={{ top: 0, zIndex: theme => theme.zIndex.appBar }}>
+    <Toolbar component="nav" aria-label="Main navigation" sx={{ gap: 1.5, minHeight: { xs: 60 }, px: { xs: 1.5, sm: 2.5 } }}>
+      <Box component="button" type="button" onClick={() => changePage("dashboard")} aria-label="Utraders dashboard"
+        sx={{ display: "flex", alignItems: "center", border: 0, background: "none", p: 0.5, cursor: "pointer", borderRadius: 2, flex: "none" }}>
+        <Box component="img" src={dark ? logoOnDark : logo} alt="" sx={{ height: 38, display: { xs: "none", sm: "block" } }} />
+        <Box component="img" src={brandMark} alt="" sx={{ height: 34, display: { xs: "block", sm: "none" } }} />
+      </Box>
+
+      <Box sx={{ display: { xs: "none", lg: "flex" }, gap: 0.5, flex: 1, justifyContent: "center", minWidth: 0 }}>
+        {NAV_ITEMS.map(([page, label, , Icon]) => {
+          const active = currentPage === page;
+          return <Button key={page} onClick={() => changePage(page)} aria-current={active ? "page" : undefined}
+            startIcon={<Icon size={17} />} size="small"
+            sx={{
+              px: 1.75, height: 38, color: active ? "accent.main" : "text.secondary", bgcolor: active ? "rgba(74, 111, 224, 0.14)" : "transparent",
+              "&:hover": { bgcolor: active ? "rgba(74, 111, 224, 0.20)" : "action.hover" },
+            }}>{label}</Button>;
+        })}
+      </Box>
+      <Box sx={{ flex: { xs: 1, lg: "none" } }} />
+
+      {!OWN_REFRESH.includes(currentPage) && handleDashboardRefresh && <Tooltip title="Refresh market data">
+        <IconButton aria-label="Refresh market data" onClick={handleDashboardRefresh}><RefreshCw size={20} /></IconButton>
+      </Tooltip>}
+      <Tooltip title={themeLabel}>
+        <IconButton aria-label={themeLabel} onClick={toggleTheme}>{dark ? <Sun size={20} /> : <Moon size={20} />}</IconButton>
+      </Tooltip>
+      <Tooltip title="Account">
+        <IconButton aria-label="Account menu" aria-haspopup="menu" aria-expanded={Boolean(anchor)} onClick={event => setAnchor(event.currentTarget)}>
+          <UserCircle size={24} />
+        </IconButton>
+      </Tooltip>
+      <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }} transformOrigin={{ vertical: "top", horizontal: "right" }}>
+        <Box sx={{ px: 2, py: 1 }}>
+          <Typography variant="caption" color="text.secondary">Signed in as</Typography>
+          <Typography variant="subtitle1">{username}</Typography>
+        </Box>
+        <Divider />
+        <MenuItem onClick={() => { setAnchor(null); changePage("settings"); }}>
+          <ListItemIcon><Settings size={17} /></ListItemIcon>Settings
+        </MenuItem>
+        <MenuItem onClick={() => { setAnchor(null); if (handleLogout) handleLogout(); }}>
+          <ListItemIcon><LogOut size={17} /></ListItemIcon>Log out
+        </MenuItem>
+      </Menu>
+    </Toolbar>
+  </AppBar>;
 }
-export default Navbar;

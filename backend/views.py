@@ -4,6 +4,7 @@ import secrets
 import traceback
 import datetime as dt
 from zoneinfo import ZoneInfo
+from .throttle import allow_once, blocked_minutes, clear, record_failure
 from .logger import log
 # from alice_blue import AliceBlue
 from django.conf import settings
@@ -38,7 +39,8 @@ def health(request):
         db_connection.ensure_connection()
         return JsonResponse({"status": "ok", "db": True}, status=200)
     except Exception as e:
-        return JsonResponse({"status": "db_unavailable", "db": False, "error": repr(e)}, status=503)
+        log(f"Health check: database unavailable ({e!r})", "ERROR")
+        return JsonResponse({"status": "db_unavailable", "db": False}, status=503)
 
 DEFAULT_ALERT_LOT_THRESHOLDS = {"nifty": 400.0, "banknifty": 400.0, "sensex": 40.0}
 ALERT_THRESHOLD_FIELDS = {
@@ -111,21 +113,6 @@ def user_settings_payload(user, contracts=None):
 
 def get_enabled_smtp_settings():
     return SMTPSettings.objects.filter(enabled=True).order_by("-updated_at", "-id").first()
-
-
-def get_kite_credentials(user=None):
-    kite_settings = KiteSettings.objects.order_by("-updated_at", "-id").first()
-
-    api_key = kite_settings.api_key.strip() if kite_settings else ""
-    api_secret = kite_settings.api_secret.strip() if kite_settings else ""
-    access_token = kite_settings.access_token.strip() if kite_settings else ""
-
-    if user:
-        api_key = api_key or user.broker_api_key.strip()
-        api_secret = api_secret or user.broker_api_secret.strip()
-        access_token = access_token or user.broker_access_token.strip()
-
-    return kite_settings, api_key, api_secret, access_token
 
 
 def parse_float(value, default=0.0):
@@ -264,15 +251,25 @@ def login_view(request):
         if not username or not password:
             return JsonResponse({"type": "UserException", "message": "Invalid Credentials"}, status=400)
 
+        # Five wrong passwords for one login name lock it for 15 minutes, whoever is guessing.
+        throttle_key = f"login:{username.lower()}"
+        wait = blocked_minutes(throttle_key)
+        if wait:
+            return JsonResponse({"type": "UserException", "message": f"Too many failed attempts. Try again in {wait} minute{'s' if wait != 1 else ''}."}, status=429)
+
         try:
             user = User.objects.get(username=username)
 
         except User.DoesNotExist:
             make_password(password)
-            return JsonResponse({"type": "UserException", "message": "Invalid Credentials"})
+            record_failure(throttle_key)
+            return JsonResponse({"type": "UserException", "message": "Invalid Credentials"}, status=400)
 
         if not user.check_password(password):
+            record_failure(throttle_key)
             return JsonResponse({"type": "UserException", "message": "Invalid Credentials"}, status=400)
+
+        clear(throttle_key)
 
         validity_error = user_validity_error(user)
         if validity_error:
@@ -301,6 +298,19 @@ def login_view(request):
         return JsonResponse({"type": "ServerError", "message": "Server Error occured while trying to log in !"}, status=500)
 
 
+@csrf_exempt
+@require_http_methods(["POST"])
+def logout_view(request):
+    """Ends the session on the server too, so a copied token stops working at once."""
+    res = protected(request)
+    if isinstance(res, JsonResponse):
+        return res
+    user = res[1]
+    user.active_session_token = ""
+    user.save(update_fields=["active_session_token"])
+    return JsonResponse({"type": "success", "message": "Logged out."}, status=200)
+
+
 @require_http_methods(["GET"])
 def current_user(request):
     res = protected(request)
@@ -326,12 +336,6 @@ def broker_token(request):
     if isinstance(res, JsonResponse):
         return res
     return JsonResponse({"type": "info", "message": "Market data is provided by the server."})
-
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def set_access_token(request):
-    return JsonResponse({"type": "Forbidden", "message": "Refresh the broker session from admin."}, status=403)
 
 
 @never_cache
@@ -492,12 +496,6 @@ def snapshot_heartbeat(request):
         return JsonResponse({"type": "ServerError", "message": "Server Error occured while fetching snapshot heartbeat !"}, status=500)
 
 
-@csrf_exempt
-@require_http_methods(["POST"])
-def save_snapshots(request):
-    return JsonResponse({"type": "Forbidden", "message": "Market history is recorded by the server only."}, status=403)
-
-
 @require_http_methods(["GET"])
 def get_settings(request):
     res = protected(request)
@@ -629,6 +627,10 @@ def send_lot_swing_alert(request):
         smtp_settings = get_enabled_smtp_settings()
         if not smtp_settings:
             return JsonResponse({"type": "SMTPConfigError", "message": "SMTP settings are not enabled in admin."}, status=400)
+
+        # At most one email per index every five minutes, so alerts cannot be used to flood an inbox.
+        if not allow_once(f"alert-email:{user.id}:{index_key}"):
+            return JsonResponse({"type": "info", "message": "An alert email for this index was sent a few minutes ago."}, status=200)
 
         from_email = smtp_settings.from_email or smtp_settings.username
         if not from_email:
