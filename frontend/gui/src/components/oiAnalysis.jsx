@@ -95,7 +95,7 @@ function ChainTable({ data, flashes = {} }) {
   </table></div>;
 }
 
-export default function OiAnalysis({ api }) {
+function OiAnalysis({ api }) {
   const [index, setIndex] = useState("nifty");
   const [tab, setTab] = useState("trend");
   const [meta, setMeta] = useState({ expiries: [], recorded: [], intervals: [3, 6, 15, 30, 60], strikeWindows: [5, 7, 10, 15] });
@@ -267,3 +267,6 @@ export default function OiAnalysis({ api }) {
     <p className="oi-disclaimer">Utraders describes the market. It does not tell you to buy or sell. F&amp;O trading is high risk and most traders lose money. Please talk to a SEBI-registered adviser before you invest.</p>
   </main>;
 }
+
+// Live index prices re-render the app every second; this page only changes with its own props.
+export default React.memo(OiAnalysis);

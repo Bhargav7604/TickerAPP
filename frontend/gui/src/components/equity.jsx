@@ -89,7 +89,7 @@ function Depth({ contract, quote, pending, onClose, indexOptions }) {
   </aside>;
 }
 
-export default function Equity({ api, username, indexOptions = false }) {
+function Equity({ api, username, indexOptions = false }) {
   const title = indexOptions ? "Index Options" : "Equity";
   const searchLabel = indexOptions ? "Search index options" : "Search stock futures or options";
   const columnLabel = indexOptions ? "Customize index option columns" : "Customize equity columns";
@@ -389,3 +389,6 @@ export default function Equity({ api, username, indexOptions = false }) {
     {dialog === "delete" && <Dialog title="Delete watchlist?" onClose={() => setDialog(null)}><p className="eq-dialog-note">Remove {activeList.name} from this browser?</p><footer><button onClick={() => setDialog(null)}>Cancel</button><button onClick={() => { const lists = prefs.lists.filter(list => list.id !== activeList.id); setPrefs(previous => ({ ...previous, lists, activeList: lists[0].id })); setDialog(null); }}>Delete watchlist</button></footer></Dialog>}
   </main>;
 }
+
+// Live index prices re-render the app every second; this page only changes with its own props.
+export default React.memo(Equity);

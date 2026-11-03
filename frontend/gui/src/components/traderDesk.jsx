@@ -310,7 +310,7 @@ function MoneyTab({ api, overview, onSaved, lang, setLang }) {
   </div>;
 }
 
-export default function TraderDesk({ api }) {
+function TraderDesk({ api }) {
   const [tab, setTab] = useState("plan");
   const [overview, setOverview] = useState(null);
   const [error, setError] = useState("");
@@ -353,3 +353,6 @@ export default function TraderDesk({ api }) {
     {overview && <p className="desk-disclaimer">{translate(overview.disclaimer, lang)}</p>}
   </main>;
 }
+
+// Live index prices re-render the app every second; this page only changes with its own props.
+export default React.memo(TraderDesk);

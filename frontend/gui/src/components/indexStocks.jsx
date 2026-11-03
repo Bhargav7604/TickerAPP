@@ -5,7 +5,6 @@ import { BUILDUP_NAMES, HEATMAP_INDEXES, clock, price, readStockIndex, readStock
 
 const LIVE_MS = 5000;
 const CLOSED_MS = 60000;
-const TOP = 3;
 const signedPrice = value => Number.isFinite(value) ? `${value > 0 ? "+" : ""}${price(value)}` : "--";
 const CHECK_TEXT = {
   Change: { bull: "Up from yesterday's close", bear: "Down from yesterday's close", flat: "Same as yesterday's close" },
@@ -118,20 +117,6 @@ function BreadthChart({ data, stocks, onSelect }) {
   </section>;
 }
 
-function Mover({ stock, place, side, onSelect }) {
-  const levels = stock.pivots ? [["S1", stock.pivots.s1], ["R1", stock.pivots.r1]] : [["Low", stock.low], ["High", stock.high]];
-  return <button type="button" className={`ix-mover is-${side}`} onClick={() => onSelect(stock.symbol)}>
-    <span className="ix-mover-head"><b>{stock.symbol}</b><span className={tone(stock.changePct)}>{signedPct(stock.changePct)}</span></span>
-    <span className="ix-mover-tag">{side === "up" ? "Top gainer" : "Top loser"} #{place}</span>
-    <span className="ix-mover-grid">
-      <span>LTP</span><b>{price(stock.ltp)}</b>
-      <span>vs VWAP</span><b className={tone(stock.vsVwapPct)}>{signedPct(stock.vsVwapPct)}</b>
-      {levels.map(([name, value]) => <Fragment key={name}><span>{name}</span><b>{price(value)}</b></Fragment>)}
-    </span>
-    <span className="ix-mover-foot"><Align stock={stock} side={side} /><span>{stock.sector}</span></span>
-  </button>;
-}
-
 function Align({ stock, side }) {
   const agree = side === "up" ? stock.bull : stock.bear;
   const total = stock.checks.length;
@@ -217,27 +202,10 @@ function StockTable({ title, side, stocks, open, onToggle }) {
   </section>;
 }
 
-function SectorFlow({ sectors }) {
-  return <section className="ix-panel ix-sectors" aria-label="Sector flow">
-    <header className="ix-panel-head"><h2>Sector flow</h2><span>by average change</span></header>
-    <ul>{sectors.map(sector => <li key={sector.name}>
-      <div className="ix-sector-head">
-        <b>{sector.name}</b>
-        <span className={tone(sector.avgChangePct)}>{signedPct(sector.avgChangePct)}</span>
-        <small>{sector.up}↑ {sector.down}↓</small>
-      </div>
-      <div className="ix-squares">
-        {sector.stocks.map(stock => <span key={stock.symbol} className={`ix-square ${tone(stock.changePct)}`} title={`${stock.symbol} ${signedPct(stock.changePct)}`} />)}
-        <span className="sr-only">{sector.stocks.map(stock => `${stock.symbol} ${signedPct(stock.changePct)}`).join(", ")}</span>
-      </div>
-    </li>)}</ul>
-  </section>;
-}
-
 const VIEWS = [["details", "Details"], ["heatmap", "Heatmap"]];
 const HEATMAP_ONLY = "nifty500";
 
-export default function IndexStocks({ api }) {
+function IndexStocks({ api }) {
   const [index, setIndex] = useState(readStockIndex);
   const [view, setView] = useState(readStockView);
   const [openRequest, setOpenRequest] = useState(null);
@@ -364,15 +332,9 @@ function IndexDetails({ api, index, openRequest }) {
 
         <BreadthChart data={data} stocks={stocks} onSelect={select} />
 
-        <section className="ix-movers" aria-label="Top movers">
-          {gainers.slice(0, TOP).map((stock, position) => <Mover key={stock.symbol} stock={stock} place={position + 1} side="up" onSelect={select} />)}
-          {losers.slice(0, TOP).map((stock, position) => <Mover key={stock.symbol} stock={stock} place={position + 1} side="down" onSelect={select} />)}
-        </section>
-
         <div className="ix-grid">
           <StockTable title="Gainers" side="up" stocks={gainers} open={open} onToggle={toggle} />
           <StockTable title="Losers" side="down" stocks={losers} open={open} onToggle={toggle} />
-          <SectorFlow sectors={data.sectors} />
         </div>
         {unchanged.length > 0 && <p className="ix-muted ix-unchanged">No change: {unchanged.map(stock => stock.symbol).join(", ")}</p>}
         {data.missing?.length > 0 && <p className="ix-muted ix-unchanged">No live price yet: {data.missing.join(", ")}</p>}
@@ -390,3 +352,6 @@ function IndexDetails({ api, index, openRequest }) {
     </>}
   </>;
 }
+
+// Live index prices re-render the app every second; this page only changes with its own props.
+export default React.memo(IndexStocks);

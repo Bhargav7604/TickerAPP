@@ -37,3 +37,25 @@
 .has-section-nav .acdd-grid-row.is-latest { background: var(--ui-selected); box-shadow: inset 4px 0 var(--ui-blue); animation: latest-alert-flash 1.2s ease-out 3; }
 @keyframes latest-alert-flash { 0% { background: color-mix(in srgb, #f5b83d 38%, var(--ui-surface)); } 100% { background: var(--ui-selected); } }
 @media (prefers-reduced-motion: reduce) { .scan-activity .side-row.is-latest, .has-section-nav .acdd-grid-row.is-latest { animation: none; } }
+
+/* Market overview: one card per index instead of a wide table. */
+.has-section-nav .market-comparison.market-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; width: auto; max-width: none; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; overflow: visible; }
+.market-card { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--ui-line); border-top: 3px solid var(--ui-border); border-radius: 12px; background: var(--ui-surface); box-shadow: var(--card-shadow); overflow: hidden; }
+.market-card.is-selected { border-top-color: var(--brand-blue); box-shadow: 0 0 0 2px var(--ui-selected), var(--card-shadow); }
+.market-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; width: 100%; padding: 12px 14px; border: 0; border-bottom: 1px solid var(--ui-line); background: none; color: var(--ui-ink); text-align: left; cursor: pointer; }
+.market-card-head:hover { background: var(--ui-hover); }
+.market-card-name { display: flex; flex-direction: column; gap: 2px; }
+.market-card-name strong { font-size: 16px; font-weight: 800; color: var(--ui-ink); }
+.market-card-name small { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: var(--ui-muted); }
+.market-card-price { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-variant-numeric: tabular-nums; }
+.market-card-price b { font-size: 20px; font-weight: 800; color: var(--ui-ink); }
+.market-card-price small { font-size: 12px; font-weight: 700; color: var(--ui-muted); }
+.market-card-metrics { display: grid; margin: 0; padding: 4px 14px 10px; }
+.market-card-metrics > div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--ui-line); }
+.market-card-metrics > div:last-child { border-bottom: 0; }
+.market-card-metrics dt { font-size: 13px; color: var(--ui-muted); }
+.market-card-metrics dt span { font-size: 11px; }
+.market-card-metrics dd { margin: 0; font-size: 14px; font-weight: 700; color: var(--ui-ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.market-card .value-up { color: var(--ui-green) !important; }
+.market-card .value-down { color: var(--ui-red) !important; }
+@media (max-width: 900px) { .has-section-nav .market-comparison.market-cards { grid-template-columns: minmax(0, 1fr); } }

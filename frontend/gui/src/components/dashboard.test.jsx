@@ -10,8 +10,8 @@ const setup = extra => {
 test("renders one comparison table with real metric units and selects the charted index", () => {
   setup();
   const comparison = screen.getByRole("region", { name: "Index comparison" });
-  expect(within(comparison).getAllByRole("row")).toHaveLength(4);
-  expect(screen.getByRole("columnheader", { name: /Away from VWAP.*pts/ })).toBeInTheDocument();
+  expect(within(comparison).getAllByRole("article")).toHaveLength(3);
+  expect(within(comparison).getAllByText("Away from VWAP")).toHaveLength(3);
   fireEvent.click(screen.getByRole("button", { name: "Chart banknifty" }));
   expect(screen.getByLabelText("chart index")).toHaveValue("banknifty");
   expect(screen.getByRole("button", { name: "Chart banknifty" })).toHaveAttribute("aria-pressed", "true");
@@ -82,8 +82,9 @@ test("five-minute axis and full-session range remain available", () => {
 test("offline prices are shown as missing, not misleading zero quotes", () => {
   setup({ feedStatus: "offline", spotPrices: {} });
   const comparison = screen.getByRole("region", { name: "Index comparison" });
-  const nifty = within(comparison).getAllByRole("row")[1];
-  expect(within(nifty).getAllByRole("cell")[0]).toHaveTextContent(/^\-$/);
+  const nifty = within(comparison).getByRole("article", { name: "NIFTY overview" });
+  expect(nifty.querySelector(".market-card-price b")).toHaveTextContent(/^\-$/);
+  expect(nifty.querySelector('[data-column="netLots"] dd')).toHaveTextContent(/^\-$/);
   expect(screen.getByRole("status")).toHaveTextContent("Reconnecting");
 });
 

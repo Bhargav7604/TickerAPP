@@ -37,7 +37,7 @@ async function setup(load = jest.fn(async () => payload())) {
 
 beforeEach(() => { localStorage.clear(); jest.useRealTimers(); });
 
-test("shows breadth, the gauge, top movers and both tables for the chosen index", async () => {
+test("shows breadth, the gauge and both tables for the chosen index", async () => {
   const load = await setup();
   expect(load).toHaveBeenCalledWith("banknifty", expect.anything());
   expect(screen.getByRole("tab", { name: "BANK NIFTY" })).toHaveAttribute("aria-selected", "true");
@@ -50,11 +50,6 @@ test("shows breadth, the gauge, top movers and both tables for the chosen index"
   expect(within(gauge).getAllByRole("button", { name: /%$/ }).map(button => button.querySelector("b").textContent))
     .toEqual(["HDFCBANK", "ICICIBANK", "AXISBANK", "CANBK", "SBIN"]);
 
-  const movers = screen.getByRole("region", { name: "Top movers" });
-  expect(within(movers).getAllByRole("button").map(button => button.querySelector("b").textContent)).toEqual(
-    ["HDFCBANK", "ICICIBANK", "AXISBANK", "CANBK", "SBIN"]);
-  expect(within(movers).getByText("Top loser #1")).toBeInTheDocument();
-
   const gainers = screen.getByRole("region", { name: "Gainers" });
   expect(within(gainers).getAllByRole("row")).toHaveLength(4);
   expect(within(gainers).getAllByText("LB")).toHaveLength(3);
@@ -62,7 +57,8 @@ test("shows breadth, the gauge, top movers and both tables for the chosen index"
   expect(within(losers).getAllByRole("rowheader").map(cell => cell.querySelector("button").textContent)).toEqual(["CANBK", "SBIN"]);
   expect(within(losers).getAllByLabelText("3 of 4 checks agree")).toHaveLength(2);
   expect(screen.getByText("No change: PNB")).toBeInTheDocument();
-  expect(within(screen.getByRole("region", { name: "Sector flow" })).getByText("-0.83%")).toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "Sector flow" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "Top movers" })).not.toBeInTheDocument();
   expect(screen.getByText(/ready for 5 of 6 stocks/)).toBeInTheDocument();
 });
 

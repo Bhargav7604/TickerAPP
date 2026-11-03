@@ -58,7 +58,7 @@ function RangeBar({ range }) {
   </div>;
 }
 
-function IndexCard({ card, lang, onOpenStocks }) {
+const IndexCard = React.memo(function IndexCard({ card, lang, onOpenStocks }) {
   const [open, setOpen] = useState(false);
   const Direction = DIRECTION_ICONS[card.direction.code];
   const change = card.change;
@@ -119,7 +119,7 @@ function IndexCard({ card, lang, onOpenStocks }) {
       {card.late ? `${t("Data is late · last update", lang)} ${day(card.asOf)} ${clock(card.asOf)}` : card.live ? `${t("Live", lang)} · ${clock(card.asOf)} IST` : `${t("Updated", lang)} ${clock(card.asOf)} IST`}
     </footer>
   </article>;
-}
+});
 
 function speak(text, lang) {
   if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) return false;
@@ -165,7 +165,10 @@ export default function Home({ api, details, latestSwing, onOpenStocks }) {
     const abort = new AbortController();
     load(abort.signal);
     const timer = setInterval(() => { if (document.visibilityState === "visible") load(abort.signal); }, REFRESH_MS);
-    return () => { abort.abort(); clearInterval(timer); };
+    // Coming back to the tab (or unlocking a phone) refreshes straight away instead of showing a stale light.
+    const onVisible = () => { if (document.visibilityState === "visible") load(abort.signal); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { abort.abort(); clearInterval(timer); document.removeEventListener("visibilitychange", onVisible); };
   }, [load]);
 
   const expiring = data?.expiryToday?.length > 0;

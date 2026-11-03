@@ -115,3 +115,12 @@ test("each card can open its index's stocks", async () => {
   fireEvent.click(within(bank).getByRole("button", { name: /See stocks/ }));
   expect(onOpenStocks).toHaveBeenCalledWith("banknifty");
 });
+
+test("returning to the tab reloads straight away so the light is never left stale", async () => {
+  const api = await renderHome(payload({ expiryToday: [], lastHour: false }));
+  expect(api.decision).toHaveBeenCalledTimes(1);
+  const visibility = jest.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+  await act(async () => { document.dispatchEvent(new Event("visibilitychange")); });
+  expect(api.decision).toHaveBeenCalledTimes(2);
+  visibility.mockRestore();
+});

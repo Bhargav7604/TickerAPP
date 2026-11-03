@@ -331,9 +331,19 @@ class Dashboard extends Component {
     return symbols[key]?.expiry || this.props.settings[fallbackKey];
   }
 
+  // Snapshots arrive once a minute but the page re-renders with every price tick, so reuse the last answer.
   getChartPoints = key => {
-    const chartHistory = this.props.chartHistory || {};
     const symbol = this.getCurrentSymbol(key);
+    const day = getMarketDateKey(this.props.marketTime || Date.now());
+    const cached = this.chartPointCache?.[key];
+    if (cached && cached.history === this.props.chartHistory && cached.symbol === symbol && cached.day === day) return cached.points;
+    const points = this.computeChartPoints(key, symbol);
+    this.chartPointCache = { ...this.chartPointCache, [key]: { history: this.props.chartHistory, symbol, day, points } };
+    return points;
+  }
+
+  computeChartPoints = (key, symbol) => {
+    const chartHistory = this.props.chartHistory || {};
     const points = chartHistory[key] || [];
     const uniquePoints = new Map();
     const todayMarketDate = getMarketDateKey(this.props.marketTime || Date.now());
@@ -668,6 +678,14 @@ class Dashboard extends Component {
   // A live alert (fired before its five-minute window closed) is listed straight away and
   // merges into that window's row once the snapshot arrives.
   getSwingRows = () => {
+    const inputs = [this.props.chartHistory, this.props.swingAlerts, this.props.settings, getMarketDateKey(this.props.marketTime || Date.now())];
+    if (this.swingCache && inputs.every((value, index) => value === this.swingCache.inputs[index])) return this.swingCache.rows;
+    const rows = this.computeSwingRows();
+    this.swingCache = { inputs, rows };
+    return rows;
+  }
+
+  computeSwingRows = () => {
     const today = getMarketDateKey(this.props.marketTime || Date.now());
     const liveAlerts = this.props.swingAlerts || [];
 

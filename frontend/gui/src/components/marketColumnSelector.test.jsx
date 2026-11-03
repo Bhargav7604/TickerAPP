@@ -12,28 +12,29 @@ function Harness({ save = async () => {}, initial }) {
   }} />;
 }
 const open = () => fireEvent.click(screen.getByRole("button", { name: "Customize columns" }));
-const headings = () => within(screen.getByRole("region", { name: "Index comparison" })).getAllByRole("columnheader");
+// Each index card lists the chosen metrics as rows; futures price and change live in the card header.
+const cards = () => within(screen.getByRole("region", { name: "Index comparison" })).getAllByRole("article");
+const rowsOf = card => [...card.querySelectorAll("[data-column]")].map(row => row.dataset.column);
+const headings = () => rowsOf(cards()[0]);
+const asRows = ids => ids.filter(id => !["futures", "change"].includes(id));
 const draftOrder = () => [...screen.getByRole("dialog").querySelectorAll("[data-metric]")].map(row => row.dataset.metric);
 const expectTableOrder = ids => {
-  expect(headings().map(heading => heading.dataset.column)).toEqual([undefined, ...ids]);
-  const rows = within(screen.getByRole("region", { name: "Index comparison" })).getAllByRole("row").slice(1);
-  rows.forEach(row => expect(within(row).getAllByRole("cell").map(cell => cell.dataset.column)).toEqual(ids));
+  expect(cards()).toHaveLength(3);
+  cards().forEach(card => expect(rowsOf(card)).toEqual(asRows(ids)));
 };
 
 test("saved selections control every index row; index identity stays visible", async () => {
   const save = jest.fn();
   render(<Harness save={save} />);
-  expect(headings()).toHaveLength(9);
+  expect(headings()).toHaveLength(7);
   open();
   expect(screen.getByRole("checkbox", { name: /Index \/ Symbol/ })).toBeDisabled();
   fireEvent.click(screen.getByRole("button", { name: "Essentials" }));
-  expect(headings()).toHaveLength(9);
+  expect(headings()).toHaveLength(7);
   fireEvent.click(screen.getByRole("button", { name: "Save columns" }));
   await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   expect(save).toHaveBeenCalledWith(ESSENTIAL_MARKET_COLUMNS);
-  expect(headings().map(heading => heading.dataset.column)).toEqual([undefined, "futures", "difference", "netLots"]);
-  const rows = within(screen.getByRole("region", { name: "Index comparison" })).getAllByRole("row").slice(1);
-  rows.forEach(row => expect(within(row).getAllByRole("cell")).toHaveLength(3));
+  cards().forEach(card => expect(rowsOf(card)).toEqual(["difference", "netLots"]));
   expect(screen.getByRole("button", { name: "Customize columns" })).toHaveFocus();
 });
 
@@ -47,7 +48,7 @@ test("individual choices, all columns, reset, cancel and Escape preserve saved s
   expect(screen.getAllByRole("checkbox").filter(checkbox => checkbox.checked)).toHaveLength(9);
   fireEvent.click(screen.getByRole("checkbox", { name: /Futures \(pts\)/ }));
   fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-  expect(headings()).toHaveLength(2);
+  expect(headings()).toEqual(["spot"]);
   open();
   expect(screen.getByRole("checkbox", { name: "Spot (pts)" })).toBeChecked();
   expect(screen.getByRole("checkbox", { name: "Futures (pts)" })).not.toBeChecked();
@@ -77,15 +78,15 @@ test("failed saves keep the old table and allow retry without losing the draft",
   fireEvent.click(screen.getByRole("button", { name: "Essentials" }));
   fireEvent.click(screen.getByRole("button", { name: "Save columns" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("Could not save");
-  expect(headings()).toHaveLength(9);
+  expect(headings()).toHaveLength(7);
   expect(screen.getAllByRole("checkbox").filter(checkbox => checkbox.checked)).toHaveLength(4);
   fireEvent.click(screen.getByRole("button", { name: "Save columns" }));
-  await waitFor(() => expect(headings()).toHaveLength(4));
+  await waitFor(() => expect(headings()).toHaveLength(2));
 });
 
 test("persisted settings render on mount and malformed preferences fall back safely", () => {
   render(<Harness initial={MARKET_COLUMNS.map(column => column.id)} />);
-  expect(headings()).toHaveLength(13);
+  expect(headings()).toHaveLength(MARKET_COLUMNS.length - 2);
   [null, undefined, [], ["unknown"], {}, "futures"].forEach(value => {
     expect(selectedMarketColumns(value).map(column => column.id)).toEqual(DEFAULT_MARKET_COLUMNS);
   });

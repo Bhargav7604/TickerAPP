@@ -1062,12 +1062,10 @@ class App extends Component {
       const price = Number(json.spotPrices?.[key]);
       nextState.spotPrices[key] = json.feedStatus === "live" && Number.isFinite(price) && price > 0 ? price : null;
     });
-    this.setState(previous => ({
-      settings: {
-        ...previous.settings,
-        symbols: Object.keys(symbols).length ? symbols : previous.settings.symbols
-      }
-    }));
+    // Contracts change a few times a month; replacing settings every second re-rendered the whole app.
+    if (Object.keys(symbols).length && JSON.stringify(symbols) !== JSON.stringify(this.state.settings.symbols || {})) {
+      this.setState(previous => ({ settings: { ...previous.settings, symbols } }));
+    }
     this.queueTickState(nextState);
   }
 
