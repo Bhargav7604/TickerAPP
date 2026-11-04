@@ -1,8 +1,8 @@
 import { Component, Fragment as ReactFragment } from "react";
 import { Alert, Box, Button, Chip, IconButton, Paper, Stack, Tab, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tabs, TextField, Tooltip, Typography } from "@mui/material";
 import { RefreshCw } from "lucide-react";
-import { Segmented, mono } from "../ui/Glass";
-import MarketComparison from "./marketComparison";
+import { IconSwitch, Segmented, mono } from "../ui/Glass";
+import MarketComparison, { MARKET_LAYOUTS } from "./marketComparison";
 import MarketChart from "./marketChart";
 import MarketColumnSelector from "./marketColumnSelector";
 import { alertLotThreshold, describeAlertThresholds } from "../alertThresholds";
@@ -19,6 +19,13 @@ const STRIKE_STEP_BY_INDEX = {
   nifty: 50,
   banknifty: 100,
   sensex: 100
+};
+const MARKET_LAYOUT_KEY = "utraders-market-layout";
+const readMarketLayout = () => {
+  try {
+    const stored = localStorage.getItem(MARKET_LAYOUT_KEY);
+    return MARKET_LAYOUTS.some(([value]) => value === stored) ? stored : "cards";
+  } catch { return "cards"; }
 };
 const CONTRACT_OPTIONS = [
   ["current", "Current"],
@@ -100,7 +107,8 @@ class Dashboard extends Component {
       selectedActivityTab: "alerts",
       selectedChartMetric: "netLots",
       selectedSnapshotIndex: "all",
-      hoveredChartPoint: null
+      hoveredChartPoint: null,
+      marketLayout: readMarketLayout()
     };
 
     this.dataKeys = {
@@ -110,6 +118,11 @@ class Dashboard extends Component {
     };
 
 
+  }
+
+  handleMarketLayoutChange = marketLayout => {
+    this.setState({ marketLayout });
+    try { localStorage.setItem(MARKET_LAYOUT_KEY, marketLayout); } catch { /* storage unavailable */ }
   }
 
   handleChartIndexChange = e => {
@@ -452,12 +465,15 @@ class Dashboard extends Component {
               label={`${this.props.previewLabel || heartbeat.label || "Checking"}${latest !== null && latest !== undefined ? ` · ${this.formatTime(latest)} IST` : ""}`} />
           </Stack>
         </Stack>
-        <Stack direction="row" spacing={1} alignItems="center">
-          <Segmented label="contract month" value={contractMonth} options={CONTRACT_OPTIONS} onChange={value => this.handleContractMonthClick(value)} />
-          <MarketColumnSelector value={this.props.settings.marketColumns} onSave={this.props.handleMarketColumnsSave} />
-          <Tooltip title="Refresh market data">
-            <IconButton aria-label="Refresh market data" onClick={this.props.handleDashboardRefresh}><RefreshCw size={19} /></IconButton>
-          </Tooltip>
+        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center">
+          <Segmented highlight label="contract month" value={contractMonth} options={CONTRACT_OPTIONS} onChange={value => this.handleContractMonthClick(value)} />
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, ml: { xs: "auto", md: 1 } }}>
+            <IconSwitch label="Market overview layout" value={this.state.marketLayout} options={MARKET_LAYOUTS} onChange={this.handleMarketLayoutChange} />
+            <MarketColumnSelector value={this.props.settings.marketColumns} onSave={this.props.handleMarketColumnsSave} />
+            <Tooltip title="Refresh market data">
+              <IconButton aria-label="Refresh market data" onClick={this.props.handleDashboardRefresh}><RefreshCw size={19} /></IconButton>
+            </Tooltip>
+          </Box>
         </Stack>
       </Stack>
     );
@@ -867,7 +883,7 @@ class Dashboard extends Component {
           {this.renderSnapshotBanner()}
           {this.renderCommandBar()}
         </Box>
-        <MarketComparison dashboard={this} />
+        <MarketComparison dashboard={this} layout={this.state.marketLayout} />
         <MarketChart dashboard={this} sx={{ gridArea: "chart" }} />
         {this.renderActivity()}
         {this.renderSnapshotPreview()}

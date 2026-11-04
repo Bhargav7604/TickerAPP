@@ -40,7 +40,7 @@ async function renderHome(data = payload(), extra = {}) {
 
 beforeEach(() => localStorage.clear());
 
-test("three plain-language cards with light, direction, big players and expected range", async () => {
+test("every card shows only the short summary until More details is opened", async () => {
   await renderHome();
   const nifty = screen.getByRole("article", { name: "NIFTY summary" });
   expect(within(nifty).getByText("Risky time. Better to wait.")).toBeInTheDocument();
@@ -49,7 +49,17 @@ test("three plain-language cards with light, direction, big players and expected
   const bank = screen.getByRole("article", { name: "BANKNIFTY summary" });
   expect(within(bank).getByText("Going nowhere")).toBeInTheDocument();
   expect(within(bank).getByText("Unclear. Trade small.")).toBeInTheDocument();
+  // Range and levels stay behind More details on all three cards.
+  ["NIFTY", "BANKNIFTY", "SENSEX"].forEach(label => {
+    const summary = screen.getByRole("article", { name: `${label} summary` });
+    expect(within(summary).queryByText(/stay between/)).not.toBeInTheDocument();
+    expect(within(summary).queryByText(/Market often stops/)).not.toBeInTheDocument();
+    expect(within(summary).getByRole("button", { name: /More details/ })).toHaveAttribute("aria-expanded", "false");
+  });
+  fireEvent.click(within(bank).getByRole("button", { name: /More details/ }));
   expect(within(bank).getByText(/stay between 22,150 and 23,100/)).toBeInTheDocument();
+  expect(within(bank).getByText(/Market often stops falling near/)).toBeInTheDocument();
+  expect(within(nifty).queryByText(/stay between/)).not.toBeInTheDocument();
   expect(within(screen.getByRole("article", { name: "SENSEX summary" })).getByText(/Data is late/)).toBeInTheDocument();
 });
 
@@ -115,6 +125,8 @@ test("each card can open its index's stocks", async () => {
   const onOpenStocks = jest.fn();
   await renderHome(payload({ expiryToday: [], lastHour: false }), { onOpenStocks });
   const bank = screen.getByRole("article", { name: "BANKNIFTY summary" });
+  // See stocks is on the card itself, without opening More details.
+  expect(within(bank).getByRole("button", { name: /More details/ })).toHaveAttribute("aria-expanded", "false");
   fireEvent.click(within(bank).getByRole("button", { name: /See stocks/ }));
   expect(onOpenStocks).toHaveBeenCalledWith("banknifty");
 });

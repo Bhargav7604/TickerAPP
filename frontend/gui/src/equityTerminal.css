@@ -118,3 +118,6 @@ html:has(.eq-terminal) { overflow: hidden; }
   .eq-terminal.has-chart .eq-workspace { flex: 1 0 100px; }
   .eq-terminal.has-chart .eq-chart { flex-basis: 190px; }
 }
+/* The terminal is pinned to the screen, so it must leave room for the phone bars or the desktop icon rail. */
+@media (max-width: 899.95px) { .eq-page.eq-terminal { --eq-terminal-top: 60px; --eq-terminal-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); } }
+@media (min-width: 900px) { .eq-page.eq-terminal { --eq-terminal-top: 0px; --eq-terminal-bottom: 0px; left: 72px; } }

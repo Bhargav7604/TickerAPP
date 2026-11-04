@@ -94,7 +94,7 @@ const IndexCard = React.memo(function IndexCard({ card, lang, onOpenStocks }) {
   const expiry = card.expiry;
   const lightColor = card.light.color;
   const factColor = code => ({ up: "success.main", buying: "success.main", down: "error.main", selling: "error.main" }[code] || "text.secondary");
-  return <Paper component="article" aria-label={`${card.label} summary`} className={`home-card is-${lightColor}`}
+  return <Paper component="article" aria-label={`${card.label} summary`} className={`home-card is-${lightColor}${open ? " is-details-open" : ""}`}
     sx={{ p: 2, display: "flex", flexDirection: "column", gap: 1.25, minWidth: 0, scrollSnapAlign: "start" }}>
     <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
       <Box sx={{ minWidth: 0 }}>
@@ -103,9 +103,6 @@ const IndexCard = React.memo(function IndexCard({ card, lang, onOpenStocks }) {
           {expiry && <Chip size="small" color={expiry.isToday ? "error" : "default"} variant={expiry.isToday ? "filled" : "outlined"}
             label={expiry.isToday ? t("Expires today", lang) : `${t("Expiry", lang)} ${new Date(expiry.date + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}`} />}
         </Stack>
-        <Typography variant="caption" sx={{ display: "block", mt: 0.25, color: card.late ? "error.main" : "text.secondary", fontWeight: card.late ? 700 : 500 }}>
-          {card.late ? `${t("Data is late · last update", lang)} ${day(card.asOf)} ${clock(card.asOf)}` : card.live ? `${t("Live", lang)} · ${clock(card.asOf)} IST` : `${t("Updated", lang)} ${clock(card.asOf)} IST`}
-        </Typography>
       </Box>
       <Box sx={{ textAlign: "right", flex: "none" }}>
         <Typography sx={{ ...mono, fontSize: "1.2rem", fontWeight: 800, lineHeight: 1.2 }}>{money(card.price)}</Typography>
@@ -114,6 +111,9 @@ const IndexCard = React.memo(function IndexCard({ card, lang, onOpenStocks }) {
         </Typography>}
       </Box>
     </Stack>
+    <Typography variant="caption" sx={{ display: "block", mt: -0.75, color: card.late ? "error.main" : "text.secondary", fontWeight: card.late ? 700 : 500 }}>
+      {card.late ? `${t("Data is late · last update", lang)} ${day(card.asOf)} ${clock(card.asOf)}` : card.live ? `${t("Live", lang)} · ${clock(card.asOf)} IST` : `${t("Updated", lang)} ${clock(card.asOf)} IST`}
+    </Typography>
 
     <Stack direction="row" alignItems="center" spacing={1.25} role="status"
       sx={{ px: 1.25, py: 0.9, borderRadius: 2.5, bgcolor: LIGHT_SOFT[lightColor] || LIGHT_SOFT.grey, color: lightColor === "yellow" ? theme => (theme.palette.mode === "dark" ? "#f2c787" : "#8a5a0d") : LIGHT_COLORS[lightColor] || "text.secondary" }}>
@@ -130,22 +130,6 @@ const IndexCard = React.memo(function IndexCard({ card, lang, onOpenStocks }) {
       {translate(card.trap.message, lang)}
     </Alert>}
 
-    {card.range && <Stack spacing={0.9}>
-      <Typography variant="body2" sx={{ fontSize: 13, color: "text.secondary" }}>{translate(card.range.text, lang)}</Typography>
-      <RangeBar range={card.range} />
-      <Stack direction="row" spacing={1.5} useFlexGap flexWrap="wrap" sx={{ fontSize: 12, color: "text.secondary" }}>
-        {Number.isFinite(card.range.support) && <Typography variant="caption" color="text.secondary">
-          <Box component="span" sx={{ display: "inline-block", width: 10, height: 3, mr: 0.75, verticalAlign: "middle", borderRadius: 1, bgcolor: "success.main" }} />
-          {t("Market often stops falling near", lang)} <Box component="b" sx={{ color: "text.primary", ...mono }}>{whole(card.range.support)}</Box>
-        </Typography>}
-        {Number.isFinite(card.range.resistance) && <Typography variant="caption" color="text.secondary">
-          <Box component="span" sx={{ display: "inline-block", width: 10, height: 3, mr: 0.75, verticalAlign: "middle", borderRadius: 1, bgcolor: "error.main" }} />
-          {t("Market often stops rising near", lang)} <Box component="b" sx={{ color: "text.primary", ...mono }}>{whole(card.range.resistance)}</Box>
-        </Typography>}
-      </Stack>
-      {card.expiryLevel && <Typography variant="body2" color="text.secondary" sx={{ px: 1.25, py: 0.9, borderRadius: 2.5, bgcolor: "background.subtle", fontSize: 12.5 }}>{translate(card.expiryLevel.text, lang)}</Typography>}
-    </Stack>}
-
     <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mt: "auto", mx: -0.75 }}>
       <Button size="small" aria-expanded={open} onClick={() => setOpen(value => !value)}
         endIcon={<Box component="span" sx={{ display: "flex", transition: "transform 200ms", transform: open ? "rotate(180deg)" : "none" }}><ChevronDown size={16} aria-hidden="true" /></Box>}>
@@ -156,15 +140,32 @@ const IndexCard = React.memo(function IndexCard({ card, lang, onOpenStocks }) {
       </Button>}
     </Stack>
     <Collapse in={open} unmountOnExit>
-      <Box component="dl" sx={{ m: 0, p: 1.5, borderRadius: 2.5, bgcolor: "background.subtle", display: "grid", gridTemplateColumns: "max-content 1fr", gap: "6px 12px", fontSize: 12.5,
-        "& dt": { fontWeight: 800, color: "text.secondary" }, "& dd": { m: 0 } }}>
-        <dt>{t("Why this light", lang)}</dt><dd>{card.light.reasons.join(" ")}</dd>
-        <dt>{t("Direction", lang)}</dt><dd>{card.direction.detail}</dd>
-        <dt>{t("Big players", lang)}</dt><dd>{card.bigPlayers.detail}</dd>
-        {card.trap && <><dt>{t("Trap", lang)}</dt><dd>{card.trap.detail}</dd></>}
-        {card.range && <><dt>{t("Option prices", lang)}</dt><dd>Options are priced for about {card.range.iv}% yearly movement (implied volatility).</dd></>}
-        {card.numbers?.pcr != null && <><dt>{t("Put-call ratio", lang)}</dt><dd>{card.numbers.pcr}</dd></>}
-      </Box>
+      <Stack spacing={1.25}>
+        {card.range && <Stack spacing={0.9}>
+          <Typography variant="body2" sx={{ fontSize: 13, color: "text.secondary" }}>{translate(card.range.text, lang)}</Typography>
+          <RangeBar range={card.range} />
+          <Stack direction="row" spacing={1.5} useFlexGap flexWrap="wrap" sx={{ fontSize: 12, color: "text.secondary" }}>
+            {Number.isFinite(card.range.support) && <Typography variant="caption" color="text.secondary">
+              <Box component="span" sx={{ display: "inline-block", width: 10, height: 3, mr: 0.75, verticalAlign: "middle", borderRadius: 1, bgcolor: "success.main" }} />
+              {t("Market often stops falling near", lang)} <Box component="b" sx={{ color: "text.primary", ...mono }}>{whole(card.range.support)}</Box>
+            </Typography>}
+            {Number.isFinite(card.range.resistance) && <Typography variant="caption" color="text.secondary">
+              <Box component="span" sx={{ display: "inline-block", width: 10, height: 3, mr: 0.75, verticalAlign: "middle", borderRadius: 1, bgcolor: "error.main" }} />
+              {t("Market often stops rising near", lang)} <Box component="b" sx={{ color: "text.primary", ...mono }}>{whole(card.range.resistance)}</Box>
+            </Typography>}
+          </Stack>
+          {card.expiryLevel && <Typography variant="body2" color="text.secondary" sx={{ px: 1.25, py: 0.9, borderRadius: 2.5, bgcolor: "background.subtle", fontSize: 12.5 }}>{translate(card.expiryLevel.text, lang)}</Typography>}
+        </Stack>}
+        <Box component="dl" sx={{ m: 0, p: 1.5, borderRadius: 2.5, bgcolor: "background.subtle", display: "grid", gridTemplateColumns: "max-content 1fr", gap: "6px 12px", fontSize: 12.5,
+          "& dt": { fontWeight: 800, color: "text.secondary" }, "& dd": { m: 0 } }}>
+          <dt>{t("Why this light", lang)}</dt><dd>{card.light.reasons.join(" ")}</dd>
+          <dt>{t("Direction", lang)}</dt><dd>{card.direction.detail}</dd>
+          <dt>{t("Big players", lang)}</dt><dd>{card.bigPlayers.detail}</dd>
+          {card.trap && <><dt>{t("Trap", lang)}</dt><dd>{card.trap.detail}</dd></>}
+          {card.range && <><dt>{t("Option prices", lang)}</dt><dd>Options are priced for about {card.range.iv}% yearly movement (implied volatility).</dd></>}
+          {card.numbers?.pcr != null && <><dt>{t("Put-call ratio", lang)}</dt><dd>{card.numbers.pcr}</dd></>}
+        </Box>
+      </Stack>
     </Collapse>
   </Paper>;
 });
@@ -305,10 +306,12 @@ export default function Home({ api, details, latestSwing, onOpenStocks }) {
         gridArea: "tiles", minWidth: 0, display: "grid", gap: 2, alignSelf: "stretch",
         gridTemplateColumns: { xs: "repeat(3, 88%)", sm: "repeat(3, 62%)", md: "repeat(3, minmax(0, 1fr))" },
         overflowX: { xs: "auto", md: "visible" }, scrollSnapType: { xs: "x mandatory", md: "none" }, pb: { xs: 0.5, md: 0 },
+        // Opening one card's details must not stretch the other two.
+        "&:has(.is-details-open) > article": { alignSelf: "start" },
       }}>
         {data ? data.cards.map(card => <IndexCard key={card.key} card={card} lang={lang} onOpenStocks={onOpenStocks} />)
-          : !error && [0, 1, 2].map(key => <Skeleton key={key} variant="rounded" height={300} sx={{ borderRadius: 4, bgcolor: "action.hover" }} />)}
-        {!data && !error && <Typography role="status" sx={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>Loading today's market…</Typography>}
+          : !error && [0, 1, 2].map(key => <Skeleton key={key} variant="rounded" height={230} sx={{ borderRadius: 4, bgcolor: "action.hover" }} />)}
+        {!data && !error && <Typography role="status" className="sr-only">Loading today's market…</Typography>}
       </Box>
 
       {data && <Paper component="section" aria-label="Must know today" sx={{ gridArea: "know", p: 2, minWidth: 0, alignSelf: "stretch" }}>

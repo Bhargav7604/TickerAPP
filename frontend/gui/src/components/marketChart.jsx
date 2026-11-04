@@ -290,7 +290,7 @@ export default function MarketChart({ dashboard, sx }) {
           <span>{metricLabel} <b>{dashboard.formatSignedValue(selected[field])}</b></span>
           {selectedCandle && <span>Candle <b>{selectedCandle.close >= selectedCandle.open ? "up" : "down"} {dashboard.formatSignedValue(Math.round(selectedCandle.close - selectedCandle.open))}</b></span>}
         </> : <span>{symbol} · {range.label} · 5-minute samples · tap or use arrow keys to inspect</span>}
-        <Box component="span" sx={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>{selectedLabel}</Box>
+        <span className="sr-only">{selectedLabel}</span>
       </Stack>
     </Paper>
   );

@@ -1,6 +1,6 @@
 import React from "react";
-import { Box, Fade, Paper, Stack, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
-import { glass, MONO } from "./theme";
+import { Box, Fade, Paper, Stack, ToggleButton, ToggleButtonGroup, Tooltip, Typography } from "@mui/material";
+import { BRAND_GRADIENT, glass, MONO } from "./theme";
 
 /** A frosted panel. `hover` lifts it slightly on pointer hover (for clickable cards). */
 export function GlassCard({ children, hover = false, padding = 2, sx, ...props }) {
@@ -30,12 +30,33 @@ export function PageHeader({ title, subtitle, actions }) {
   </Stack>;
 }
 
+// The page's main switch: a tinted track and a brand-coloured selected pill.
+const HIGHLIGHTED = {
+  bgcolor: "rgba(74, 111, 224, 0.12)",
+  "& .MuiToggleButton-root": { color: "accent.main", fontWeight: 800, px: 2.25, "&:hover": { bgcolor: "rgba(74, 111, 224, 0.12)" } },
+  "& .MuiToggleButton-root.Mui-selected, & .MuiToggleButton-root.Mui-selected:hover": { background: BRAND_GRADIENT, color: "#fff", boxShadow: "0 4px 12px rgba(74, 111, 224, 0.35)" },
+};
+
 /** Pill switch. Keeps a value selected (clicking the active pill does nothing). */
-export function Segmented({ value, onChange, options, label, size = "small", disabledValues = [], titles = {} }) {
-  return <ToggleButtonGroup exclusive size={size} value={value} aria-label={label}
+export function Segmented({ value, onChange, options, label, size = "small", disabledValues = [], titles = {}, highlight = false }) {
+  return <ToggleButtonGroup exclusive size={size} value={value} aria-label={label} sx={highlight ? HIGHLIGHTED : undefined}
     onChange={(_, next) => { if (next !== null && next !== undefined) onChange(next); }}>
     {options.map(([key, text]) => <ToggleButton key={key} value={key} aria-pressed={value === key}
       disabled={disabledValues.includes(key)} title={titles[key]}>{text}</ToggleButton>)}
+  </ToggleButtonGroup>;
+}
+
+/** Small icon-only switch for secondary choices such as how a section is laid out. options: [[value, label, Icon]]. */
+export function IconSwitch({ value, onChange, options, label }) {
+  return <ToggleButtonGroup exclusive value={value} aria-label={label} onChange={(_, next) => { if (next !== null && next !== undefined) onChange(next); }}
+    sx={{
+      bgcolor: "transparent", p: 0, gap: 0.25,
+      "& .MuiToggleButton-root": { width: 36, height: 36, p: 0, borderRadius: "10px !important", color: "text.secondary", "&:hover": { bgcolor: "action.hover" } },
+      "& .MuiToggleButton-root.Mui-selected, & .MuiToggleButton-root.Mui-selected:hover": { bgcolor: "rgba(74, 111, 224, 0.14)", color: "accent.main", boxShadow: "none" },
+    }}>
+    {options.map(([key, text, Icon]) => <Tooltip key={key} title={`${text} view`}>
+      <ToggleButton value={key} aria-label={text} aria-pressed={value === key}><Icon size={18} aria-hidden="true" /></ToggleButton>
+    </Tooltip>)}
   </ToggleButtonGroup>;
 }
 

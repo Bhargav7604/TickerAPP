@@ -2,6 +2,7 @@ import { Component, lazy, Suspense } from "react";
 
 import { BottomNavigation, BottomNavigationAction, Box, Paper } from "@mui/material";
 import Navbar, { NAV_ITEMS } from "./navbar.jsx";
+import Sidebar, { MobileMenu } from "./sidebar.jsx";
 import Settings from "./settings.jsx";
 import Dashboard from "./dashboard.jsx";
 import Home from "./home.jsx";
@@ -22,7 +23,8 @@ class MainPage extends Component {
     super(props);
 
     this.state = {
-      currentPage: PAGES.includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : "dashboard"
+      currentPage: PAGES.includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : "dashboard",
+      menuOpen: false
     }
     this.equityApi = props.equityApi || makeEquityApi(props.request);
     this.indexOptionsApi = props.indexOptionsApi || makeEquityApi(props.request, "index-options");
@@ -91,17 +93,18 @@ class MainPage extends Component {
     }
 
     return (
-      <Box className="has-section-nav" sx={{ minHeight: "100vh" }}>
-        <Navbar
-          username={this.props.username}
-          handleLogout={this.props.handleLogout}
-          changePage={this.changePage}
-          currentPage={this.state.currentPage}
-          handleDashboardRefresh={this.props.handleDashboardRefresh}
-        />
-        {page}
+      <Box className="has-section-nav" sx={{ display: "flex", minHeight: "100vh" }}>
+        <Sidebar username={this.props.username} handleLogout={this.props.handleLogout} changePage={this.changePage}
+          currentPage={this.state.currentPage} handleDashboardRefresh={this.props.handleDashboardRefresh} />
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Navbar changePage={this.changePage} currentPage={this.state.currentPage} handleDashboardRefresh={this.props.handleDashboardRefresh}
+            onMenu={() => this.setState({ menuOpen: true })} menuOpen={this.state.menuOpen} />
+          {page}
+        </Box>
+        <MobileMenu open={this.state.menuOpen} onClose={() => this.setState({ menuOpen: false })} username={this.props.username} handleLogout={this.props.handleLogout} changePage={this.changePage}
+          currentPage={this.state.currentPage} handleDashboardRefresh={this.props.handleDashboardRefresh} />
         <Paper component="nav" aria-label="Mobile section navigation" elevation={0} square
-          sx={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 1100, display: { xs: "block", lg: "none" }, pb: "env(safe-area-inset-bottom, 0px)", borderRadius: 0 }}>
+          sx={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 1100, display: { xs: "block", md: "none" }, pb: "env(safe-area-inset-bottom, 0px)", borderRadius: 0 }}>
           <BottomNavigation showLabels value={this.state.currentPage} onChange={(_, page) => this.changePage(page)}>
             {NAV_ITEMS.map(([id, , shortLabel, Icon]) => <BottomNavigationAction key={id} value={id} label={shortLabel} icon={<Icon size={20} />}
               aria-current={this.state.currentPage === id ? "page" : undefined} />)}

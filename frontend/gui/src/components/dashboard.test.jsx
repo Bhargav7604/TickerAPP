@@ -2,6 +2,8 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import Dashboard from "./dashboard";
 import { makeDesignData, PREVIEW_TIME } from "../designFixtures";
 
+afterEach(() => localStorage.removeItem("utraders-market-layout"));
+
 const setup = extra => {
   const props = { ...makeDesignData(), handleContractMonthChange: jest.fn(), handleDashboardRefresh: jest.fn(), ...extra };
   return { props, ...render(<Dashboard {...props} />) };
@@ -183,3 +185,38 @@ test("candles come from the broker when available and only for the charted contr
   expect(loadCandles).toHaveBeenCalledWith("nifty", "current", expect.anything());
   expect(screen.getByRole("img", { name: /NIFTY26OCTFUT index/ }).querySelectorAll("rect")).toHaveLength(2);
 });
+
+test("Market overview switches between cards, rows and columns and remembers the choice", () => {
+  const { props, unmount } = setup();
+  const layouts = screen.getByRole("group", { name: "Market overview layout" });
+  expect(within(layouts).getAllByRole("button").map(button => button.getAttribute("aria-label"))).toEqual(["Cards", "Rows", "Columns"]);
+  // Current / Next / Far stays a labelled text switch; the view switch is icons only.
+  expect(within(screen.getByRole("group", { name: "contract month" })).getByRole("button", { name: "Current" })).toHaveAttribute("aria-pressed", "true");
+  expect(within(layouts).getByRole("button", { name: "Cards" })).toHaveTextContent("");
+  expect(within(layouts).getByRole("button", { name: "Cards" })).toHaveAttribute("aria-pressed", "true");
+  expect(within(screen.getByRole("region", { name: "Index comparison" })).getAllByRole("article")).toHaveLength(3);
+
+  fireEvent.click(within(layouts).getByRole("button", { name: "Rows" }));
+  const byIndex = screen.getByRole("table", { name: "Index comparison by index" });
+  const rows = within(byIndex).getAllByRole("row");
+  expect(rows).toHaveLength(4);
+  expect(within(rows[0]).getByRole("columnheader", { name: "Away from VWAP (pts)" })).toBeInTheDocument();
+  expect(within(rows[2]).getByRole("button", { name: "Chart banknifty" })).toBeInTheDocument();
+  expect(rows[1].querySelector('[data-column="difference"]')).toHaveTextContent("+56.6");
+  fireEvent.click(within(rows[3]).getByRole("button", { name: "Chart sensex" }));
+  expect(screen.getByLabelText("chart index")).toHaveValue("sensex");
+  expect(within(rows[3]).getByRole("button", { name: "Chart sensex" })).toHaveAttribute("aria-pressed", "true");
+
+  fireEvent.click(within(layouts).getByRole("button", { name: "Columns" }));
+  const byMetric = screen.getByRole("table", { name: "Index comparison by metric" });
+  expect(within(byMetric).getAllByRole("columnheader")).toHaveLength(4);
+  const vwap = within(byMetric).getByRole("rowheader", { name: "Away from VWAP (pts)" }).closest("tr");
+  expect(within(vwap).getAllByRole("cell")).toHaveLength(3);
+  expect(within(byMetric).getByRole("button", { name: "Chart sensex" })).toHaveAttribute("aria-pressed", "true");
+  expect(localStorage.getItem("utraders-market-layout")).toBe("columns");
+
+  unmount();
+  render(<Dashboard {...props} />);
+  expect(screen.getByRole("table", { name: "Index comparison by metric" })).toBeInTheDocument();
+});
+
