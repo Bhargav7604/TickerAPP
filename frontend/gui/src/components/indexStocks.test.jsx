@@ -1,6 +1,6 @@
 import React from "react";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
-import IndexStocks from "./indexStocks";
+import IndexStocks, { priceTicks, SPOT_TICK } from "./indexStocks";
 
 const stock = (symbol, changePct, overrides = {}) => ({
   symbol, company: symbol, sector: "Private Banks", ltp: 1000 + changePct * 10, prevClose: 1000, change: changePct * 10, changePct,
@@ -115,3 +115,33 @@ test("the breadth chart switches between gauge, movers and sectors and remembers
   expect(within(chart).getByText("0↑ 2↓")).toBeInTheDocument();
   expect(within(chart).queryByRole("button", { name: /open the stock$/ })).not.toBeInTheDocument();
 });
+
+test("price ticks mark what moved up or down since the last load", () => {
+  const before = new Map([["HDFCBANK", 1012], ["SBIN", 991], ["PNB", 1000], [SPOT_TICK, 56500]]);
+  const next = payload({ spot: { ltp: 56480.5 } });
+  // HDFCBANK 1012 (same), SBIN 991 (same), PNB 1000 (same); ICICIBANK is new, so nothing to compare.
+  expect(priceTicks(before, next)).toEqual({ [SPOT_TICK]: "down" });
+  const moved = payload({ stocks: payload().stocks.map(row => row.symbol === "HDFCBANK" ? { ...row, ltp: 1012.4 } : row.symbol === "SBIN" ? { ...row, ltp: 990.5 } : row) });
+  expect(priceTicks(before, moved)).toEqual({ HDFCBANK: "up", SBIN: "down" });
+});
+
+test("live refresh every 3 seconds flashes the prices that changed", async () => {
+  jest.useFakeTimers();
+  const first = payload();
+  const second = payload({ spot: { ltp: 56510, change: 322.4, changePct: 0.58 },
+    stocks: first.stocks.map(row => row.symbol === "HDFCBANK" ? { ...row, ltp: 1012.6 } : row.symbol === "SBIN" ? { ...row, ltp: 990.2 } : row) });
+  const load = jest.fn().mockResolvedValueOnce(first).mockResolvedValue(second);
+  await setup(load);
+  expect(load).toHaveBeenCalledTimes(1);
+  expect(document.querySelector(".ix-tick-up, .ix-tick-down")).toBeNull();
+  await act(async () => { jest.advanceTimersByTime(3000); });
+  expect(load).toHaveBeenCalledTimes(2);
+  expect(screen.getByText("1,012.60")).toHaveClass("ix-tick-up");
+  expect(screen.getByText("990.20")).toHaveClass("ix-tick-down");
+  expect(screen.getByText("56,510.00")).toHaveClass("ix-tick-up");
+  expect(screen.getByText("1,008.00")).not.toHaveClass("ix-tick-up");
+  await act(async () => { jest.advanceTimersByTime(1300); });
+  expect(screen.getByText("1,012.60")).not.toHaveClass("ix-tick-up");
+  jest.useRealTimers();
+});
+

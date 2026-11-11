@@ -156,3 +156,10 @@ button.ix-bar:hover { background: var(--ui-hover); }
   .ix-bar-note { grid-column: 1 / -1; }
   .ix-chart-switch { margin-left: 0; }
 }
+/* A price that just moved flashes green (up) or red (down), then fades back. */
+@keyframes ix-tick-up { from { background-color: rgba(31, 184, 138, 0.38); color: var(--ui-green); } }
+@keyframes ix-tick-down { from { background-color: rgba(229, 72, 77, 0.34); color: var(--ui-red); } }
+.ix-tick-up { animation: ix-tick-up 1.2s ease-out; }
+.ix-tick-down { animation: ix-tick-down 1.2s ease-out; }
+.ix-spot.ix-tick-up, .ix-spot.ix-tick-down { border-radius: 6px; padding: 0 4px; margin: 0 -4px; }
+

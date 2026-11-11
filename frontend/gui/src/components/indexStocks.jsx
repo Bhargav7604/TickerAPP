@@ -3,7 +3,8 @@ import "../indexStocks.css";
 import StockHeatmap from "./stockHeatmap";
 import { BUILDUP_NAMES, HEATMAP_INDEXES, clock, price, readStockIndex, readStockView, saveStockIndex, saveStockView, signedNumber, signedPct, tone, whole } from "../indexStocksData";
 
-const LIVE_MS = 5000;
+const LIVE_MS = 3000;  // the server keeps stock quotes for 3 seconds
+const TICK_MS = 1200;
 const CLOSED_MS = 60000;
 const signedPrice = value => Number.isFinite(value) ? `${value > 0 ? "+" : ""}${price(value)}` : "--";
 const CHECK_TEXT = {
@@ -18,6 +19,21 @@ const BUILDUP_TEXT = {
   "Long Unwinding": "Futures: price down and OI down, buyers exiting",
 };
 const checkText = check => CHECK_TEXT[check.name]?.[check.side] || BUILDUP_TEXT[check.text] || check.text;
+export const SPOT_TICK = "__spot";
+
+/** Which prices moved since the last load: {symbol: "up" | "down"}, plus the index itself under SPOT_TICK. */
+export function priceTicks(before, data) {
+  const ticks = {};
+  const compare = (key, value) => {
+    const old = before.get(key);
+    if (Number.isFinite(old) && Number.isFinite(value) && old !== value) ticks[key] = value > old ? "up" : "down";
+  };
+  data.stocks.forEach(stock => compare(stock.symbol, stock.ltp));
+  compare(SPOT_TICK, data.spot?.ltp);
+  return ticks;
+}
+const lastPrices = data => new Map([...data.stocks.map(stock => [stock.symbol, stock.ltp]), [SPOT_TICK, data.spot?.ltp]]);
+const tickClass = tick => tick ? ` ix-tick-${tick}` : "";
 
 const CHARTS = [["gauge", "Gauge"], ["movers", "Movers"], ["sectors", "Sectors"]];
 const CHART_KEY = "utraders-breadth-chart";
@@ -174,7 +190,7 @@ function StockDetail({ stock }) {
   </div>;
 }
 
-function StockTable({ title, side, stocks, open, onToggle }) {
+function StockTable({ title, side, stocks, open, onToggle, ticks = {} }) {
   return <section className={`ix-panel is-${side}`} aria-label={title}>
     <header className="ix-panel-head"><h2>{side === "up" ? "▲" : "▼"} {title}</h2><span>{stocks.length} stock{stocks.length === 1 ? "" : "s"}</span></header>
     {stocks.length === 0 ? <p className="ix-empty">No stocks {side === "up" ? "up" : "down"} right now.</p> :
@@ -191,7 +207,7 @@ function StockTable({ title, side, stocks, open, onToggle }) {
               <small>{stock.sector}</small>
             </th>
             <td className={tone(stock.changePct)}>{signedPct(stock.changePct)}</td>
-            <td>{price(stock.ltp)}</td>
+            <td className={tickClass(ticks[stock.symbol]).trim() || undefined}>{price(stock.ltp)}</td>
             <td><OiTag futures={stock.futures} /></td>
             <td><Align stock={stock} side={side} /></td>
             <td className={tone(stock.vsVwapPct)}>{signedPct(stock.vsVwapPct)}</td>
@@ -248,6 +264,8 @@ function IndexDetails({ api, index, openRequest }) {
   const [error, setError] = useState("");
   const [open, setOpen] = useState(null);
   const delay = useRef(LIVE_MS);
+  const prices = useRef(new Map());
+  const [ticks, setTicks] = useState({});
 
   useEffect(() => {
     let stopped = false;
@@ -256,6 +274,7 @@ function IndexDetails({ api, index, openRequest }) {
     setData(null);
     setError("");
     setOpen(null);
+    prices.current = new Map();
     let first = true;
     const run = async () => {
       // Always load once; after that, skip refreshes while the page is hidden.
@@ -264,6 +283,9 @@ function IndexDetails({ api, index, openRequest }) {
         try {
           const next = await api.load(index, abort.signal);
           if (stopped) return;
+          // Flash each price that moved, so a live refresh is visible even when the change is a few paise.
+          setTicks(priceTicks(prices.current, next));
+          prices.current = lastPrices(next);
           setData(next);
           setError("");
           delay.current = next.retryAfterMs ? Math.max(1000, next.retryAfterMs) : next.marketOpen ? LIVE_MS : CLOSED_MS;
@@ -278,6 +300,12 @@ function IndexDetails({ api, index, openRequest }) {
     run();
     return () => { stopped = true; abort.abort(); clearTimeout(timer); };
   }, [api, index]);
+
+  useEffect(() => {
+    if (!Object.keys(ticks).length) return undefined;
+    const timer = setTimeout(() => setTicks({}), TICK_MS);
+    return () => clearTimeout(timer);
+  }, [ticks]);
 
   const toggle = symbol => setOpen(current => current === symbol ? null : symbol);
   const select = symbol => {
@@ -308,7 +336,7 @@ function IndexDetails({ api, index, openRequest }) {
     {data && <>
       <div className="ix-status">
         <b>{data.label}</b>
-        <span className="ix-spot">{price(spot.ltp)}</span>
+        <span className={`ix-spot${tickClass(ticks[SPOT_TICK])}`}>{price(spot.ltp)}</span>
         <span className={tone(spot.change)}>{signedPrice(spot.change)} ({signedPct(spot.changePct)})</span>
         <span className={`ix-live${data.marketOpen ? " is-live" : ""}`}>{data.marketOpen ? "Live" : "Market closed"}</span>
         {data.asOf && <span className="ix-muted">Updated {clock(data.asOf)} IST</span>}
@@ -333,8 +361,8 @@ function IndexDetails({ api, index, openRequest }) {
         <BreadthChart data={data} stocks={stocks} onSelect={select} />
 
         <div className="ix-grid">
-          <StockTable title="Gainers" side="up" stocks={gainers} open={open} onToggle={toggle} />
-          <StockTable title="Losers" side="down" stocks={losers} open={open} onToggle={toggle} />
+          <StockTable title="Gainers" side="up" stocks={gainers} open={open} onToggle={toggle} ticks={ticks} />
+          <StockTable title="Losers" side="down" stocks={losers} open={open} onToggle={toggle} ticks={ticks} />
         </div>
         {unchanged.length > 0 && <p className="ix-muted ix-unchanged">No change: {unchanged.map(stock => stock.symbol).join(", ")}</p>}
         {data.missing?.length > 0 && <p className="ix-muted ix-unchanged">No live price yet: {data.missing.join(", ")}</p>}
