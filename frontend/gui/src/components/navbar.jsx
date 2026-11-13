@@ -1,6 +1,6 @@
 import React from "react";
 import { AppBar, Box, IconButton, Toolbar, Tooltip } from "@mui/material";
-import { Activity, ChartNoAxesColumn, ChartScatter, House, Layers, Moon, RefreshCw, Settings, Sun, WalletCards } from "lucide-react";
+import { Activity, ChartNoAxesColumn, ChartScatter, House, Layers, LayoutDashboard, Moon, RefreshCw, Settings, Sun, WalletCards } from "lucide-react";
 import logo from "../assets/brand/utraders-logo-dark.png";
 import logoOnDark from "../assets/brand/utraders-logo-light.png";
 import brandMark from "../assets/brand/utraders-mark.png";
@@ -8,6 +8,7 @@ import { useTheme } from "../theme";
 
 export const NAV_ITEMS = [
   ["dashboard", "Home", "Home", House],
+  ["charts", "Dashboard", "Charts", LayoutDashboard],
   ["index-stocks", "Index Stocks", "Stocks", ChartScatter],
   ["equity", "Equity", "Equity", ChartNoAxesColumn],
   ["index-options", "Index Options", "Options", Layers],
@@ -16,7 +17,7 @@ export const NAV_ITEMS = [
   ["settings", "Settings", "Settings", Settings],
 ];
 // Pages that poll their own data; the dashboard refresh button only applies to Home's market tables.
-export const OWN_REFRESH = ["index-stocks", "equity", "index-options", "oi-analysis", "trading", "settings"];
+export const OWN_REFRESH = ["charts", "index-stocks", "equity", "index-options", "oi-analysis", "trading", "settings"];
 
 // Three uneven lines that even out on hover.
 export function BurgerIcon() {

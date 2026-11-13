@@ -11,10 +11,12 @@ import { makeOiApi } from "../oiData";
 import { makeDecisionApi } from "../decisionData";
 import { makeTraderApi } from "../traderData";
 import { makeIndexStocksApi, saveStockIndex } from "../indexStocksData";
+import { makeDashboardApi } from "../dashboardData";
 
-const PAGES = ["index-stocks", "equity", "index-options", "oi-analysis", "trading", "settings"];
+const PAGES = ["charts", "index-stocks", "equity", "index-options", "oi-analysis", "trading", "settings"];
 const Equity = lazy(() => import("./equity.jsx"));
 const IndexStocks = lazy(() => import("./indexStocks.jsx"));
+const LiveDashboard = lazy(() => import("./liveDashboard.jsx"));
 const OiAnalysis = lazy(() => import("./oiAnalysis.jsx"));
 const TraderDesk = lazy(() => import("./traderDesk.jsx"));
 
@@ -32,6 +34,7 @@ class MainPage extends Component {
     this.decisionApi = props.decisionApi || makeDecisionApi(props.request);
     this.traderApi = props.traderApi || makeTraderApi(props.request);
     this.indexStocksApi = props.indexStocksApi || makeIndexStocksApi(props.request);
+    this.dashboardApi = props.dashboardApi || makeDashboardApi(props.request);
   }
 
   componentDidMount() { window.addEventListener("hashchange", this.syncPage); }
@@ -75,6 +78,8 @@ class MainPage extends Component {
         loadCandles={this.decisionApi.candles}
       />} />
 
+    } else if (this.state.currentPage === "charts") {
+      page = <Suspense fallback={<div className="eq-empty" role="status">Loading Dashboard...</div>}><LiveDashboard api={this.dashboardApi} /></Suspense>;
     } else if (this.state.currentPage === "index-stocks") {
       page = <Suspense fallback={<div className="eq-empty" role="status">Loading Index Stocks...</div>}><IndexStocks api={this.indexStocksApi} /></Suspense>;
     } else if (["equity", "index-options"].includes(this.state.currentPage)) {

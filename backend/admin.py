@@ -341,6 +341,17 @@ class AlertAdmin(admin.ModelAdmin):
         return False
 
 
+@admin.register(models.IndexWeights)
+class IndexWeightsAdmin(admin.ModelAdmin):
+    """Refitted automatically each trading morning; shown here only to check when and how well."""
+
+    list_display = ("index_key", "computed_on", "sessions", "fit_error", "updated_at")
+    readonly_fields = ("index_key", "computed_on", "sessions", "fit_error", "coefficients", "updated_at")
+
+    def has_add_permission(self, request):
+        return False
+
+
 @admin.register(models.IndexConstituent)
 class IndexConstituentAdmin(admin.ModelAdmin):
     """NIFTY 50 and BANK NIFTY refresh from NSE each morning. Keep SENSEX in step with BSE's list here."""

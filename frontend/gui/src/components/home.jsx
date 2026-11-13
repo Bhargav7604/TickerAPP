@@ -3,6 +3,7 @@ import { Alert, Box, Button, Chip, Collapse, IconButton, Paper, Skeleton, Stack,
 import { AlertTriangle, ArrowDownRight, ArrowRight, ArrowUpRight, BellRing, BookOpen, CalendarDays, ChartScatter, ChevronDown, Info, Mic, Share2, ShieldAlert, Users, Volume2 } from "lucide-react";
 import { GLOSSARY, glossaryText, LANGUAGES, marketSummary, readLanguage, saveLanguage, speechLang, t, translate } from "../i18n";
 import { mono, PageShell, Segmented } from "../ui/Glass";
+import SectorContribution from "./sectorContribution";
 
 const REFRESH_MS = 30000;
 const LIGHTS = ["red", "yellow", "green"];
@@ -20,12 +21,12 @@ const day = seconds => new Date(seconds * 1000).toLocaleDateString("en-GB", { ti
 const signed = value => `${value > 0 ? "+" : ""}${whole(value)}`;
 const sameDay = (ms, now) => new Date(ms).toLocaleDateString("en-GB", { timeZone: "Asia/Kolkata" }) === new Date(now).toLocaleDateString("en-GB", { timeZone: "Asia/Kolkata" });
 
-// One page grid: summary tiles, must-know and calendar from Home, and the market desk sections
+// One page grid: summary tiles, must-know, calendar and sector contribution from Home, and the market desk sections
 // (bar, compare, chart, activity, preview, acdd) placed by name from the Dashboard.
 const GRID_AREAS = {
-  xs: `"tiles" "know" "bar" "compare" "chart" "activity" "preview" "cal" "acdd"`,
-  md: `"tiles tiles" "know cal" "bar bar" "compare compare" "chart chart" "preview preview" "activity activity" "acdd acdd"`,
-  lg: `"tiles tiles tiles know" "bar bar bar bar" "compare compare compare cal" "chart chart chart activity" "preview preview preview activity" "acdd acdd acdd acdd"`,
+  xs: `"tiles" "know" "bar" "compare" "sectors" "chart" "activity" "preview" "cal" "acdd"`,
+  md: `"tiles tiles" "know cal" "bar bar" "compare compare" "sectors sectors" "chart chart" "preview preview" "activity activity" "acdd acdd"`,
+  lg: `"tiles tiles tiles know" "bar bar bar bar" "compare compare compare cal" "sectors sectors sectors sectors" "chart chart chart activity" "preview preview preview activity" "acdd acdd acdd acdd"`,
 };
 const GRID_COLUMNS = { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))", lg: "repeat(3, minmax(0, 1fr)) minmax(340px, 1.1fr)" };
 
@@ -355,6 +356,7 @@ export default function Home({ api, details, latestSwing, onOpenStocks }) {
         </Stack>
       </Paper>}
 
+      {api.contribution && <SectorContribution load={api.contribution} />}
       {details}
     </Box>
 

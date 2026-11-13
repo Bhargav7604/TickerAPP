@@ -366,6 +366,24 @@ class IndexConstituent(models.Model):
         return f"{self.get_index_key_display()}: {self.symbol}"
 
 
+class IndexWeights(models.Model):
+    """How many index points each stock moves the index per rupee, refitted every trading morning from minute prices."""
+
+    index_key = models.CharField(max_length=10, unique=True)
+    computed_on = models.DateField()
+    sessions = models.PositiveSmallIntegerField(default=0, help_text="Complete trading sessions used for the fit.")
+    fit_error = models.FloatField(default=0, help_text="Typical gap, in index points, between the index and its stocks during the fit.")
+    coefficients = models.JSONField(default=dict, help_text="{symbol: index points per rupee}")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Index weights"
+        verbose_name_plural = "Index weights"
+
+    def __str__(self):
+        return f"{self.index_key} weights from {self.computed_on}"
+
+
 class StockDailyHistory(models.Model):
     """Recent daily candles for one stock: previous-session pivots and the futures OI change baseline."""
 

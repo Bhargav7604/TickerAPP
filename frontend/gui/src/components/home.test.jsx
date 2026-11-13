@@ -139,3 +139,36 @@ test("returning to the tab reloads straight away so the light is never left stal
   expect(api.decision).toHaveBeenCalledTimes(2);
   visibility.mockRestore();
 });
+
+test("sector contribution splits NIFTY's points into sectors pushing it up and pulling it down", async () => {
+  const contribution = jest.fn(async () => ({
+    type: "success", index: "nifty", label: "NIFTY 50", marketOpen: true, indexMove: 25, explained: 25, weightsOn: "2026-11-13", asOf: NOW,
+    sectors: [
+      { name: "Banking", points: 20, stocks: [{ symbol: "HDFCBANK", points: 20, changePct: 1 }] },
+      { name: "IT", points: 10, stocks: [{ symbol: "INFY", points: 30, changePct: 1.33 }, { symbol: "TCS", points: -20, changePct: -1.43 }] },
+      { name: "FMCG", points: 0, stocks: [] },
+      { name: "NBFC & Finance", points: -5, stocks: [{ symbol: "BAJFINANCE", points: -5, changePct: -1.11 }] },
+    ],
+  }));
+  const api = { decision: jest.fn(async () => payload({ expiryToday: [], lastHour: false })), contribution };
+  await act(async () => { render(<Home api={api} details={<h2>Full tables</h2>} />); });
+  expect(contribution).toHaveBeenCalledWith("nifty", expect.anything());
+  const panel = screen.getByRole("region", { name: "Sector contribution" });
+  expect(within(panel).getByText("NIFTY +25.0 pts")).toBeInTheDocument();
+  const up = within(panel).getByRole("heading", { name: "Pushing NIFTY up" }).parentElement;
+  const down = within(panel).getByRole("heading", { name: "Pulling NIFTY down" }).parentElement;
+  expect(within(up).getAllByRole("button").map(button => button.getAttribute("aria-label"))).toEqual(["Banking +20.0 points", "IT +10.0 points"]);
+  expect(within(down).getAllByRole("button").map(button => button.getAttribute("aria-label"))).toEqual(["NBFC & Finance -5.0 points"]);
+  expect(within(panel).getByText("No change: FMCG")).toBeInTheDocument();
+  expect(within(panel).getByText(/Sectors add up to \+25\.0 of NIFTY's \+25\.0 points/)).toBeInTheDocument();
+  expect(within(panel).queryByText("TCS -20.0")).not.toBeInTheDocument();
+  fireEvent.click(within(up).getByRole("button", { name: "IT +10.0 points" }));
+  expect(within(panel).getByText("INFY +30.0")).toBeInTheDocument();
+  expect(within(panel).getByText("TCS -20.0")).toBeInTheDocument();
+});
+
+test("Home without the contribution API shows no sector panel", async () => {
+  await renderHome(payload({ expiryToday: [], lastHour: false }));
+  expect(screen.queryByRole("region", { name: "Sector contribution" })).not.toBeInTheDocument();
+});
+
