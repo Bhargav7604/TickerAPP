@@ -5,9 +5,17 @@ SPOT_INSTRUMENTS = {
 }
 
 
-def resolve_spot_tokens(master_contract):
+# Option chains also cover FINNIFTY and MIDCPNIFTY; the live index feed and Home stay on the three above.
+OPTION_SPOT_INSTRUMENTS = {
+    **SPOT_INSTRUMENTS,
+    "finnifty": ("NSE", "NIFTY FIN SERVICE"),
+    "midcpnifty": ("NSE", "NIFTY MID SELECT"),
+}
+
+
+def resolve_spot_tokens(master_contract, instruments=SPOT_INSTRUMENTS):
     tokens = {}
-    for key, (exchange, symbol) in SPOT_INSTRUMENTS.items():
+    for key, (exchange, symbol) in instruments.items():
         rows = master_contract[
             (master_contract["exchange"] == exchange)
             & (master_contract["segment"] == "INDICES")

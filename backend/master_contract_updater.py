@@ -6,10 +6,10 @@ import pandas as pd
 import requests as r
 from .logger import log
 from .market_contracts import clear_master_contract_cache, master_contract_path
-from .instruments import resolve_spot_tokens
+from .instruments import OPTION_SPOT_INSTRUMENTS, resolve_spot_tokens
 from .equity import stock_derivative_mask
 
-INDEX_OPTION_NAMES = {"NIFTY", "BANKNIFTY", "SENSEX"}
+INDEX_OPTION_NAMES = {"NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "SENSEX"}
 
 
 def fetch_master_contract():
@@ -23,7 +23,7 @@ def fetch_master_contract():
         # print(json)
 
         data = pd.read_csv(io.StringIO(json))
-        spot_tokens = resolve_spot_tokens(data)
+        spot_tokens = resolve_spot_tokens(data, OPTION_SPOT_INSTRUMENTS)
         data["stock_derivative"] = stock_derivative_mask(data)
         data = data[
             (data["instrument_type"] == "FUT") |

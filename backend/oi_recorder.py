@@ -1,4 +1,4 @@
-"""Three-minute open-interest recorder for NIFTY, BANKNIFTY and SENSEX option chains.
+"""Three-minute open-interest recorder for NIFTY, BANKNIFTY, FINNIFTY, MIDCPNIFTY and SENSEX option chains.
 
 Live quotes are saved every three minutes. Zerodha's 3-minute history then fills
 the rest of the session (late starts, a sleeping laptop) and supplies the previous
@@ -12,9 +12,9 @@ from django.db.models import Count
 from kiteconnect.exceptions import TokenException
 
 from .equity import broker, catalogue
-from .instruments import SPOT_INSTRUMENTS, resolve_spot_tokens
+from .instruments import OPTION_SPOT_INSTRUMENTS, resolve_spot_tokens
 from .logger import log
-from .market_contracts import CONTRACT_NAMES, MARKET_TZ, get_master_contract
+from .market_contracts import MARKET_TZ, get_master_contract
 from .models import OptionOIBaseline, OptionOISnapshot
 
 OI_INTERVAL_MINUTES = 3
@@ -30,7 +30,9 @@ RETENTION_DAYS = 14
 MARKET_OPEN = dt.time(9, 15)
 MARKET_CLOSE = dt.time(15, 30)
 STEP = dt.timedelta(minutes=OI_INTERVAL_MINUTES)
-SPOT_KEYS = {key: f"{exchange}:{symbol}" for key, (exchange, symbol) in SPOT_INSTRUMENTS.items()}
+# Indices with option chains (wider than the futures-based screens, which stay on NIFTY, BANKNIFTY and SENSEX).
+OPTION_INDEXES = {"nifty": "NIFTY", "banknifty": "BANKNIFTY", "finnifty": "FINNIFTY", "midcpnifty": "MIDCPNIFTY", "sensex": "SENSEX"}
+SPOT_KEYS = {key: f"{exchange}:{symbol}" for key, (exchange, symbol) in OPTION_SPOT_INSTRUMENTS.items()}
 _history_attempts = {}
 
 
@@ -56,7 +58,7 @@ def select_strikes(strikes, spot, recorded=(), each_side=STRIKES_EACH_SIDE):
 def option_rows(today):
     frame = catalogue(index_options=True)
     selections = {}
-    for key, name in CONTRACT_NAMES.items():
+    for key, name in OPTION_INDEXES.items():
         rows = frame[frame["name"].eq(name)]
         expiries = sorted(rows["expiry"].dt.date.unique())[:EXPIRIES_PER_INDEX]
         selections[key] = {expiry: rows[rows["expiry"].dt.date.eq(expiry)] for expiry in expiries if expiry >= today}
@@ -104,7 +106,7 @@ def backfill_history(client, instruments, today, bucket, now):
     wanted.sort(key=lambda item: (expiry_rank[item[0]].index(item[1]), abs(item[2] - (item[5] or item[2]))))
     if not wanted:
         return 0
-    spot_tokens = resolve_spot_tokens(get_master_contract())
+    spot_tokens = resolve_spot_tokens(get_master_contract(), OPTION_SPOT_INSTRUMENTS)
     spots, baselines, rows, calls = {}, [], [], 0
     start = dt.datetime.combine(today - dt.timedelta(days=HISTORY_LOOKBACK_DAYS), MARKET_OPEN)
     for index_key, expiry, strike, option_type, token, _ in wanted:

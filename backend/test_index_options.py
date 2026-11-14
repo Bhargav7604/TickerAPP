@@ -47,17 +47,17 @@ class IndexOptionsTests(TestCase):
 
     def test_catalogue_includes_only_active_options_on_correct_exchange(self):
         rows = catalogue(index_options=True)
-        self.assertEqual(len(rows), 18)
-        self.assertEqual(set(rows.name), {"NIFTY", "BANKNIFTY", "SENSEX"})
+        self.assertEqual(len(rows), 19)  # the stock fixture's FINNIFTY option now counts as an index option too
+        self.assertEqual(set(rows.name), {"NIFTY", "BANKNIFTY", "FINNIFTY", "SENSEX"})
         self.assertEqual(set(rows.instrument_type), {"CE", "PE"})
         self.assertEqual(set(rows[rows.name.eq("SENSEX")].exchange), {"BFO"})
         self.assertEqual(set(catalogue().name), {"RELIANCE"})
 
-    def test_metadata_exposes_exact_weekly_expiries_and_all_three_indices(self):
+    def test_metadata_exposes_exact_weekly_expiries_and_every_index(self):
         response = self.get()
         self.assertEqual(response.status_code, 200)
         data = response.json()
-        self.assertEqual(data["filters"]["indices"], ["NIFTY", "BANKNIFTY", "SENSEX"])
+        self.assertEqual(data["filters"]["indices"], ["NIFTY", "BANKNIFTY", "FINNIFTY", "SENSEX"])  # no MIDCPNIFTY rows in the fixture
         self.assertEqual(data["filters"]["underlying"], "NIFTY")
         self.assertEqual(data["filters"]["expiries"], ["2030-10-01", "2030-10-08", "2030-11-05"])
         self.assertEqual(data["filters"]["strikes"], [22500])
@@ -73,7 +73,7 @@ class IndexOptionsTests(TestCase):
             self.assertTrue(row["id"].startswith("BFO:" if name == "SENSEX" else "NFO:"))
 
     def test_invalid_filters_and_stock_names_are_rejected(self):
-        for params in ({"kind": "FUT"}, {"underlying": "RELIANCE"}, {"underlying": "FINNIFTY"},
+        for params in ({"kind": "FUT"}, {"underlying": "RELIANCE"}, {"underlying": "NIFTYIT"},
                        {"expiry": "2030-10-02"}, {"strike": "nan"}, {"option_type": "FUT"}):
             self.assertEqual(self.get(**params).status_code, 400, params)
 

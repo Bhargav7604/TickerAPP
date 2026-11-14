@@ -25,7 +25,7 @@ MAX_CONTRACTS = 50
 QUOTE_CACHE_ID = 2
 HISTORY_CACHE_ID = 3
 MAX_CACHED_QUOTES = 1500  # room for the NIFTY 500 heatmap alongside the other screens
-INDEX_OPTION_EXCHANGES = {"NIFTY": "NFO", "BANKNIFTY": "NFO", "SENSEX": "BFO"}
+INDEX_OPTION_EXCHANGES = {"NIFTY": "NFO", "BANKNIFTY": "NFO", "FINNIFTY": "NFO", "MIDCPNIFTY": "NFO", "SENSEX": "BFO"}
 
 
 def stock_derivative_mask(frame):
@@ -217,12 +217,13 @@ def broker():
 
 
 def cached_broker_result(cache_id, session, keys, ttl, fetch):
-    """One fetch at a time, with a cross-worker cooldown and bounded retention."""
+    """One fetch at a time, with a cross-worker cooldown and bounded retention. ttl may be a function of the key."""
+    ttl_for = ttl if callable(ttl) else (lambda key: ttl)
     now = time.time()
     state, _ = LiveMarketFeed.objects.get_or_create(pk=cache_id)
     entries = state.payload.get("entries", {}) if state.payload.get("session") == session else {}
     entries = {key: value for key, value in entries.items() if now - value["at"] < 600}
-    missing = [key for key in keys if key not in entries or now - entries[key]["at"] >= ttl]
+    missing = [key for key in keys if key not in entries or now - entries[key]["at"] >= ttl_for(key)]
     if missing:
         owner = uuid.uuid4().hex
         acquired = LiveMarketFeed.objects.filter(pk=cache_id, lease_until__lt=now).update(owner=owner, lease_until=now + 15)
@@ -232,7 +233,7 @@ def cached_broker_result(cache_id, session, keys, ttl, fetch):
                 state.refresh_from_db()
                 entries = state.payload.get("entries", {}) if state.payload.get("session") == session else {}
                 entries = {key: value for key, value in entries.items() if now - value["at"] < 600}
-                missing = [key for key in keys if key not in entries or now - entries[key]["at"] >= ttl]
+                missing = [key for key in keys if key not in entries or now - entries[key]["at"] >= ttl_for(key)]
                 values = fetch(missing) if missing else {}
                 fetched_at = time.time()
                 for key in missing:

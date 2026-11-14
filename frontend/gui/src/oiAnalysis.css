@@ -13,6 +13,8 @@
 .oi-segments { display: inline-flex; height: 38px; padding: 3px; gap: 2px; border: 1px solid var(--ui-line); border-radius: 999px; background: var(--ui-blue-soft); }
 .oi-segments button { height: 30px; padding: 0 14px; border: 0; border-radius: 999px; background: none; color: var(--ui-blue); font-size: 13px; font-weight: 650; cursor: pointer; }
 .oi-segments button.active { background: var(--brand-gradient); color: #08101f; }
+.oi-segments-label { align-self: center; padding: 0 6px 0 10px; color: var(--ui-muted); font-size: 12px; font-weight: 700; white-space: nowrap; }
+.oi-chain td.oi-window { background: var(--ui-blue-soft); }
 .oi-icon { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border: 1px solid var(--ui-border); border-radius: 8px; background: var(--ui-surface); color: var(--ui-muted); cursor: pointer; }
 .oi-icon:hover:not(:disabled) { color: var(--ui-blue); background: var(--ui-hover); }
 .oi-icon:disabled { opacity: 0.5; cursor: default; }
@@ -71,14 +73,12 @@
 .oi-stat strong.oi-sentiment-text-bearish { color: var(--ui-red); }
 .oi-page strong, .oi-page b { color: inherit; }
 
-.oi-chain thead tr:first-child th { text-align: center; font-size: 12px; }
-.oi-chain thead tr:nth-child(2) th { top: 33px; }
 .oi-side-call { color: var(--ui-red) !important; }
 .oi-side-put { color: var(--ui-green) !important; }
 .oi-chain .oi-strike, .oi-chain .oi-strike-head { text-align: center; background: var(--ui-subtle); font-weight: 750; border-left: 1px solid var(--ui-line); border-right: 1px solid var(--ui-line); }
 .oi-chain .oi-strike small { display: block; font-size: 10px; color: var(--ui-blue); font-weight: 700; }
-.oi-chain tr.itm-call td:nth-child(-n + 7) { background: color-mix(in srgb, var(--ui-red-soft) 55%, transparent); }
-.oi-chain tr.itm-put td:nth-child(n + 9):nth-child(-n + 15) { background: color-mix(in srgb, var(--ui-green-soft) 55%, transparent); }
+.oi-chain tr.itm-call td:nth-child(-n + 8) { background: color-mix(in srgb, var(--ui-red-soft) 55%, transparent); }
+.oi-chain tr.itm-put td:nth-child(n + 10) { background: color-mix(in srgb, var(--ui-green-soft) 55%, transparent); }
 .oi-chain tr.is-atm td, .oi-chain tr.is-atm th { background: var(--ui-selected) !important; }
 .oi-buildup { display: inline-block; min-width: 30px; padding: 2px 6px; border-radius: 6px; font-size: 11px; font-weight: 750; text-align: center; color: #fff; }
 .oi-buildup-lb { background: #0a7c55; }
@@ -131,3 +131,36 @@
 .oi-lottery { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: 0.03em; background: #f5b83d; color: #3a2600; vertical-align: 1px; }
 .oi-chain-note { padding: 10px 14px; font-size: 12px; color: var(--ui-muted); border-top: 1px solid var(--ui-line); }
 .oi-disclaimer { margin: 4px auto 0; max-width: 760px; text-align: center; font-size: 12px; color: var(--ui-muted); }
+
+/* Option chain laid out like a trading desk: summary cards, a status line, the legend, then the mirrored chain. */
+.oi-chain-stats { grid-template-columns: repeat(9, minmax(0, 1fr)); }
+.oi-chain-stats .oi-stat strong { font-size: 16px; }
+.oi-stat strong.oi-spot-value { color: var(--ui-warning-ink); }
+.oi-stat small { display: block; margin-top: 2px; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ui-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.oi-stat small.oi-up { color: var(--ui-green); }
+.oi-stat small.oi-down { color: var(--ui-red); }
+.oi-stat strong.oi-up { color: var(--ui-green); }
+.oi-stat strong.oi-down { color: var(--ui-red); }
+@media (max-width: 1300px) { .oi-chain-stats { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .oi-chain-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.oi-chain-info { margin: 0 0 6px; font: 12px/1.5 ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace; color: var(--ui-muted); }
+.oi-chain-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin: 0 0 10px; font-size: 12px; color: var(--ui-muted); }
+.oi-chain-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.oi-refresh { display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 14px; border: 0; border-radius: 999px;
+  background: var(--ui-blue-soft); color: var(--ui-blue); font-size: 13px; font-weight: 700; cursor: pointer; }
+.oi-refresh:disabled { opacity: 0.6; cursor: default; }
+/* Two sticky header rows: the Calls/Puts row is a fixed 30px so the column row can stick right under it. */
+.oi-chain-scroll { max-height: min(640px, calc(100vh - 200px)); min-height: 320px; }
+.oi-chain thead tr:first-child th { height: 30px; padding-top: 0; padding-bottom: 0; box-sizing: border-box; text-align: center; font-size: 12px; }
+.oi-chain thead tr + tr th { top: 30px; }
+.oi-chain thead th.oi-strike-head { z-index: 3; }
+.oi-chain td { font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace; font-variant-numeric: tabular-nums; }
+.oi-chain td.oi-delta { color: var(--ui-muted); }
+/* OI size bar: calls grow towards the strike from the right edge, puts from the left. */
+.oi-chain td.oi-oi-call { background: linear-gradient(to left, var(--ui-blue-soft) var(--oi-bar), transparent var(--oi-bar)); }
+.oi-chain td.oi-oi-put { background: linear-gradient(to right, var(--ui-blue-soft) var(--oi-bar), transparent var(--oi-bar)); text-align: left; }
+.oi-chain tr.is-atm th.oi-strike { box-shadow: inset 0 0 0 2px var(--ui-warning-ink); }
+.oi-chain tr.oi-spot-row td { padding: 3px 10px; text-align: center; font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--ui-warning-ink); background: var(--ui-warning-bg); border-top: 1px solid var(--ui-warning-line); border-bottom: 1px solid var(--ui-warning-line); }
+

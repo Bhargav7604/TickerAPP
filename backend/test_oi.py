@@ -5,8 +5,8 @@ from unittest.mock import patch
 import pandas as pd
 from django.test import TestCase
 
-from .models import OptionOIBaseline, OptionOISnapshot, User
-from .oi_analysis import buildup, chain_payload, implied_volatility, live_chain_payload, option_price, trend_payload
+from .models import LiveMarketFeed, OptionOIBaseline, OptionOISnapshot, User
+from .oi_analysis import buildup, chain_payload, implied_volatility, live_chain_payload, max_pain, option_delta, option_price, trend_payload
 from . import oi_recorder
 from .oi_recorder import bucket_for, record_option_oi, select_strikes
 
@@ -42,6 +42,18 @@ class OIMathTests(TestCase):
         self.assertEqual(buildup(5, -100), "Short Covering")
         self.assertEqual(buildup(-5, -100), "Long Unwinding")
         self.assertIsNone(buildup(0, 100))
+
+    def test_delta_and_max_pain(self):
+        call = option_delta(22600, 22600, 7 / 365, "CE", 15)
+        put = option_delta(22600, 22600, 7 / 365, "PE", 15)
+        self.assertTrue(0.5 <= call <= 0.6)
+        self.assertAlmostEqual(call - put, 1, places=1)
+        self.assertEqual(option_delta(22600, 22000, 7 / 365, "CE", 15), 0.91)  # 2.7% in the money, a week out
+        self.assertIsNone(option_delta(22600, 22600, 7 / 365, "CE", None))
+        # Heavy call OI at 22700 and put OI at 22500 pin the cheapest expiry for buyers between them.
+        oi = {(22500, "PE"): 9000, (22600, "PE"): 1000, (22600, "CE"): 1000, (22700, "CE"): 9000, (22500, "CE"): 500, (22700, "PE"): 500}
+        self.assertEqual(max_pain(oi), 22600)
+        self.assertIsNone(max_pain({}))
 
     def test_bucket_is_floored_to_three_minutes(self):
         self.assertEqual(bucket_for(dt.datetime(2026, 10, 22, 10, 5, 41)), dt.datetime(2026, 10, 22, 10, 3))
@@ -89,6 +101,32 @@ class OIAnalysisTests(TestCase):
         self.assertEqual(row["pcr"], 1.5)
         self.assertEqual(data["totals"]["pcr"], 1.5)
         self.assertIsNotNone(row["call"]["iv"])
+
+    def test_chain_adds_oi_change_over_the_chosen_window(self):
+        # Latest recording 09:21: calls 1600 / puts 2400. Six minutes earlier (09:15): 1000 / 1000.
+        data = chain_payload("nifty", EXPIRY, window=6)
+        row = next(row for row in data["rows"] if row["strike"] == 22600)
+        self.assertEqual((row["call"]["oiChangeWindow"], row["put"]["oiChangeWindow"]), (600, 1400))
+        self.assertEqual((data["window"], data["windowFrom"]), (6, int(at(9, 15).replace(tzinfo=oi_recorder.MARKET_TZ).timestamp())))
+        three = next(row for row in chain_payload("nifty", EXPIRY, window=3)["rows"] if row["strike"] == 22600)
+        self.assertEqual(three["call"]["oiChangeWindow"], 100)
+        early = chain_payload("nifty", EXPIRY, window=15)
+        self.assertIsNone(early["windowFrom"])
+        self.assertTrue(all(row["call"]["oiChangeWindow"] is None for row in early["rows"]))
+
+    def test_window_build_up_totals_and_warming(self):
+        data = chain_payload("nifty", EXPIRY, window=6)
+        row = next(row for row in data["rows"] if row["strike"] == 22600)
+        # Since 09:15: call OI 1000 -> 1600 with premium 100 -> 95 (writing); put OI 1000 -> 2400 with premium 100 -> 120.
+        self.assertEqual((row["call"]["buildupWindow"], row["put"]["buildupWindow"]), ("Short Build-up", "Long Build-up"))
+        self.assertEqual(data["windowTotals"], {"callOiChange": 1800, "putOiChange": 4200})
+        self.assertEqual(data["windowStatus"], {"ready": True, "minutesRecorded": 6, "snapshots": 3})
+        self.assertIsNotNone(row["call"]["delta"])
+        # Latest OI: calls 1600 and puts 2400 at each strike; buyers get least (200,000) at 22600.
+        self.assertEqual((data["expiry"], data["range"], data["maxPain"]), ("2026-10-27", "atm", 22600))
+        warming = chain_payload("nifty", EXPIRY, window=15)
+        self.assertEqual(warming["windowStatus"], {"ready": False, "minutesRecorded": 6, "snapshots": 3})
+        self.assertIsNone(warming["windowTotals"])
 
     def test_one_missing_baseline_switches_every_strike_to_the_first_snapshot(self):
         OptionOIBaseline.objects.filter(strike=22650, option_type="PE").delete()
@@ -183,8 +221,15 @@ class OIApiTests(TestCase):
         self.assertEqual(self.client.get("/api/oi/chain/?index=nifty&expiry=2026-10-27").status_code, 400)
         bad = self.client.get("/api/oi/trend/?index=nifty&expiry=2026-10-27&interval=4&strikes=7", **self.headers)
         self.assertEqual(bad.json()["message"], "Invalid interval or strike range.")
-        bad = self.client.get("/api/oi/chain/?index=finnifty&expiry=2026-10-27", **self.headers)
+        bad_window = self.client.get("/api/oi/chain/?index=nifty&expiry=2026-10-27&window=5", **self.headers)
+        self.assertEqual((bad_window.status_code, bad_window.json()["message"]), (400, "Choose an OI change window of 3, 6, 15, 30 or 60 minutes."))
+        bad = self.client.get("/api/oi/chain/?index=midcap100&expiry=2026-10-27", **self.headers)
         self.assertEqual(bad.status_code, 400)
+        for index in ("finnifty", "midcpnifty"):
+            new = self.client.get(f"/api/oi/chain/?index={index}&expiry=2026-10-27", **self.headers)
+            self.assertEqual((new.status_code, new.json()["rows"]), (200, []))
+        bad_range = self.client.get("/api/oi/chain/?index=nifty&expiry=2026-10-27&range=some", **self.headers)
+        self.assertEqual(bad_range.json()["message"], "Choose ATM ±12 or the whole chain.")
         empty = self.client.get("/api/oi/trend/?index=sensex&expiry=2026-10-27&interval=15&strikes=7", **self.headers)
         self.assertEqual((empty.json()["type"], empty.json()["rows"]), ("success", []))
 
@@ -211,7 +256,31 @@ class LiveChainTests(TestCase):
         self.assertEqual(len(data["rows"]), 25)
         self.assertEqual((data["underlying"], data["atm"], data["baseline"]), (22610, 22600, "unavailable"))
         row = next(row for row in data["rows"] if row["strike"] == 22600)
-        self.assertEqual((row["call"]["ltp"], row["call"]["ltpChange"], row["call"]["oiChange"]), (50, 5, 0))
+        # Nothing recorded yet today, so the day change is unknown rather than a misleading zero.
+        self.assertEqual((row["call"]["ltp"], row["call"]["ltpChange"], row["call"]["oiChange"]), (50, 5, None))
+
+    def test_whole_chain_and_atm_window(self):
+        quote = self.client.quote
+
+        def heavy_far_put(*keys):
+            quotes = quote(*keys)
+            if "NFO:NIFTY26O2723200PE" in quotes:
+                quotes["NFO:NIFTY26O2723200PE"] = {**quotes["NFO:NIFTY26O2723200PE"], "oi": 10 ** 9}
+            return quotes
+        self.client.quote = heavy_far_put
+        self.live()
+        LiveMarketFeed.objects.filter(pk=2).update(lease_until=0)
+        with patch("backend.oi_analysis.LIVE_STRIKES_EACH_SIDE", 5):
+            atm = self.live()
+        self.assertEqual((len(atm["rows"]), atm["totalStrikes"], atm["range"]), (11, 25, "atm"))
+        self.assertNotIn(23200, [row["strike"] for row in atm["rows"]])
+        self.assertEqual(atm["maxPain"], 23200)  # the far strike's OI counts although it is not on screen
+        LiveMarketFeed.objects.filter(pk=2).update(lease_until=0)
+        with patch("backend.oi_analysis.broker", return_value=(self.client, "session")), \
+                patch("backend.oi_analysis.catalogue", return_value=self.frame):
+            whole = live_chain_payload("nifty", EXPIRY, strike_range="all")
+        self.assertEqual((len(whole["rows"]), whole["range"]), (25, "all"))
+        self.assertIn("delta", whole["rows"][0]["call"])
 
     def test_uses_previous_close_baselines_when_recorded(self):
         OptionOIBaseline.objects.bulk_create([

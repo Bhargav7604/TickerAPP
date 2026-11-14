@@ -4,16 +4,18 @@ import OiTrendChart from "./oiTrendChart";
 import OiStrikeBars from "./oiStrikeBars";
 import "../oiAnalysis.css";
 import {
-  BUILDUP_SHORT, compactOi, formatOi, formatPct, formatPrice, formatRatio, formatSignedOi, formatSignedPrice,
-  OI_INDEXES, signClass, timeLabel,
+  BUILDUP_SHORT, compactOi, formatPct, formatPrice, formatRatio, formatSignedOi, formatSignedPrice,
+  OI_CHANGE_WINDOWS, OI_INDEXES, readChangeWindow, readStrikeRange, saveChangeWindow, saveStrikeRange, shortOi, signClass, signedShortOi,
+  STRIKE_RANGES, timeLabel,
 } from "../oiData";
 
 const TREND_REFRESH_MS = 30000;
 const LIVE_REFRESH_MS = 3000;
 const TABS = [["trend", "OI Trend"], ["chain", "Option Chain"]];
 
-function Stat({ label, value, tone }) {
-  return <div className="oi-stat"><span>{label}</span><strong className={tone || ""}>{value}</strong></div>;
+function Stat({ label, value, tone, note, noteTone }) {
+  return <div className="oi-stat"><span>{label}</span><strong className={tone || ""}>{value}</strong>
+    {note && <small className={noteTone || ""}>{note}</small>}</div>;
 }
 
 function BuildupTag({ value }) {
@@ -60,56 +62,90 @@ export function chainFlashes(previous, next) {
   return flashes;
 }
 
-// Calls read outward-in to the strike; puts mirror them. Decay/hr stays next to the strike.
-const CALL_FIELDS = ["oiChangePct", "oi", "oiChange", "iv", "ltp", "ltpChangePct", "ltpChange", "decayPerHour"];
-const PUT_FIELDS = [...CALL_FIELDS].reverse();
-const FIELD_LABELS = { oiChangePct: "OI %", oi: "OI", oiChange: "OI chg", iv: "IV", ltp: "LTP", ltpChangePct: "LTP %", ltpChange: "LTP chg", decayPerHour: "Decay/hr" };
-const FIELD_TITLES = {
-  oiChangePct: "OI change today as a % of yesterday's closing OI",
-  ltpChangePct: "Price change today as a % of yesterday's closing price",
-  decayPerHour: "Rupees one lot loses each hour from time passing, if the index does not move",
-};
-// One decimal is enough to compare strikes; thousands get separators (tiny opening OI can jump 2,000%+).
-const chainPct = value => Number.isFinite(value)
-  ? `${value > 0 ? "+" : ""}${value.toLocaleString("en-IN", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%` : "--";
+// Calls read outward-in to the strike; puts mirror them.
+const CALL_COLUMNS = ["buildupWindow", "oiChangeWindow", "oi", "oiChange", "volume", "iv", "ltp", "delta"];
+const PUT_COLUMNS = [...CALL_COLUMNS].reverse();
+const windowLabel = minutes => OI_CHANGE_WINDOWS.find(([value]) => value === minutes)?.[1] || `${minutes}m`;
+const fixed = (value, places) => Number.isFinite(value) ? value.toFixed(places) : "--";
+const clockLabel = seconds => new Date(seconds * 1000).toLocaleTimeString("en-GB", { timeZone: "Asia/Kolkata" });
 
 function ChainTable({ data, flashes = {} }) {
-  const side = (row, key, value) => <>
-    {key === "call" && <td><BuildupTag value={value?.buildup} /></td>}
-    {(key === "call" ? CALL_FIELDS : PUT_FIELDS).map(field => {
-      const raw = value?.[field];
-      const text = field === "oi" ? formatOi(raw) : field === "oiChange" ? formatSignedOi(raw)
-        : field.endsWith("Pct") ? chainPct(raw)
-        : field === "iv" ? (raw == null ? "--" : raw.toFixed(1)) : field === "ltpChange" ? formatSignedPrice(raw)
-        : field === "decayPerHour" ? (raw == null ? "--" : `₹${formatOi(raw)}`) : formatPrice(raw);
-      const flash = flashes[`${row.strike}:${key}:${field}`];
-      const signed = field.endsWith("Change") || field.endsWith("Pct");
-      return <td key={field} className={`${signed ? signClass(raw) : ""}${field === "decayPerHour" ? " oi-decay" : ""}${flash ? ` oi-tick-${flash}` : ""}`}>
-        {text}{field === "ltp" && value?.lottery && <span className="oi-lottery" title="Lottery ticket. Very likely to become zero.">Lottery</span>}
-      </td>;
-    })}
-    {key === "put" && <td><BuildupTag value={value?.buildup} /></td>}
-  </>;
-  return <div className="oi-table-scroll"><table className="oi-table oi-chain">
+  const scroller = useRef(null);
+  const centred = useRef("");
+  // Open each expiry and strike range on the ATM strike; the 3-second refreshes leave the trader's scroll alone.
+  useEffect(() => {
+    const box = scroller.current;
+    const atmRow = box?.querySelector("tr.is-atm");
+    const key = `${data.expiry}|${data.range}`;
+    if (!atmRow || centred.current === key) return;
+    centred.current = key;
+    const head = box.querySelector("thead")?.offsetHeight || 0;
+    const offset = atmRow.getBoundingClientRect().top - box.getBoundingClientRect().top;
+    box.scrollTop += offset - head - (box.clientHeight - head - atmRow.offsetHeight) / 2;
+  });
+  const tf = windowLabel(data.window);
+  const labels = { buildupWindow: `Build-up ${tf}`, oiChangeWindow: `ΔOI ${tf}`, oi: "OI", oiChange: "ΔOI day", volume: "Vol", iv: "IV", ltp: "LTP", delta: "Δ" };
+  const titles = {
+    buildupWindow: `Build-up over the last ${tf}: OI and premium against the recording then`,
+    oiChangeWindow: `OI change over the last ${tf}`, oiChange: "OI change since the previous session's close",
+    volume: "Contracts traded today", iv: "Implied volatility, %", delta: "Premium move for a one-point move in the index",
+  };
+  const maxOi = { call: Math.max(1, ...data.rows.map(row => row.call?.oi || 0)), put: Math.max(1, ...data.rows.map(row => row.put?.oi || 0)) };
+  const cell = (row, side, column) => {
+    const value = row[side];
+    const raw = value?.[column];
+    const flash = flashes[`${row.strike}:${side}:${column}`];
+    const tick = flash ? ` oi-tick-${flash}` : "";
+    if (column === "buildupWindow") return <td key={column}><BuildupTag value={raw} /></td>;
+    if (column === "oiChangeWindow" || column === "oiChange") return <td key={column} className={`${signClass(raw)}${column === "oiChangeWindow" ? " oi-window" : ""}`}>{formatSignedOi(raw)}</td>;
+    if (column === "oi") {
+      // A bar behind the number, growing from the strike outwards, sized against the biggest OI on that side.
+      const share = Number.isFinite(raw) ? Math.round(raw / maxOi[side] * 100) : 0;
+      return <td key={column} className={`oi-oi oi-oi-${side}${tick}`} style={{ "--oi-bar": `${share}%` }}>{shortOi(raw)}</td>;
+    }
+    if (column === "volume") return <td key={column}>{shortOi(raw)}</td>;
+    if (column === "iv") return <td key={column}>{fixed(raw, 1)}</td>;
+    if (column === "delta") return <td key={column} className="oi-delta">{fixed(raw, 2)}</td>;
+    return <td key={column} className={tick.trim() || undefined}>{formatPrice(raw)}</td>;
+  };
+  const spotAfter = Number.isFinite(data.underlying) ? data.rows.filter(row => row.strike <= data.underlying).length : -1;
+  const spotRow = <tr key="spot" className="oi-spot-row"><td colSpan={CALL_COLUMNS.length * 2 + 1}>Spot {formatPrice(data.underlying)}</td></tr>;
+  return <div className="oi-table-scroll oi-chain-scroll" ref={scroller}><table className="oi-table oi-chain">
     <caption className="sr-only">Option chain with OI build-up</caption>
     <thead>
-      <tr><th colSpan={CALL_FIELDS.length + 1} className="oi-side-call">Calls</th><th rowSpan="2" className="oi-strike-head">Strike</th><th colSpan={PUT_FIELDS.length + 1} className="oi-side-put">Puts</th><th rowSpan="2">PCR</th></tr>
-      <tr><th scope="col">Build-up</th>
-        {CALL_FIELDS.map(field => <th key={`c-${field}`} scope="col" title={FIELD_TITLES[field]}>{FIELD_LABELS[field]}</th>)}
-        {PUT_FIELDS.map(field => <th key={`p-${field}`} scope="col" title={FIELD_TITLES[field]}>{FIELD_LABELS[field]}</th>)}
-        <th scope="col">Build-up</th></tr>
+      <tr><th colSpan={CALL_COLUMNS.length} className="oi-side-call">Calls</th><th rowSpan="2" className="oi-strike-head">Strike</th><th colSpan={PUT_COLUMNS.length} className="oi-side-put">Puts</th></tr>
+      <tr>{CALL_COLUMNS.map(column => <th key={`c-${column}`} scope="col" title={titles[column]}>{labels[column]}</th>)}
+        {PUT_COLUMNS.map(column => <th key={`p-${column}`} scope="col" title={titles[column]}>{labels[column]}</th>)}</tr>
     </thead>
-    <tbody>{data.rows.map(row => {
+    <tbody>{data.rows.flatMap((row, position) => {
       const itmCall = data.underlying && row.strike < data.underlying;
       const itmPut = data.underlying && row.strike > data.underlying;
-      return <tr key={row.strike} className={`${row.strike === data.atm ? "is-atm" : ""} ${itmCall ? "itm-call" : ""} ${itmPut ? "itm-put" : ""}`}>
-        {side(row, "call", row.call)}
-        <th scope="row" className="oi-strike">{row.strike}{row.strike === data.atm && <small>ATM</small>}</th>
-        {side(row, "put", row.put)}
-        <td>{formatRatio(row.pcr)}</td>
+      const line = <tr key={row.strike} className={`${row.strike === data.atm ? "is-atm" : ""} ${itmCall ? "itm-call" : ""} ${itmPut ? "itm-put" : ""}`}>
+        {CALL_COLUMNS.map(column => cell(row, "call", column))}
+        <th scope="row" className="oi-strike">{row.strike.toLocaleString("en-IN")}{row.strike === data.atm && <small>ATM</small>}</th>
+        {PUT_COLUMNS.map(column => cell(row, "put", column))}
       </tr>;
-    })}</tbody>
+      return position === spotAfter ? [spotRow, line] : [line];
+    }).concat(spotAfter === data.rows.length ? [spotRow] : [])}</tbody>
   </table></div>;
+}
+
+function ChainSummary({ chain, indexLabel }) {
+  const tf = windowLabel(chain.window);
+  const totals = chain.totals || {};
+  const windowTotals = chain.windowTotals;
+  return <section className="oi-stats oi-chain-stats" aria-label="Option chain summary">
+    <Stat label="Spot" value={formatPrice(chain.underlying)} tone="oi-spot-value" />
+    <Stat label="ATM" value={chain.atm?.toLocaleString("en-IN") ?? "--"} />
+    <Stat label="Expiry" value={chain.expiry ? new Date(chain.expiry + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "--"} />
+    <Stat label="PCR (OI)" value={formatRatio(totals.pcr)} tone={totals.pcr >= 1 ? "oi-up" : totals.pcr ? "oi-down" : ""} />
+    <Stat label="Max pain" value={chain.maxPain?.toLocaleString("en-IN") ?? "--"} />
+    <Stat label="ATM IV" value={Number.isFinite(chain.atmIv) ? `${chain.atmIv}%` : "--"} />
+    <Stat label="CE OI" value={shortOi(totals.callOi)} note={`ΔDay ${signedShortOi(totals.callOiChange)}`} noteTone={signClass(-(totals.callOiChange || 0))} />
+    <Stat label="PE OI" value={shortOi(totals.putOi)} note={`ΔDay ${signedShortOi(totals.putOiChange)}`} noteTone={signClass(totals.putOiChange)} />
+    <Stat label={`ΔOI ${tf} CE / PE`} value={windowTotals ? `${signedShortOi(windowTotals.callOiChange)} / ${signedShortOi(windowTotals.putOiChange)}` : "warming"} />
+    <span className="sr-only">{indexLabel} option chain</span>
+  </section>;
 }
 
 function OiAnalysis({ api }) {
@@ -119,6 +155,8 @@ function OiAnalysis({ api }) {
   const [expiry, setExpiry] = useState("");
   const [intervalMinutes, setIntervalMinutes] = useState(3);
   const [strikes, setStrikes] = useState(7);
+  const [changeWindow, setChangeWindow] = useState(readChangeWindow);
+  const [strikeRange, setStrikeRange] = useState(readStrikeRange);
   const [trend, setTrend] = useState(null);
   const [chain, setChain] = useState(null);
   const [error, setError] = useState("");
@@ -154,11 +192,11 @@ function OiAnalysis({ api }) {
       if (tab === "trend") {
         setTrend(await api.trend(index, expiry, intervalMinutes, strikes, abort.signal));
       } else {
-        let next = await api.liveChain(index, expiry, abort.signal).catch(exc => ({ live: false, message: exc.message }));
+        let next = await api.liveChain(index, expiry, changeWindow, strikeRange, abort.signal).catch(exc => ({ live: false, message: exc.message }));
         const isLive = Boolean(next.live && next.rows?.length);
         if (isLive) nextDelay.current = next.retryAfterMs || LIVE_REFRESH_MS;
         else if (next.live) nextDelay.current = next.retryAfterMs || 1000;
-        else next = { ...(await api.chain(index, expiry, abort.signal)), liveMessage: next.message };
+        else next = { ...(await api.chain(index, expiry, changeWindow, strikeRange, abort.signal)), liveMessage: next.message };
         if (abort.signal.aborted) return;
         if (next.rows?.length) {
           setFlashes(chainFlashes(chainRef.current, next));
@@ -174,7 +212,7 @@ function OiAnalysis({ api }) {
     } finally {
       if (controller.current === abort) setLoading(false);
     }
-  }, [api, index, expiry, tab, intervalMinutes, strikes]);
+  }, [api, index, expiry, tab, intervalMinutes, strikes, changeWindow, strikeRange]);
 
   useEffect(() => {
     let timer;
@@ -198,19 +236,25 @@ function OiAnalysis({ api }) {
   const latest = trend?.rows?.[0];
   const indexLabel = OI_INDEXES.find(([key]) => key === index)[1];
 
+  const status = tab === "chain" && chain?.bucketTime
+    ? `chain @${clockLabel(chain.bucketTime)} · ${live && chain.marketOpen ? "live quotes every 3 sec" : live ? "closed — last print" : "last recording"}`
+    : `${indexLabel} options · ${refreshedAt ? `updated ${clockLabel(refreshedAt / 1000)} IST` : "loading"} · refreshes every 30 sec`;
+
   return <main className="oi-page">
     <header className="oi-command">
       <div className="oi-title">
-        <h1>OI Analysis</h1>
-        <span>{tab === "chain" && live && <b className="oi-live-badge">LIVE</b>}{indexLabel} options · {refreshedAt ? `updated ${new Date(refreshedAt).toLocaleTimeString("en-GB", { timeZone: "Asia/Kolkata" })} IST` : "loading"} · {tab === "chain" && live ? "live quotes every 3 sec" : "refreshes every 30 sec"}</span>
+        <h1>{tab === "chain" ? "Option chain" : "OI Analysis"}</h1>
+        <span>{tab === "chain" && live && chain?.marketOpen && <b className="oi-live-badge">LIVE</b>}{status}</span>
       </div>
       <div className="oi-controls">
-        <div className="oi-segments" role="group" aria-label="Index">
-          {OI_INDEXES.map(([key, label]) => <button key={key} type="button" aria-pressed={index === key} className={index === key ? "active" : ""} onClick={() => setIndex(key)}>{label}</button>)}
-        </div>
+        <label>Symbol
+          <select value={index} onChange={event => setIndex(event.target.value)} aria-label="Symbol">
+            {OI_INDEXES.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+          </select>
+        </label>
         <label>Expiry
           <select value={expiry} onChange={event => setExpiry(event.target.value)} aria-label="Expiry">
-            {meta.expiries.map(value => <option key={value} value={value}>{new Date(value + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}{meta.recorded.includes(value) ? "" : " (no data yet)"}</option>)}
+            {meta.expiries.map((value, position) => <option key={value} value={value}>{position === 0 ? "nearest · " : ""}{new Date(value + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}{meta.recorded.includes(value) ? "" : " (no data yet)"}</option>)}
           </select>
         </label>
         {tab === "trend" && <>
@@ -225,8 +269,19 @@ function OiAnalysis({ api }) {
             </select>
           </label>
         </>}
-        <button type="button" className="oi-icon" onClick={load} disabled={loading || !expiry} aria-label="Refresh OI data" title="Refresh OI data">
-          <RefreshCw size={17} className={loading ? "oi-spin" : ""} />
+        {tab === "chain" && <>
+          <div className="oi-segments" role="group" aria-label="Build-up window">
+            <span className="oi-segments-label">Build-up window</span>
+            {OI_CHANGE_WINDOWS.map(([minutes, label]) => <button key={minutes} type="button" aria-pressed={changeWindow === minutes} className={changeWindow === minutes ? "active" : ""}
+              onClick={() => { setChangeWindow(minutes); saveChangeWindow(minutes); }}>{label}</button>)}
+          </div>
+          <div className="oi-segments" role="group" aria-label="Strikes shown">
+            {STRIKE_RANGES.map(([value, label]) => <button key={value} type="button" aria-pressed={strikeRange === value} className={strikeRange === value ? "active" : ""}
+              onClick={() => { setStrikeRange(value); saveStrikeRange(value); }}>{label}</button>)}
+          </div>
+        </>}
+        <button type="button" className="oi-refresh" onClick={load} disabled={loading || !expiry} aria-label="Refresh OI data" title="Refresh OI data">
+          <RefreshCw size={15} className={loading ? "oi-spin" : ""} /> Refresh
         </button>
       </div>
     </header>
@@ -261,24 +316,26 @@ function OiAnalysis({ api }) {
     </>}
 
     {tab === "chain" && chain && !chain.message && <>
-      <section className="oi-stats" aria-label="Option chain summary">
-        <Stat label={indexLabel} value={formatPrice(chain.underlying)} />
-        <Stat label="ATM strike" value={chain.atm ?? "--"} />
-        <Stat label="Total call OI" value={compactOi(chain.totals?.callOi)} />
-        <Stat label="Total put OI" value={compactOi(chain.totals?.putOi)} />
-        <Stat label="PCR (OI)" value={formatRatio(chain.totals?.pcr)} />
-        <Stat label={live ? "Live quote" : "As of"} value={chain.bucketTime ? `${new Date(chain.bucketTime * 1000).toLocaleTimeString("en-GB", { timeZone: "Asia/Kolkata" })} IST` : "--"} />
+      <ChainSummary chain={chain} indexLabel={indexLabel} />
+      <p className="oi-chain-info">
+        build-up window {windowLabel(chain.window)} is {chain.windowStatus?.ready ? "ready" : "warming"}
+        {chain.windowStatus && ` — ${chain.windowStatus.minutesRecorded} of ${chain.window} min recorded today (${chain.windowStatus.snapshots} snapshots)`}
+        {chain.windowFrom ? `, compared with ${timeLabel(chain.windowFrom)} IST` : ""}; ΔOI(day) and the chain {live ? "are live" : "are from the last recording"}
+        {" · "}showing {chain.rows.length} of {chain.totalStrikes || chain.rows.length} strikes
+      </p>
+      <p className="oi-chain-legend">
+        <span><span className="oi-buildup oi-buildup-lb">LB</span> long build-up · OI↑ premium↑</span>
+        <span><span className="oi-buildup oi-buildup-sb">SB</span> short build-up (writing) · OI↑ premium↓</span>
+        <span><span className="oi-buildup oi-buildup-sc">SC</span> short covering · OI↓ premium↑</span>
+        <span><span className="oi-buildup oi-buildup-lu">LU</span> long unwinding · OI↓ premium↓</span>
+        <span className="oi-muted">ΔOI({windowLabel(chain.window)}) and the tags read the selected window; ΔOI(day) reads against the previous session's close</span>
+      </p>
+      <section className="oi-card" aria-label="Option chain">
+        <ChainTable data={chain} flashes={flashes} />
       </section>
       <section className="oi-card">
         <div className="oi-card-head"><h2>OI by strike</h2><span>Shaded column is ATM</span></div>
         <OiStrikeBars rows={chain.rows} atm={chain.atm} maxCallStrike={chain.maxCallOiStrike} maxPutStrike={chain.maxPutOiStrike} />
-      </section>
-      <section className="oi-card">
-        <div className="oi-card-head"><h2>Option chain</h2>
-          <span className="oi-key"><span className="oi-buildup oi-buildup-lb">LB</span> Long build-up <span className="oi-buildup oi-buildup-sb">SB</span> Short build-up <span className="oi-buildup oi-buildup-lu">LU</span> Long unwinding <span className="oi-buildup oi-buildup-sc">SC</span> Short covering</span>
-        </div>
-        <ChainTable data={chain} flashes={flashes} />
-        <p className="oi-chain-note">Decay/hr: rupees one lot loses each hour just from time passing, if the index does not move{chain.lotSize ? ` (lot size ${chain.lotSize})` : ""}. Lottery: far from today's price, with under a 5% chance of ending in the money.</p>
       </section>
     </>}
     <p className="oi-disclaimer">Utraders describes the market. It does not tell you to buy or sell. F&amp;O trading is high risk and most traders lose money. Please talk to a SEBI-registered adviser before you invest.</p>
