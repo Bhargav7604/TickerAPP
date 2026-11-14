@@ -11,6 +11,9 @@ NSE_LISTS = {
     "nifty": "https://nsearchives.nseindia.com/content/indices/ind_nifty50list.csv",
     "banknifty": "https://nsearchives.nseindia.com/content/indices/ind_niftybanklist.csv",
     "nifty500": "https://nsearchives.nseindia.com/content/indices/ind_nifty500list.csv",
+    # Market-cap buckets for the Market and Money Flow pages: NIFTY 100 is large cap, MIDCAP 150 mid cap, the rest small.
+    "nifty100": "https://nsearchives.nseindia.com/content/indices/ind_nifty100list.csv",
+    "midcap150": "https://nsearchives.nseindia.com/content/indices/ind_niftymidcap150list.csv",
 }
 
 SHORT_SECTORS = {

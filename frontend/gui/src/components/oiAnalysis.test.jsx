@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { createChart } from "lightweight-charts";
 import OiAnalysis, { chainFlashes } from "./oiAnalysis";
 import { compactOi } from "../oiData";
+import { makeBoardPreviewApi } from "../boardFixtures";
 
 jest.mock("lightweight-charts", () => ({ createChart: jest.fn(), LineSeries: "line", HistogramSeries: "histogram", ColorType: { Solid: "solid" } }));
 // The project's Jest config resets mocks before every test, so the chart stub is rebuilt here.
@@ -149,4 +150,16 @@ test("build-up window and strike range change the chain and are remembered", asy
   await act(async () => { fireEvent.click(within(screen.getByRole("group", { name: "Strikes shown" })).getByRole("button", { name: "Whole chain" })); });
   expect(api.liveChain).toHaveBeenLastCalledWith("nifty", "2026-10-27", 60, "all", expect.anything());
   expect(localStorage.getItem("utraders-oi-strike-range")).toBe("all");
+});
+
+test("the Stock F&O tab shows stock futures build-up without the option controls", async () => {
+  const api = makeApi();
+  await act(async () => { render(<OiAnalysis api={api} boardApi={makeBoardPreviewApi()} />); });
+  const calls = api.trend.mock.calls.length;
+  await act(async () => { fireEvent.click(screen.getByRole("tab", { name: "Stock F&O" })); });
+  expect(screen.getByRole("heading", { name: "Stock F&O" })).toBeInTheDocument();
+  expect(await screen.findByRole("region", { name: "Long build-up" })).toBeInTheDocument();
+  expect(screen.queryByLabelText("Symbol")).not.toBeInTheDocument();
+  expect(api.liveChain).not.toHaveBeenCalled();
+  expect(api.trend.mock.calls.length).toBe(calls);
 });

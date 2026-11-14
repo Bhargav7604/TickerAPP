@@ -14,6 +14,8 @@ from backend.alerts import run_alert_cycle
 from backend.index_stocks import refresh_stock_history, sync_index_constituents
 from backend.index_weights import refresh_all_index_weights
 from backend.snapshot_recorder import record_market_snapshot
+from backend.board_jobs import maintain_board, publish_board_scanner
+from backend.board_tracker import BoardTracker
 
 
 class Command(BaseCommand):
@@ -21,7 +23,8 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         stopped = threading.Event()
-        feed = SharedMarketFeed(reactor.callFromThread)
+        tracker = BoardTracker()
+        feed = SharedMarketFeed(reactor.callFromThread, tracker=tracker)
         if not feed.renew_lease():
             raise CommandError("A market-feed worker is already running for this database.")
 
@@ -52,6 +55,12 @@ class Command(BaseCommand):
                           args=[run_alert_cycle], coalesce=True, max_instances=1)
         scheduler.add_job(guarded, "cron", day_of_week="mon-fri", hour=8, minute=40, args=[sync_index_constituents])
         scheduler.add_job(guarded, "date", args=[refresh_stock_history])
+        # Market, Money Flow and Intraday pages: cap lists, quotes, missed minute bars and daily stats; then the scanner.
+        scheduler.add_job(guarded, "date", args=[sync_index_constituents])
+        scheduler.add_job(guarded, "cron", minute="*", second=12, args=[lambda: maintain_board(tracker)],
+                          coalesce=True, max_instances=1)
+        scheduler.add_job(guarded, "cron", minute="*", second=35, args=[lambda: publish_board_scanner(tracker)],
+                          coalesce=True, max_instances=1)
         # Sector contribution weights: once each trading morning, retried before and after the open if it failed.
         scheduler.add_job(guarded, "date", args=[refresh_all_index_weights])
         scheduler.add_job(guarded, "cron", day_of_week="mon-fri", hour=8, minute=45, second=5,
@@ -76,6 +85,10 @@ class Command(BaseCommand):
                         self.stderr.write(f"Feed configuration unavailable ({type(exc).__name__}); retrying.")
                     next_configure = time.monotonic() + 5
                 feed.publish()
+                try:
+                    tracker.publish_snapshot()
+                except Exception as exc:
+                    self.stderr.write(f"Board snapshot unavailable ({type(exc).__name__}).")
                 stopped.wait(1)
         finally:
             scheduler.shutdown(wait=True)

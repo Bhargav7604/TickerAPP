@@ -348,7 +348,8 @@ class TelegramSettings(models.Model):
 class IndexConstituent(models.Model):
     """A stock inside NIFTY 50, BANK NIFTY or SENSEX. NSE lists refresh daily; edit SENSEX here after BSE rebalances."""
 
-    INDEXES = (("nifty", "NIFTY 50"), ("banknifty", "BANK NIFTY"), ("sensex", "SENSEX"), ("nifty500", "NIFTY 500"))
+    INDEXES = (("nifty", "NIFTY 50"), ("banknifty", "BANK NIFTY"), ("sensex", "SENSEX"), ("nifty500", "NIFTY 500"),
+               ("nifty100", "NIFTY 100"), ("midcap150", "NIFTY MIDCAP 150"))
 
     index_key = models.CharField(max_length=10, choices=INDEXES)
     symbol = models.CharField(max_length=30, help_text="NSE trading symbol, for example RELIANCE.")
@@ -364,6 +365,27 @@ class IndexConstituent(models.Model):
 
     def __str__(self):
         return f"{self.get_index_key_display()}: {self.symbol}"
+
+
+class UniverseStats(models.Model):
+    """Once-a-day numbers for each stock on the Market, Money Flow and Intraday pages, from Zerodha daily candles."""
+
+    symbol = models.CharField(max_length=30, unique=True, help_text="NSE symbol, or an index name such as NIFTY 50.")
+    stats_on = models.DateField(help_text="Day these numbers were fetched.")
+    recent = models.JSONField(default=list, help_text="Last few daily candles [[date, open, high, low, close, volume], ...], oldest first.")
+    high_52w = models.FloatField(blank=True, null=True)
+    low_52w = models.FloatField(blank=True, null=True)
+    avg_volume = models.FloatField(blank=True, null=True, help_text="Average daily volume over the last 20 sessions.")
+    fut_symbol = models.CharField(max_length=40, blank=True, default="")
+    fut_oi = models.JSONField(default=dict, help_text="{date: closing open interest} for fut_symbol.")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Universe stats"
+        verbose_name_plural = "Universe stats"
+
+    def __str__(self):
+        return f"{self.symbol} for {self.stats_on}"
 
 
 class IndexWeights(models.Model):

@@ -36,8 +36,10 @@ def public_tick(tick):
 
 
 class SharedMarketFeed:
-    def __init__(self, dispatch, ticker_factory=KiteTicker):
+    def __init__(self, dispatch, ticker_factory=KiteTicker, tracker=None):
         self.owner = uuid.uuid4().hex
+        self.tracker = tracker
+        self.extra_tokens = {}
         self.dispatch = dispatch
         self.ticker_factory = ticker_factory
         self.lock = threading.RLock()
@@ -76,7 +78,13 @@ class SharedMarketFeed:
         spots = resolve_spot_tokens(frame)
         tokens.update(token for token in spots.values() if token is not None)
         tokens = sorted(tokens)
-        signature = (credentials.api_key, credentials.access_token, tuple(tokens))
+        extra = {}
+        if self.tracker is not None:
+            try:
+                extra = self.tracker.configure()
+            except Exception:
+                extra = dict(self.extra_tokens)  # keep the last good board subscription
+        signature = (credentials.api_key, credentials.access_token, tuple(tokens), tuple(sorted(extra.items())))
         with self.lock:
             self.contracts = contracts
             self.spot_tokens = spots
@@ -88,6 +96,7 @@ class SharedMarketFeed:
         with self.lock:
             self.signature = signature
             self.tokens = tokens
+            self.extra_tokens = extra
             self.ticker = ticker
             self.exhausted = False
         ticker.on_connect = self.on_connect
@@ -104,8 +113,12 @@ class SharedMarketFeed:
             if ticker is not self.ticker:
                 ticker.close()
                 return
-            ticker.subscribe(self.tokens)
-            ticker.set_mode(ticker.MODE_FULL, self.tokens)
+            full = sorted(set(self.tokens) | {token for token, mode in self.extra_tokens.items() if mode == "full"})
+            quote = sorted({token for token, mode in self.extra_tokens.items() if mode == "quote"} - set(full))
+            ticker.subscribe(full + quote)
+            ticker.set_mode(ticker.MODE_FULL, full)
+            if quote:
+                ticker.set_mode(ticker.MODE_QUOTE, quote)
             self.connected = True
             self.last_message = time.time()
 
@@ -118,6 +131,11 @@ class SharedMarketFeed:
                 if token in self.tokens:
                     self.ticks[str(token)] = public_tick(tick)
             self.last_message = time.time()
+        if self.tracker is not None and self.extra_tokens:
+            try:
+                self.tracker.on_ticks(ticks)
+            except Exception:
+                pass  # the board must never stop the index feed
 
     def on_message(self, ticker, payload, is_binary):
         with self.lock:

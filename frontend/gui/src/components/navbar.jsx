@@ -1,6 +1,6 @@
 import React from "react";
 import { AppBar, Box, IconButton, Toolbar, Tooltip } from "@mui/material";
-import { Activity, ChartNoAxesColumn, ChartScatter, House, Layers, LayoutDashboard, Moon, RefreshCw, Settings, Sun, WalletCards } from "lucide-react";
+import { Activity, ChartNoAxesColumn, ChartScatter, Globe, House, Layers, LayoutDashboard, Moon, RefreshCw, Settings, Sun, WalletCards, Waves, Wrench, Zap } from "lucide-react";
 import logo from "../assets/brand/utraders-logo-dark.png";
 import logoOnDark from "../assets/brand/utraders-logo-light.png";
 import brandMark from "../assets/brand/utraders-mark.png";
@@ -8,16 +8,22 @@ import { useTheme } from "../theme";
 
 export const NAV_ITEMS = [
   ["dashboard", "Home", "Home", House],
+  ["market", "Market", "Market", Globe],
+  ["money-flow", "Money Flow", "Flow", Waves],
+  ["intraday", "Intraday", "Intraday", Zap],
   ["charts", "Dashboard", "Charts", LayoutDashboard],
   ["index-stocks", "Index Stocks", "Stocks", ChartScatter],
   ["equity", "Equity", "Equity", ChartNoAxesColumn],
   ["index-options", "Index Options", "Options", Layers],
   ["oi-analysis", "OI Analysis", "OI", Activity],
+  ["tools", "Tools", "Tools", Wrench],
   ["trading", "My Trading", "Trading", WalletCards],
   ["settings", "Settings", "Settings", Settings],
 ];
 // Pages that poll their own data; the dashboard refresh button only applies to Home's market tables.
-export const OWN_REFRESH = ["charts", "index-stocks", "equity", "index-options", "oi-analysis", "trading", "settings"];
+export const OWN_REFRESH = ["market", "money-flow", "intraday", "charts", "index-stocks", "equity", "index-options", "oi-analysis", "tools", "trading", "settings"];
+// The phone's bottom bar keeps the busiest pages; the rest are under More (the full menu).
+export const MOBILE_ITEMS = ["dashboard", "market", "money-flow", "intraday", "oi-analysis"];
 
 // Three uneven lines that even out on hover.
 export function BurgerIcon() {

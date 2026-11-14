@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import OiTrendChart from "./oiTrendChart";
 import OiStrikeBars from "./oiStrikeBars";
+import StockFno from "./stockFno";
 import "../oiAnalysis.css";
 import {
   BUILDUP_SHORT, compactOi, formatPct, formatPrice, formatRatio, formatSignedOi, formatSignedPrice,
@@ -11,7 +12,7 @@ import {
 
 const TREND_REFRESH_MS = 30000;
 const LIVE_REFRESH_MS = 3000;
-const TABS = [["trend", "OI Trend"], ["chain", "Option Chain"]];
+const TABS = [["trend", "OI Trend"], ["chain", "Option Chain"], ["stocks", "Stock F&O"]];
 
 function Stat({ label, value, tone, note, noteTone }) {
   return <div className="oi-stat"><span>{label}</span><strong className={tone || ""}>{value}</strong>
@@ -148,7 +149,7 @@ function ChainSummary({ chain, indexLabel }) {
   </section>;
 }
 
-function OiAnalysis({ api }) {
+function OiAnalysis({ api, boardApi }) {
   const [index, setIndex] = useState("nifty");
   const [tab, setTab] = useState("trend");
   const [meta, setMeta] = useState({ expiries: [], recorded: [], intervals: [3, 6, 15, 30, 60], strikeWindows: [5, 7, 10, 15] });
@@ -182,7 +183,7 @@ function OiAnalysis({ api }) {
   }, [api, index]);
 
   const load = useCallback(async () => {
-    if (!expiry) return;
+    if (!expiry || tab === "stocks") return;
     controller.current?.abort();
     const abort = new AbortController();
     controller.current = abort;
@@ -232,7 +233,7 @@ function OiAnalysis({ api }) {
     return () => clearTimeout(timer);
   }, [flashes]);
 
-  const data = tab === "trend" ? trend : chain;
+  const data = tab === "trend" ? trend : tab === "chain" ? chain : null;
   const latest = trend?.rows?.[0];
   const indexLabel = OI_INDEXES.find(([key]) => key === index)[1];
 
@@ -243,10 +244,10 @@ function OiAnalysis({ api }) {
   return <main className="oi-page">
     <header className="oi-command">
       <div className="oi-title">
-        <h1>{tab === "chain" ? "Option chain" : "OI Analysis"}</h1>
-        <span>{tab === "chain" && live && chain?.marketOpen && <b className="oi-live-badge">LIVE</b>}{status}</span>
+        <h1>{tab === "chain" ? "Option chain" : tab === "stocks" ? "Stock F&O" : "OI Analysis"}</h1>
+        <span>{tab === "chain" && live && chain?.marketOpen && <b className="oi-live-badge">LIVE</b>}{tab === "stocks" ? "stock futures build-up · refreshes every 5 sec" : status}</span>
       </div>
-      <div className="oi-controls">
+      {tab !== "stocks" && <div className="oi-controls">
         <label>Symbol
           <select value={index} onChange={event => setIndex(event.target.value)} aria-label="Symbol">
             {OI_INDEXES.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
@@ -283,7 +284,7 @@ function OiAnalysis({ api }) {
         <button type="button" className="oi-refresh" onClick={load} disabled={loading || !expiry} aria-label="Refresh OI data" title="Refresh OI data">
           <RefreshCw size={15} className={loading ? "oi-spin" : ""} /> Refresh
         </button>
-      </div>
+      </div>}
     </header>
 
     <div className="oi-tabs" role="tablist" aria-label="OI views">
@@ -295,6 +296,8 @@ function OiAnalysis({ api }) {
     {data?.liveMessage && <p className="oi-notice">Live quotes unavailable ({data.liveMessage}) Showing the last recorded snapshot.</p>}
     {data?.baseline === "today's first snapshot" && <p className="oi-notice">OI change is measured from today's first recorded snapshot until previous-day OI is downloaded.</p>}
     {data?.baseline === "unavailable" && <p className="oi-notice">OI change appears once today's OI recording starts (every 3 minutes while Zerodha is connected).</p>}
+
+    {tab === "stocks" && (boardApi ? <StockFno api={boardApi} /> : <p className="oi-notice">Stock F&O data is not connected on this screen.</p>)}
 
     {tab === "trend" && trend && !trend.message && <>
       <section className="oi-stats" aria-label="Latest OI summary">

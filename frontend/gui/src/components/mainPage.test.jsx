@@ -9,6 +9,10 @@ jest.mock("./settings", () => ({ __esModule: true, default: () => <h1>Settings</
 jest.mock("./equity", () => ({ __esModule: true, default: ({ indexOptions, api }) => <h1>{indexOptions ? "Index Options" : "Equity"} / {api.name}</h1> }));
 jest.mock("./oiAnalysis", () => ({ __esModule: true, default: ({ api }) => <h1>OI Analysis / {api.name}</h1> }));
 jest.mock("./liveDashboard", () => ({ __esModule: true, default: ({ api }) => <h1>Dashboard / {api.name}</h1> }));
+jest.mock("./marketPage", () => ({ __esModule: true, default: ({ api }) => <h1>Market / {api.name}</h1> }));
+jest.mock("./moneyFlow", () => ({ __esModule: true, default: ({ api }) => <h1>Money Flow / {api.name}</h1> }));
+jest.mock("./intraday", () => ({ __esModule: true, default: ({ api }) => <h1>Intraday / {api.name}</h1> }));
+jest.mock("./tools", () => ({ __esModule: true, default: ({ api }) => <h1>Tools / {api.name}</h1> }));
 
 afterEach(() => { window.history.replaceState(null, "", "/"); });
 
@@ -34,7 +38,7 @@ test("the page links live in the burger menu, which closes after choosing or wit
   render(<MainPage username="demo" equityApi={{ name: "stocks" }} indexOptionsApi={{ name: "indices" }} />);
   expect(screen.queryByRole("navigation", { name: "Main navigation" })).not.toBeInTheDocument();
   const nav = await openMenu();
-  expect(nav.getAllByRole("button").map(item => item.getAttribute("aria-label"))).toEqual(["Home", "Dashboard", "Index Stocks", "Equity", "Index Options", "OI Analysis", "My Trading", "Settings"]);
+  expect(nav.getAllByRole("button").map(item => item.getAttribute("aria-label"))).toEqual(["Home", "Market", "Money Flow", "Intraday", "Dashboard", "Index Stocks", "Equity", "Index Options", "OI Analysis", "Tools", "My Trading", "Settings"]);
   expect(within(screen.getByRole("dialog", { name: "Menu" })).getByText("demo")).toBeInTheDocument();
   fireEvent.keyDown(screen.getByRole("dialog", { name: "Menu" }), { key: "Escape" });
   await waitFor(() => expect(screen.queryByRole("navigation", { name: "Main navigation" })).not.toBeInTheDocument());
@@ -66,13 +70,28 @@ test("the menu search narrows the pages and Enter opens the first match", async 
   expect(await screen.findByRole("heading", { name: "OI Analysis / oi" })).toBeInTheDocument();
 });
 
-test("mobile navigation includes the separate Index Options section", async () => {
-  render(<MainPage username="demo" equityApi={{ name: "stocks" }} indexOptionsApi={{ name: "indices" }} />);
+test("the phone bar keeps five pages and More opens the full menu", async () => {
+  render(<MainPage username="demo" equityApi={{ name: "stocks" }} indexOptionsApi={{ name: "indices" }} boardApi={{ name: "board" }} />);
   const nav = within(screen.getByRole("navigation", { name: "Mobile section navigation" }));
-  expect(nav.getAllByRole("button")).toHaveLength(8);
-  fireEvent.click(nav.getByRole("button", { name: "Options", exact: true }));
+  expect(nav.getAllByRole("button").map(item => item.textContent)).toEqual(["Home", "Market", "Flow", "Intraday", "OI", "More"]);
+  fireEvent.click(nav.getByRole("button", { name: "Flow", exact: true }));
+  expect(await screen.findByRole("heading", { name: "Money Flow / board" })).toBeInTheDocument();
+  expect(window.location.hash).toBe("#money-flow");
+  fireEvent.click(nav.getByRole("button", { name: "More pages" }));
+  const menu = within(await screen.findByRole("navigation", { name: "Main navigation" }));
+  fireEvent.click(menu.getByRole("button", { name: "Index Options" }));
   expect(await screen.findByRole("heading", { name: "Index Options / indices" })).toBeInTheDocument();
-  expect(window.location.hash).toBe("#index-options");
+  expect(nav.getByRole("button", { name: "More pages" })).toHaveAttribute("aria-current", "page");
+});
+
+test("Market, Intraday and Tools open from the menu and by deep link", async () => {
+  window.history.replaceState(null, "", "/#tools");
+  render(<MainPage username="demo" equityApi={{ name: "stocks" }} indexOptionsApi={{ name: "indices" }} boardApi={{ name: "board" }} />);
+  expect(await screen.findByRole("heading", { name: "Tools / board" })).toBeInTheDocument();
+  fireEvent.click((await openMenu()).getByRole("button", { name: "Market" }));
+  expect(await screen.findByRole("heading", { name: "Market / board" })).toBeInTheDocument();
+  fireEvent.click((await openMenu()).getByRole("button", { name: "Intraday" }));
+  expect(await screen.findByRole("heading", { name: "Intraday / board" })).toBeInTheDocument();
 });
 
 test("OI Analysis is reachable from both navigations and by deep link", async () => {
@@ -90,7 +109,7 @@ test("Index Stocks opens from the menu and from a Home card with that index chos
   expect(await screen.findByRole("heading", { name: "Index Stocks / constituents" })).toBeInTheDocument();
   expect(window.location.hash).toBe("#index-stocks");
   expect(localStorage.getItem("utraders-index-stocks")).toBe("sensex");
-  expect(within(screen.getByRole("navigation", { name: "Mobile section navigation" })).getByRole("button", { name: "Stocks", exact: true })).toHaveAttribute("aria-current", "page");
+  expect(within(screen.getByRole("navigation", { name: "Mobile section navigation" })).getByRole("button", { name: "More pages" })).toHaveAttribute("aria-current", "page");
   expect((await openMenu()).getByRole("button", { name: "Index Stocks" })).toHaveAttribute("aria-current", "page");
 });
 

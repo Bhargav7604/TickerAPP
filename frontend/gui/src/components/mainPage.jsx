@@ -1,7 +1,8 @@
 import { Component, lazy, Suspense } from "react";
 
 import { BottomNavigation, BottomNavigationAction, Box, Paper } from "@mui/material";
-import Navbar, { NAV_ITEMS } from "./navbar.jsx";
+import { Ellipsis } from "lucide-react";
+import Navbar, { MOBILE_ITEMS, NAV_ITEMS } from "./navbar.jsx";
 import Sidebar, { MobileMenu } from "./sidebar.jsx";
 import Settings from "./settings.jsx";
 import Dashboard from "./dashboard.jsx";
@@ -12,13 +13,18 @@ import { makeDecisionApi } from "../decisionData";
 import { makeTraderApi } from "../traderData";
 import { makeIndexStocksApi, saveStockIndex } from "../indexStocksData";
 import { makeDashboardApi } from "../dashboardData";
+import { makeBoardApi } from "../boardData";
 
-const PAGES = ["charts", "index-stocks", "equity", "index-options", "oi-analysis", "trading", "settings"];
+const PAGES = ["market", "money-flow", "intraday", "charts", "index-stocks", "equity", "index-options", "oi-analysis", "tools", "trading", "settings"];
 const Equity = lazy(() => import("./equity.jsx"));
 const IndexStocks = lazy(() => import("./indexStocks.jsx"));
 const LiveDashboard = lazy(() => import("./liveDashboard.jsx"));
 const OiAnalysis = lazy(() => import("./oiAnalysis.jsx"));
 const TraderDesk = lazy(() => import("./traderDesk.jsx"));
+const MarketPage = lazy(() => import("./marketPage.jsx"));
+const MoneyFlow = lazy(() => import("./moneyFlow.jsx"));
+const Intraday = lazy(() => import("./intraday.jsx"));
+const Tools = lazy(() => import("./tools.jsx"));
 
 class MainPage extends Component {
   constructor(props) {
@@ -35,6 +41,7 @@ class MainPage extends Component {
     this.traderApi = props.traderApi || makeTraderApi(props.request);
     this.indexStocksApi = props.indexStocksApi || makeIndexStocksApi(props.request);
     this.dashboardApi = props.dashboardApi || makeDashboardApi(props.request);
+    this.boardApi = props.boardApi || makeBoardApi(props.request);
   }
 
   componentDidMount() { window.addEventListener("hashchange", this.syncPage); }
@@ -78,6 +85,14 @@ class MainPage extends Component {
         loadCandles={this.decisionApi.candles}
       />} />
 
+    } else if (this.state.currentPage === "market") {
+      page = <Suspense fallback={<div className="eq-empty" role="status">Loading Market...</div>}><MarketPage api={this.boardApi} /></Suspense>;
+    } else if (this.state.currentPage === "money-flow") {
+      page = <Suspense fallback={<div className="eq-empty" role="status">Loading Money Flow...</div>}><MoneyFlow api={this.boardApi} /></Suspense>;
+    } else if (this.state.currentPage === "intraday") {
+      page = <Suspense fallback={<div className="eq-empty" role="status">Loading Intraday...</div>}><Intraday api={this.boardApi} /></Suspense>;
+    } else if (this.state.currentPage === "tools") {
+      page = <Suspense fallback={<div className="eq-empty" role="status">Loading Tools...</div>}><Tools api={this.boardApi} /></Suspense>;
     } else if (this.state.currentPage === "charts") {
       page = <Suspense fallback={<div className="eq-empty" role="status">Loading Dashboard...</div>}><LiveDashboard api={this.dashboardApi} /></Suspense>;
     } else if (this.state.currentPage === "index-stocks") {
@@ -86,7 +101,7 @@ class MainPage extends Component {
       const indexOptions = this.state.currentPage === "index-options";
       page = <Suspense fallback={<div className="eq-empty" role="status">Loading {indexOptions ? "Index Options" : "Equity"}...</div>}><Equity key={`${this.props.username}:${this.state.currentPage}`} username={this.props.username} indexOptions={indexOptions} api={indexOptions ? this.indexOptionsApi : this.equityApi} /></Suspense>;
     } else if (this.state.currentPage === "oi-analysis") {
-      page = <Suspense fallback={<div className="eq-empty" role="status">Loading OI Analysis...</div>}><OiAnalysis api={this.oiApi} /></Suspense>;
+      page = <Suspense fallback={<div className="eq-empty" role="status">Loading OI Analysis...</div>}><OiAnalysis api={this.oiApi} boardApi={this.boardApi} /></Suspense>;
     } else if (this.state.currentPage === "trading") {
       page = <Suspense fallback={<div className="eq-empty" role="status">Loading My trading...</div>}><TraderDesk api={this.traderApi} /></Suspense>;
     } else if (this.state.currentPage === "settings") {
@@ -110,9 +125,12 @@ class MainPage extends Component {
           currentPage={this.state.currentPage} handleDashboardRefresh={this.props.handleDashboardRefresh} />
         <Paper component="nav" aria-label="Mobile section navigation" elevation={0} square
           sx={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 1100, display: { xs: "block", md: "none" }, pb: "env(safe-area-inset-bottom, 0px)", borderRadius: 0 }}>
-          <BottomNavigation showLabels value={this.state.currentPage} onChange={(_, page) => this.changePage(page)}>
-            {NAV_ITEMS.map(([id, , shortLabel, Icon]) => <BottomNavigationAction key={id} value={id} label={shortLabel} icon={<Icon size={20} />}
-              aria-current={this.state.currentPage === id ? "page" : undefined} />)}
+          <BottomNavigation showLabels value={MOBILE_ITEMS.includes(this.state.currentPage) ? this.state.currentPage : "more"}
+            onChange={(_, page) => page === "more" ? this.setState({ menuOpen: true }) : this.changePage(page)}>
+            {NAV_ITEMS.filter(([id]) => MOBILE_ITEMS.includes(id)).map(([id, , shortLabel, Icon]) => <BottomNavigationAction key={id} value={id} label={shortLabel} icon={<Icon size={20} />}
+              aria-current={this.state.currentPage === id ? "page" : undefined} sx={{ minWidth: 0, px: 0.5 }} />)}
+            <BottomNavigationAction value="more" label="More" icon={<Ellipsis size={20} />} aria-label="More pages"
+              aria-current={MOBILE_ITEMS.includes(this.state.currentPage) ? undefined : "page"} sx={{ minWidth: 0, px: 0.5 }} />
           </BottomNavigation>
         </Paper>
       </Box>
