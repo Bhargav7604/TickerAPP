@@ -7,6 +7,15 @@ const CLOSED_MS = 60000;
 const points = value => Number.isFinite(value) ? `${value > 0 ? "+" : ""}${value.toFixed(1)}` : "--";
 const pointsColor = value => value > 0 ? "success.main" : value < 0 ? "error.main" : "text.secondary";
 const clock = seconds => new Date(seconds * 1000).toLocaleTimeString("en-GB", { timeZone: "Asia/Kolkata" });
+const istDay = date => date.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+/** " · weights updated 12:45" when refitted today, otherwise the day they were fitted. */
+export function weightsNote(data, now = new Date()) {
+  const at = data?.weightsAt ? new Date(data.weightsAt) : null;
+  if (at && !Number.isNaN(at.getTime()) && istDay(at) === istDay(now)) {
+    return ` · weights updated ${at.toLocaleTimeString("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })}`;
+  }
+  return data?.weightsOn ? ` · weights from ${new Date(data.weightsOn + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}` : "";
+}
 
 function SectorRow({ sector, scale, open, onToggle }) {
   const color = pointsColor(sector.points);
@@ -109,7 +118,7 @@ export default function SectorContribution({ load, index = "nifty", sx }) {
       {flat.length > 0 && <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 1, px: 1 }}>No change: {flat.map(sector => sector.name).join(", ")}</Typography>}
       <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 1.25, px: 1 }}>
         Tap a sector to see its stocks. Sectors add up to {points(data.explained)} of {shortLabel}'s {points(data.indexMove)} points
-        {data.weightsOn ? ` · weights from ${new Date(data.weightsOn + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}` : ""}.
+        {weightsNote(data)}.
       </Typography>
     </>}
   </Paper>;

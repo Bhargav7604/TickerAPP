@@ -67,6 +67,9 @@ class Command(BaseCommand):
                           args=[refresh_all_index_weights], coalesce=True, max_instances=1)
         scheduler.add_job(guarded, "cron", day_of_week="mon-fri", hour=9, minute="5,25", second=5,
                           args=[refresh_all_index_weights], coalesce=True, max_instances=1)
+        # During the session the weights are refitted with today's minutes, so they follow any same-day change.
+        scheduler.add_job(guarded, "cron", day_of_week="mon-fri", hour="9-15", minute="15,45", second=35,
+                          args=[lambda: refresh_all_index_weights(intraday=True)], coalesce=True, max_instances=1)
         scheduler.add_job(guarded, "cron", day_of_week="mon-fri", hour="8-15", minute="*/10", second=50,
                           args=[refresh_stock_history], coalesce=True, max_instances=1)
         scheduler.start()

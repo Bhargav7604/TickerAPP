@@ -16,26 +16,33 @@ STOCKS = (("HDFCBANK", "Financial Services", "HDFC Bank Ltd."), ("BAJFINANCE", "
 TRUE_POINTS_PER_RUPEE = {"HDFCBANK": 2.0, "BAJFINANCE": 0.5, "INFY": 1.5, "TCS": 0.4}
 
 
-def minute_prices(sessions=4, minutes=200, seed=7):
-    """Random-walk minute prices for each stock, and the index as their exact weighted sum."""
+def minute_prices(sessions=4, minutes=200, seed=7, days=None, old_weights_before=None):
+    """Random-walk minute prices for each stock, and the index as their exact weighted sum.
+
+    days: session dates (default 5-8 Nov). Sessions before old_weights_before use different weights, like a rebalance.
+    """
     rng = np.random.default_rng(seed)
     start = {"HDFCBANK": 1000.0, "BAJFINANCE": 900.0, "INFY": 1500.0, "TCS": 3500.0}
-    times, prices = [], {symbol: [] for symbol in start}
+    old = {"HDFCBANK": 1.2, "BAJFINANCE": 1.4, "INFY": 0.6, "TCS": 0.9}
+    days = days or [dt.date(2026, 11, 5 + day) for day in range(sessions)]
+    times, prices, index = [], {symbol: [] for symbol in start}, []
     level = dict(start)
-    for day in range(sessions):
-        session = dt.datetime(2026, 11, 5 + day, 9, 15)
+    for day in days:
+        weights = old if old_weights_before and day < old_weights_before else TRUE_POINTS_PER_RUPEE
+        session = dt.datetime.combine(day, dt.time(9, 15))
         for minute in range(minutes):
             times.append(session + dt.timedelta(minutes=minute))
             for symbol in start:
                 level[symbol] *= 1 + rng.normal(0, 0.0015)
                 prices[symbol].append(level[symbol])
-    index = [sum(TRUE_POINTS_PER_RUPEE[symbol] * prices[symbol][i] for symbol in start) for i in range(len(times))]
+            index.append(sum(weights[symbol] * prices[symbol][-1] for symbol in start))
     return times, prices, index
 
 
 class FakeKite:
-    def __init__(self, broken_index=False):
-        self.times, self.prices, self.index = minute_prices()
+    def __init__(self, broken_index=False, **series):
+        self.times, self.prices, self.index = minute_prices(**series)
+        self.requests = []
         if broken_index:
             self.index = list(np.random.default_rng(1).normal(10000, 300, len(self.index)))
         self.tokens = {f"NSE:{symbol}": number for number, symbol in enumerate(TRUE_POINTS_PER_RUPEE, start=1)}
@@ -46,10 +53,12 @@ class FakeKite:
         return {name: {"instrument_token": self.tokens[name]} for name in names if name in self.tokens}
 
     def historical_data(self, token, start, end, interval):
-        assert interval == "minute" and end.date() < NOW.date()
+        assert interval == "minute"
+        self.requests.append((start, end))
         symbol = next(name for name, number in self.tokens.items() if number == token)
         values = self.index if symbol == "NSE:NIFTY 50" else self.prices[symbol.split(":")[1]]
-        return [{"date": moment.replace(tzinfo=MARKET_TZ), "close": value} for moment, value in zip(self.times, values)]
+        return [{"date": moment.replace(tzinfo=MARKET_TZ), "close": value} for moment, value in zip(self.times, values)
+                if start <= moment <= end]
 
     def quote(self, names):
         return {name: self.quotes[name] for name in names if name in self.quotes}
@@ -92,9 +101,9 @@ class RefreshTests(TestCase):
     def setUp(self):
         add_stocks()
 
-    def refresh(self, kite):
+    def refresh(self, kite, now=NOW, intraday=False):
         with patch("backend.index_weights.time.sleep"):
-            return refresh_index_weights("nifty", client=kite, now=NOW)
+            return refresh_index_weights("nifty", client=kite, now=now, intraday=intraday)
 
     def test_fits_and_saves_once_a_day(self):
         self.assertEqual(self.refresh(FakeKite()), "saved")
@@ -103,6 +112,33 @@ class RefreshTests(TestCase):
         for symbol, value in TRUE_POINTS_PER_RUPEE.items():
             self.assertAlmostEqual(weights.coefficients[symbol], value, places=4)
         self.assertEqual(self.refresh(FakeKite()), "fresh")
+
+    def test_uses_the_last_ten_complete_sessions_only(self):
+        # Twelve sessions, the first two with different weights (a rebalance two weeks ago), then today.
+        days = [dt.date(2026, 10, 27) + dt.timedelta(days=n) for n in range(12)] + [NOW.date()]
+        kite = FakeKite(days=days, minutes=120, old_weights_before=dt.date(2026, 10, 29))
+        self.assertEqual(self.refresh(kite), "saved")
+        weights = IndexWeights.objects.get(index_key="nifty")
+        self.assertEqual(weights.sessions, 10)
+        for symbol, value in TRUE_POINTS_PER_RUPEE.items():
+            self.assertAlmostEqual(weights.coefficients[symbol], value, places=4)
+        self.assertTrue(all(end.date() < NOW.date() for _, end in kite.requests))  # the morning fit never reads today
+        self.assertLess(kite.requests[0][0].date(), dt.date(2026, 10, 27))
+
+    def test_intraday_refit_adds_todays_minutes_once_trading_has_run_a_while(self):
+        days = [dt.date(2026, 11, 3) + dt.timedelta(days=n) for n in range(10)] + [NOW.date()]  # ten sessions, then today
+        kite = FakeKite(days=days, minutes=120)
+        self.assertEqual(self.refresh(kite, now=NOW.replace(hour=9, minute=30), intraday=True), "not trading")
+        self.assertEqual(self.refresh(kite, now=NOW.replace(hour=16), intraday=True), "not trading")
+        self.assertEqual(kite.requests, [])
+        IndexWeights.objects.create(index_key="nifty", computed_on=NOW.date(), coefficients={"HDFCBANK": 9})
+        with patch("backend.index_weights.solve_weights", wraps=solve_weights) as solve:
+            self.assertEqual(self.refresh(kite, now=NOW, intraday=True), "saved")  # not blocked by the morning fit
+        self.assertEqual(solve.call_args[0][0].shape[0], 10 * 120 + 106)  # ten sessions plus 09:15-11:00 today
+        self.assertEqual(kite.requests[0][1], NOW.replace(tzinfo=None))
+        weights = IndexWeights.objects.get(index_key="nifty")
+        self.assertEqual(weights.sessions, 10)
+        self.assertAlmostEqual(weights.coefficients["INFY"], TRUE_POINTS_PER_RUPEE["INFY"], places=4)
 
     def test_a_poor_fit_keeps_the_previous_weights(self):
         IndexWeights.objects.create(index_key="nifty", computed_on=NOW.date() - dt.timedelta(days=1), coefficients={"HDFCBANK": 9})

@@ -1,8 +1,10 @@
 """Sector contribution: how many index points each sector adds to, or takes from, the index today.
 
 Between rebalances an index is a fixed weighted sum of its stocks' prices, so each stock's weight can be
-recovered from minute prices of the index and its stocks by least squares. The fit runs once each trading
-morning on the last few complete sessions, and is only kept if the stocks reproduce the index closely.
+recovered from minute prices of the index and its stocks by least squares. The fit runs each trading morning on
+the last ten complete sessions, then every half hour during the session with today's minutes added, and is only
+kept if the stocks reproduce the index closely. Ten sessions explained each following day's close to within about
+0.7 points in back-tests (six sessions: 1.4); adding the day's own minutes brought that to about 0.4.
 """
 
 import datetime as dt
@@ -25,7 +27,9 @@ from .oi_recorder import SPOT_KEYS
 from .views import protected
 
 WEIGHT_INDEXES = ("nifty",)
-FIT_DAYS = 9          # calendar days back: about six complete sessions
+FIT_SESSIONS = 10     # complete sessions in each fit
+FIT_LOOKBACK_DAYS = 24  # calendar days fetched to find them, holidays included
+INTRADAY_MIN_MINUTES = 20  # wait for some of today's trading before refitting with it
 MIN_SESSIONS = 3
 MIN_MINUTES = 600
 MAX_FIT_ERROR = 5.0   # index points; a split or rebalance inside the window pushes the gap far above this
@@ -77,11 +81,16 @@ def minute_closes(client, token, start, end):
             time.sleep(1.5)
 
 
-def refresh_index_weights(index_key="nifty", client=None, now=None, pause=HISTORY_PAUSE):
-    """Fit today's weights once. Anything doubtful keeps the previous weights in place."""
+def refresh_index_weights(index_key="nifty", client=None, now=None, pause=HISTORY_PAUSE, intraday=False):
+    """Fit the weights: once in the morning on complete sessions, or intraday with today's minutes added.
+    Anything doubtful keeps the previous weights in place."""
     now = now or dt.datetime.now(MARKET_TZ)
     today = now.date()
-    if IndexWeights.objects.filter(index_key=index_key, computed_on=today).exists():
+    if intraday:
+        open_minutes = (now.hour * 60 + now.minute) - (9 * 60 + 15)
+        if not market_open(now) or open_minutes < INTRADAY_MIN_MINUTES:
+            return "not trading"
+    elif IndexWeights.objects.filter(index_key=index_key, computed_on=today).exists():
         return "fresh"
     if client is None:
         client, _ = broker()
@@ -96,8 +105,10 @@ def refresh_index_weights(index_key="nifty", client=None, now=None, pause=HISTOR
     if len(tokens) < len(names):
         log(f"Index weights for {index_key}: {len(names) - len(tokens)} instruments not found; keeping old weights.", "ERROR")
         return "missing instruments"
-    start = dt.datetime.combine(today - dt.timedelta(days=FIT_DAYS), dt.time(9, 15))
-    end = dt.datetime.combine(today, dt.time.min) - dt.timedelta(minutes=1)  # complete sessions only
+    start = dt.datetime.combine(today - dt.timedelta(days=FIT_LOOKBACK_DAYS), dt.time(9, 15))
+    # Complete sessions only in the morning; intraday also takes today's minutes so far.
+    end = now.astimezone(MARKET_TZ).replace(tzinfo=None, second=0, microsecond=0) if intraday \
+        else dt.datetime.combine(today, dt.time.min) - dt.timedelta(minutes=1)
     series = {}
     try:
         for key, token in tokens.items():
@@ -108,7 +119,9 @@ def refresh_index_weights(index_key="nifty", client=None, now=None, pause=HISTOR
         return "history unavailable"
     symbols = sorted(members)
     minutes = sorted(set(series[INDEX]).intersection(*(series[symbol] for symbol in symbols)))
-    sessions = len({minute.date() for minute in minutes})
+    complete = sorted({minute.date() for minute in minutes if minute.date() < today})[-FIT_SESSIONS:]
+    minutes = [minute for minute in minutes if minute.date() in complete or (intraday and minute.date() == today)]
+    sessions = len(complete)
     if sessions < MIN_SESSIONS or len(minutes) < MIN_MINUTES:
         return "not enough history"
     prices = np.array([[series[symbol][minute] for symbol in symbols] for minute in minutes])
@@ -125,9 +138,9 @@ def refresh_index_weights(index_key="nifty", client=None, now=None, pause=HISTOR
     return "saved"
 
 
-def refresh_all_index_weights():
+def refresh_all_index_weights(intraday=False):
     for index_key in WEIGHT_INDEXES:
-        refresh_index_weights(index_key)
+        refresh_index_weights(index_key, intraday=intraday)
 
 
 def contribution_payload(index_key, now=None):
@@ -172,7 +185,7 @@ def contribution_payload(index_key, now=None):
         **base, "sectors": sectors, "indexLevel": spot.get("ltp"),
         "indexMove": round(spot["ltp"] - spot["close"], 1) if spot.get("ltp") and spot.get("close") else None,
         "explained": round(sum(sector["points"] for sector in sectors), 1) if sectors else None,
-        "weightsOn": weights.computed_on.isoformat(), "asOf": int(min(fetched)) if fetched else None, "retryAfterMs": retry,
+        "weightsOn": weights.computed_on.isoformat(), "weightsAt": weights.updated_at.astimezone(MARKET_TZ).isoformat(), "asOf": int(min(fetched)) if fetched else None, "retryAfterMs": retry,
         "message": "" if sectors else ("Loading live prices..." if retry else "Live prices are not available right now."),
     }
 

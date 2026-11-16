@@ -172,3 +172,12 @@ test("Home without the contribution API shows no sector panel", async () => {
   expect(screen.queryByRole("region", { name: "Sector contribution" })).not.toBeInTheDocument();
 });
 
+
+test("the sector panel says when the weights were refitted", () => {
+  const { weightsNote } = require("./sectorContribution");
+  const now = new Date("2026-11-16T07:30:00Z"); // 13:00 IST
+  expect(weightsNote({ weightsOn: "2026-11-16", weightsAt: "2026-11-16T12:45:35+05:30" }, now)).toBe(" · weights updated 12:45");
+  expect(weightsNote({ weightsOn: "2026-11-13", weightsAt: "2026-11-13T15:15:35+05:30" }, now)).toBe(" · weights from 13 Nov");
+  expect(weightsNote({ weightsOn: "2026-11-13" }, now)).toBe(" · weights from 13 Nov");
+  expect(weightsNote(null, now)).toBe("");
+});
