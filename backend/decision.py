@@ -96,13 +96,14 @@ def trap(direction_code, players_code):
     return None
 
 
-def light(now, is_open, late, expiry_today, trap_warning, direction_code, players_code, danger_notes):
+def light(now, is_open, late, expiry_today, trap_warning, direction_code, players_code, danger_notes,
+          opening_end=OPENING_CAUTION_END):
     if not is_open:
         return {"color": "grey", "label": "Market closed", "reasons": ["Showing the last trading session."]}
     red = []
     if late:
         red.append("Our data is late, so these numbers may be old.")
-    if now.time() < OPENING_CAUTION_END:
+    if now.time() < opening_end:
         red.append("First 15 minutes of the day: prices jump around.")
     if expiry_today and now.time() >= EXPIRY_LAST_HOUR:
         red.append("Last hour of expiry: option prices can jump fast.")

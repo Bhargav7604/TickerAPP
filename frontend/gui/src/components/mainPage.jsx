@@ -1,8 +1,9 @@
 import { Component, lazy, Suspense } from "react";
 
-import { BottomNavigation, BottomNavigationAction, Box, Paper } from "@mui/material";
+import { BottomNavigation, BottomNavigationAction, Box, Paper, Typography } from "@mui/material";
 import { Ellipsis } from "lucide-react";
-import Navbar, { MOBILE_ITEMS, NAV_ITEMS } from "./navbar.jsx";
+import Navbar, { INDIA_ONLY, mobileItemsFor, navItemsFor } from "./navbar.jsx";
+import { Segmented } from "../ui/Glass";
 import Sidebar, { MobileMenu } from "./sidebar.jsx";
 import Settings from "./settings.jsx";
 import Dashboard from "./dashboard.jsx";
@@ -14,6 +15,7 @@ import { makeTraderApi } from "../traderData";
 import { makeIndexStocksApi, saveStockIndex } from "../indexStocksData";
 import { makeDashboardApi } from "../dashboardData";
 import { makeBoardApi } from "../boardData";
+import { MARKETS, makeCommodityApi, readMarket, saveMarket } from "../commodityData";
 
 const PAGES = ["market", "money-flow", "intraday", "charts", "index-stocks", "equity", "index-options", "oi-analysis", "tools", "trading", "settings"];
 const Equity = lazy(() => import("./equity.jsx"));
@@ -25,14 +27,18 @@ const MarketPage = lazy(() => import("./marketPage.jsx"));
 const MoneyFlow = lazy(() => import("./moneyFlow.jsx"));
 const Intraday = lazy(() => import("./intraday.jsx"));
 const Tools = lazy(() => import("./tools.jsx"));
+const CommodityDetails = lazy(() => import("./commodityDetails.jsx"));
 
 class MainPage extends Component {
   constructor(props) {
     super(props);
 
+    const currentPage = PAGES.includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : "dashboard";
     this.state = {
-      currentPage: PAGES.includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : "dashboard",
-      menuOpen: false
+      currentPage,
+      menuOpen: false,
+      // A link to an Indian-market page opens the Indian market even if Commodity was chosen last time.
+      market: INDIA_ONLY.includes(currentPage) ? "india" : readMarket()
     }
     this.equityApi = props.equityApi || makeEquityApi(props.request);
     this.indexOptionsApi = props.indexOptionsApi || makeEquityApi(props.request, "index-options");
@@ -42,17 +48,30 @@ class MainPage extends Component {
     this.indexStocksApi = props.indexStocksApi || makeIndexStocksApi(props.request);
     this.dashboardApi = props.dashboardApi || makeDashboardApi(props.request);
     this.boardApi = props.boardApi || makeBoardApi(props.request);
+    this.commodityApi = props.commodityApi || makeCommodityApi(props.request);
+    // Home in Commodity mode: the same page fed with MCX cards; no sector contribution or index swing alerts.
+    this.commodityHomeApi = { decision: signal => this.commodityApi.decision(signal) };
   }
 
   componentDidMount() { window.addEventListener("hashchange", this.syncPage); }
   componentWillUnmount() { window.removeEventListener("hashchange", this.syncPage); }
-  syncPage = () => this.setState({ currentPage: PAGES.includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : "dashboard" });
+  syncPage = () => {
+    const currentPage = PAGES.includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : "dashboard";
+    if (INDIA_ONLY.includes(currentPage) && this.state.market === "commodity") saveMarket("india");
+    this.setState(state => ({ currentPage, market: INDIA_ONLY.includes(currentPage) ? "india" : state.market }));
+  }
 
   changePage = page => {
     window.location.hash = page === "dashboard" ? "index" : page;
     this.setState({
       currentPage: page
     });
+  }
+
+  changeMarket = market => {
+    saveMarket(market);
+    if (market === "commodity" && INDIA_ONLY.includes(this.state.currentPage)) this.changePage("dashboard");
+    this.setState({ market });
   }
 
   openStocks = index => {
@@ -62,10 +81,17 @@ class MainPage extends Component {
 
   render() {
     let page;
+    const market = this.state.market;
+    const items = navItemsFor(market);
+    const mobileItems = mobileItemsFor(market);
 
-    if (this.state.currentPage === "dashboard") {
+    if (this.state.currentPage === "dashboard" && this.state.market === "commodity") {
+      page = <Home key="commodity" api={this.commodityHomeApi} market="commodity"
+        details={<Suspense fallback={null}><CommodityDetails api={this.commodityApi} /></Suspense>} />;
+    } else if (this.state.currentPage === "dashboard") {
       const swingAlerts = this.props.swingAlerts || [];
-      page = <Home api={this.decisionApi} onOpenStocks={this.openStocks} latestSwing={swingAlerts[swingAlerts.length - 1]} details={<Dashboard
+      page = <Home key="india" api={this.decisionApi} market="india" onOpenStocks={this.openStocks}
+        latestSwing={swingAlerts[swingAlerts.length - 1]} details={<Dashboard
         settings={this.props.settings}
         niftyData={this.props.niftyData}
         bankniftyData={this.props.bankniftyData}
@@ -114,23 +140,29 @@ class MainPage extends Component {
 
     return (
       <Box className="has-section-nav" sx={{ display: "flex", minHeight: "100vh" }}>
-        <Sidebar username={this.props.username} handleLogout={this.props.handleLogout} changePage={this.changePage}
+        <Sidebar username={this.props.username} handleLogout={this.props.handleLogout} changePage={this.changePage} items={items}
           currentPage={this.state.currentPage} handleDashboardRefresh={this.props.handleDashboardRefresh} />
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Navbar changePage={this.changePage} currentPage={this.state.currentPage} handleDashboardRefresh={this.props.handleDashboardRefresh}
             onMenu={() => this.setState({ menuOpen: true })} menuOpen={this.state.menuOpen} />
+          <Box component="nav" aria-label="Market" sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 12px", px: { xs: 2, md: 3 }, pt: { xs: 1.5, md: 2 } }}>
+            <Segmented label="Choose market" value={market} onChange={this.changeMarket} options={MARKETS} highlight />
+            <Typography variant="caption" color="text.secondary">
+              {market === "commodity" ? "MCX futures · 09:00–23:30/23:55 IST" : "NSE · BSE · 09:15–15:30 IST"}
+            </Typography>
+          </Box>
           {page}
         </Box>
-        <MobileMenu open={this.state.menuOpen} onClose={() => this.setState({ menuOpen: false })} username={this.props.username} handleLogout={this.props.handleLogout} changePage={this.changePage}
+        <MobileMenu open={this.state.menuOpen} onClose={() => this.setState({ menuOpen: false })} username={this.props.username} handleLogout={this.props.handleLogout} changePage={this.changePage} items={items}
           currentPage={this.state.currentPage} handleDashboardRefresh={this.props.handleDashboardRefresh} />
         <Paper component="nav" aria-label="Mobile section navigation" elevation={0} square
           sx={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 1100, display: { xs: "block", md: "none" }, pb: "env(safe-area-inset-bottom, 0px)", borderRadius: 0 }}>
-          <BottomNavigation showLabels value={MOBILE_ITEMS.includes(this.state.currentPage) ? this.state.currentPage : "more"}
+          <BottomNavigation showLabels value={mobileItems.includes(this.state.currentPage) ? this.state.currentPage : "more"}
             onChange={(_, page) => page === "more" ? this.setState({ menuOpen: true }) : this.changePage(page)}>
-            {NAV_ITEMS.filter(([id]) => MOBILE_ITEMS.includes(id)).map(([id, , shortLabel, Icon]) => <BottomNavigationAction key={id} value={id} label={shortLabel} icon={<Icon size={20} />}
+            {items.filter(([id]) => mobileItems.includes(id)).map(([id, , shortLabel, Icon]) => <BottomNavigationAction key={id} value={id} label={shortLabel} icon={<Icon size={20} />}
               aria-current={this.state.currentPage === id ? "page" : undefined} sx={{ minWidth: 0, px: 0.5 }} />)}
             <BottomNavigationAction value="more" label="More" icon={<Ellipsis size={20} />} aria-label="More pages"
-              aria-current={MOBILE_ITEMS.includes(this.state.currentPage) ? undefined : "page"} sx={{ minWidth: 0, px: 0.5 }} />
+              aria-current={mobileItems.includes(this.state.currentPage) ? undefined : "page"} sx={{ minWidth: 0, px: 0.5 }} />
           </BottomNavigation>
         </Paper>
       </Box>

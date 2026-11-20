@@ -176,6 +176,11 @@ class ContributionTests(TestCase):
         it = data["sectors"][1]
         self.assertEqual([(stock["symbol"], stock["points"]) for stock in it["stocks"]], [("INFY", 30.0), ("TCS", -20.0)])
         self.assertEqual((data["indexMove"], data["explained"], data["weightsOn"], data["message"]), (25.0, 25.0, "2026-11-13", ""))
+        # Each stock carries its own move in rupees and its weight, so points are never mistaken for a price move.
+        hdfc = data["sectors"][0]["stocks"][0]
+        self.assertEqual((hdfc["ltp"], hdfc["prevClose"], hdfc["change"], hdfc["changePct"], hdfc["weightPct"]),
+                         (1010, 1000, 10, 1.0, round(2.0 * 1000 / 24000 * 100, 2)))
+        self.assertTrue(data["weightsAt"].startswith(NOW.date().isoformat()) or data["weightsAt"][:4] == "2026")
 
     def test_explains_missing_weights_and_offline_broker(self):
         with patch("backend.index_weights.broker", return_value=(None, None)):

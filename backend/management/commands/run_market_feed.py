@@ -16,6 +16,7 @@ from backend.index_weights import refresh_all_index_weights
 from backend.snapshot_recorder import record_market_snapshot
 from backend.board_jobs import maintain_board, publish_board_scanner
 from backend.board_tracker import BoardTracker
+from backend.commodity_home import record_commodity_snapshot
 
 
 class Command(BaseCommand):
@@ -61,6 +62,8 @@ class Command(BaseCommand):
                           coalesce=True, max_instances=1)
         scheduler.add_job(guarded, "cron", minute="*", second=35, args=[lambda: publish_board_scanner(tracker)],
                           coalesce=True, max_instances=1)
+        # Commodity view of Home: net lots and prices of the MCX futures every five minutes while MCX is open (09:00-23:55).
+        scheduler.add_job(guarded, "cron", minute="*/5", second=15, args=[record_commodity_snapshot], coalesce=True, max_instances=1)
         # Sector contribution weights: once each trading morning, retried before and after the open if it failed.
         scheduler.add_job(guarded, "date", args=[refresh_all_index_weights])
         scheduler.add_job(guarded, "cron", day_of_week="mon-fri", hour=8, minute=45, second=5,

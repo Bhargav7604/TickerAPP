@@ -26,7 +26,7 @@ function Row({ icon: Icon, label, expanded, active = false, onClick }) {
   return expanded ? row : <Tooltip title={label} placement="right">{row}</Tooltip>;
 }
 
-function SidebarContent({ expanded, onToggle, toggleLabel, toggleIcon, onExpand, onOpen, currentPage, username, handleLogout, handleDashboardRefresh }) {
+function SidebarContent({ expanded, onToggle, toggleLabel, toggleIcon, onExpand, onOpen, currentPage, username, handleLogout, handleDashboardRefresh, items = NAV_ITEMS }) {
   const { theme, toggleTheme } = useTheme();
   const dark = theme === "dark";
   const [query, setQuery] = useState("");
@@ -40,7 +40,7 @@ function SidebarContent({ expanded, onToggle, toggleLabel, toggleIcon, onExpand,
   }, [expanded]);
 
   const words = query.trim().toLowerCase();
-  const matches = NAV_ITEMS.filter(([, label]) => label.toLowerCase().includes(words));
+  const matches = items.filter(([, label]) => label.toLowerCase().includes(words));
   const pages = matches.filter(([page]) => page !== "settings");
   const settings = matches.find(([page]) => page === "settings");
   const row = ([page, label, , Icon]) => <Row key={page} icon={Icon} label={label} expanded={expanded} active={currentPage === page} onClick={() => onOpen(page)} />;

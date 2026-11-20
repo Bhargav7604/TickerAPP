@@ -24,6 +24,11 @@ export const NAV_ITEMS = [
 export const OWN_REFRESH = ["market", "money-flow", "intraday", "charts", "index-stocks", "equity", "index-options", "oi-analysis", "tools", "trading", "settings"];
 // The phone's bottom bar keeps the busiest pages; the rest are under More (the full menu).
 export const MOBILE_ITEMS = ["dashboard", "market", "money-flow", "intraday", "oi-analysis"];
+// Pages about NSE/BSE stocks and index options; the Commodity market hides them.
+export const INDIA_ONLY = ["market", "money-flow", "intraday", "index-stocks", "equity", "index-options", "oi-analysis"];
+const COMMODITY_MOBILE_ITEMS = ["dashboard", "charts", "tools", "trading"];
+export const navItemsFor = market => market === "commodity" ? NAV_ITEMS.filter(([id]) => !INDIA_ONLY.includes(id)) : NAV_ITEMS;
+export const mobileItemsFor = market => market === "commodity" ? COMMODITY_MOBILE_ITEMS : MOBILE_ITEMS;
 
 // Three uneven lines that even out on hover.
 export function BurgerIcon() {

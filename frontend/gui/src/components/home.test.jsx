@@ -144,8 +144,9 @@ test("sector contribution splits NIFTY's points into sectors pushing it up and p
   const contribution = jest.fn(async () => ({
     type: "success", index: "nifty", label: "NIFTY 50", marketOpen: true, indexMove: 25, explained: 25, weightsOn: "2026-11-13", asOf: NOW,
     sectors: [
-      { name: "Banking", points: 20, stocks: [{ symbol: "HDFCBANK", points: 20, changePct: 1 }] },
-      { name: "IT", points: 10, stocks: [{ symbol: "INFY", points: 30, changePct: 1.33 }, { symbol: "TCS", points: -20, changePct: -1.43 }] },
+      { name: "Banking", points: 20, stocks: [{ symbol: "HDFCBANK", points: 20, ltp: 1010, prevClose: 1000, change: 10, changePct: 1, weightPct: 8.33 }] },
+      { name: "IT", points: 10, stocks: [{ symbol: "INFY", points: 30, ltp: 1520, change: 20, changePct: 1.33, weightPct: 9.38 },
+        { symbol: "TCS", points: -20, ltp: 3450, change: -50, changePct: -1.43, weightPct: 5.83 }] },
       { name: "FMCG", points: 0, stocks: [] },
       { name: "NBFC & Finance", points: -5, stocks: [{ symbol: "BAJFINANCE", points: -5, changePct: -1.11 }] },
     ],
@@ -157,14 +158,17 @@ test("sector contribution splits NIFTY's points into sectors pushing it up and p
   expect(within(panel).getByText("NIFTY +25.0 pts")).toBeInTheDocument();
   const up = within(panel).getByRole("heading", { name: "Pushing NIFTY up" }).parentElement;
   const down = within(panel).getByRole("heading", { name: "Pulling NIFTY down" }).parentElement;
-  expect(within(up).getAllByRole("button").map(button => button.getAttribute("aria-label"))).toEqual(["Banking +20.0 points", "IT +10.0 points"]);
-  expect(within(down).getAllByRole("button").map(button => button.getAttribute("aria-label"))).toEqual(["NBFC & Finance -5.0 points"]);
+  expect(within(up).getAllByRole("button").map(button => button.getAttribute("aria-label"))).toEqual(["Banking +20.0 NIFTY points", "IT +10.0 NIFTY points"]);
+  expect(within(down).getAllByRole("button").map(button => button.getAttribute("aria-label"))).toEqual(["NBFC & Finance -5.0 NIFTY points"]);
   expect(within(panel).getByText("No change: FMCG")).toBeInTheDocument();
   expect(within(panel).getByText(/Sectors add up to \+25\.0 of NIFTY's \+25\.0 points/)).toBeInTheDocument();
-  expect(within(panel).queryByText("TCS -20.0")).not.toBeInTheDocument();
-  fireEvent.click(within(up).getByRole("button", { name: "IT +10.0 points" }));
-  expect(within(panel).getByText("INFY +30.0")).toBeInTheDocument();
-  expect(within(panel).getByText("TCS -20.0")).toBeInTheDocument();
+  expect(within(panel).queryByRole("table", { name: "IT stocks" })).not.toBeInTheDocument();
+  fireEvent.click(within(up).getByRole("button", { name: "IT +10.0 NIFTY points" }));
+  const table = within(panel).getByRole("table", { name: "IT stocks" });
+  expect(within(table).getAllByRole("columnheader").map(cell => cell.textContent)).toEqual(["Stock", "Price ₹", "Change ₹ (%)", "Weight", "NIFTY pts"]);
+  const rows = within(table).getAllByRole("row").slice(1).map(row => within(row).getAllByRole("cell").map(cell => cell.textContent));
+  expect(rows).toEqual([["INFY", "1,520.00", "+20.00 (+1.33%)", "9.4%", "+30.0 pts"], ["TCS", "3,450.00", "-50.00 (-1.43%)", "5.8%", "-20.0 pts"]]);
+  expect(within(panel).getByText(/NIFTY pts are index points, not the stock's price: INFY moved \+₹20\.00 \(\+1\.33%\) and is 9\.4% of NIFTY, so it moved NIFTY by \+30\.0 points\./)).toBeInTheDocument();
 });
 
 test("Home without the contribution API shows no sector panel", async () => {
@@ -180,4 +184,20 @@ test("the sector panel says when the weights were refitted", () => {
   expect(weightsNote({ weightsOn: "2026-11-13", weightsAt: "2026-11-13T15:15:35+05:30" }, now)).toBe(" · weights from 13 Nov");
   expect(weightsNote({ weightsOn: "2026-11-13" }, now)).toBe(" · weights from 13 Nov");
   expect(weightsNote(null, now)).toBe("");
+});
+
+test("the Commodity market shows commodities in the same cards", async () => {
+  const keys = [["crudeoil", "CRUDE OIL"], ["naturalgas", "NATURAL GAS"], ["gold", "GOLD"], ["silver", "SILVER"], ["copper", "COPPER"], ["zinc", "ZINC"]];
+  const commodity = payload({
+    cards: keys.map(([key, label]) => card(key, label, { range: null, numbers: { netLots: 600, pcr: null } })),
+    calendar: Object.fromEntries(keys.map(([key]) => [key, [{ date: "2026-12-18", label: "Fri 18 Dec", thisWeek: false }]])),
+    mustKnow: [{ level: "info", text: "US markets open at 20:00 IST; crude oil, gold and silver often move sharply then. MCX closes at 23:55." }],
+    expiryToday: [], lastHour: false, market: "commodity",
+  });
+  await renderHome(commodity, { market: "commodity" });
+  const tiles = screen.getByRole("region", { name: "Commodity summaries" });
+  expect(within(tiles).getAllByRole("article").map(article => article.getAttribute("aria-label"))).toEqual(keys.map(([, label]) => `${label} summary`));
+  expect(screen.getByText(/US markets open at 20:00 IST/)).toBeInTheDocument();
+  expect(within(screen.getByRole("region", { name: "Expiry calendar" })).getByText("CRUDE OIL")).toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "Sector contribution" })).not.toBeInTheDocument();
 });

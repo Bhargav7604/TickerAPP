@@ -163,7 +163,9 @@ const IndexCard = React.memo(function IndexCard({ card, lang, onOpenStocks }) {
           <dt>{t("Direction", lang)}</dt><dd>{card.direction.detail}</dd>
           <dt>{t("Big players", lang)}</dt><dd>{card.bigPlayers.detail}</dd>
           {card.trap && <><dt>{t("Trap", lang)}</dt><dd>{card.trap.detail}</dd></>}
-          {card.range && <><dt>{t("Option prices", lang)}</dt><dd>Options are priced for about {card.range.iv}% yearly movement (implied volatility).</dd></>}
+          {card.range && card.range.basis === "realized"
+            ? <><dt>{t("Volatility", lang)}</dt><dd>Moved about {card.range.iv}% a year over the last 20 sessions (realised volatility).</dd></>
+            : card.range && <><dt>{t("Option prices", lang)}</dt><dd>Options are priced for about {card.range.iv}% yearly movement (implied volatility).</dd></>}
           {card.numbers?.pcr != null && <><dt>{t("Put-call ratio", lang)}</dt><dd>{card.numbers.pcr}</dd></>}
         </Box>
       </Stack>
@@ -192,7 +194,7 @@ export function answerQuestion(question, cards, lang) {
   return chosen.map(card => wantsRange && card.range ? translate(card.range.text, lang) : marketSummary([card], lang)).join(" ");
 }
 
-export default function Home({ api, details, latestSwing, onOpenStocks }) {
+export default function Home({ api, details, latestSwing, onOpenStocks, market = "india" }) {
   const [lang, setLang] = useState(readLanguage);
   const [voiceNote, setVoiceNote] = useState("");
   const [showWords, setShowWords] = useState(false);
@@ -229,6 +231,7 @@ export default function Home({ api, details, latestSwing, onOpenStocks }) {
 
   const seeAllSwings = () => document.querySelector(".scan-activity")?.scrollIntoView?.({ behavior: "smooth", block: "center" });
   const labels = Object.fromEntries((data?.cards || []).map(card => [card.key, card.label]));
+  const cardCount = data?.cards?.length || (market === "commodity" ? 6 : 3);
   const chooseLanguage = value => { setLang(value); saveLanguage(value); };
   const summary = data ? marketSummary(data.cards, lang) : "";
   const listen = () => setVoiceNote(speak(summary, lang) ? "" : "Your browser cannot read aloud.");
@@ -303,15 +306,15 @@ export default function Home({ api, details, latestSwing, onOpenStocks }) {
     {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
     <Box sx={{ display: "grid", gap: 2, gridTemplateAreas: GRID_AREAS, gridTemplateColumns: GRID_COLUMNS, alignItems: "start" }}>
-      <Box component="section" aria-label="Index summaries" sx={{
+      <Box component="section" aria-label={market === "commodity" ? "Commodity summaries" : "Index summaries"} sx={{
         gridArea: "tiles", minWidth: 0, display: "grid", gap: 2, alignSelf: "stretch",
-        gridTemplateColumns: { xs: "repeat(3, 88%)", sm: "repeat(3, 62%)", md: "repeat(3, minmax(0, 1fr))" },
+        gridTemplateColumns: { xs: `repeat(${cardCount}, 88%)`, sm: `repeat(${cardCount}, 62%)`, md: "repeat(3, minmax(0, 1fr))" },
         overflowX: { xs: "auto", md: "visible" }, scrollSnapType: { xs: "x mandatory", md: "none" }, pb: { xs: 0.5, md: 0 },
         // Opening one card's details must not stretch the other two.
         "&:has(.is-details-open) > article": { alignSelf: "start" },
       }}>
         {data ? data.cards.map(card => <IndexCard key={card.key} card={card} lang={lang} onOpenStocks={onOpenStocks} />)
-          : !error && [0, 1, 2].map(key => <Skeleton key={key} variant="rounded" height={230} sx={{ borderRadius: 4, bgcolor: "action.hover" }} />)}
+          : !error && Array.from({ length: cardCount }, (_, key) => key).map(key => <Skeleton key={key} variant="rounded" height={230} sx={{ borderRadius: 4, bgcolor: "action.hover" }} />)}
         {!data && !error && <Typography role="status" className="sr-only">Loading today's market…</Typography>}
       </Box>
 

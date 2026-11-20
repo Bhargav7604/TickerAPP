@@ -168,18 +168,21 @@ def contribution_payload(index_key, now=None):
     def data(key):
         return (entries.get(key) or {}).get("data") or {}
 
+    spot = data(spot_key)
     groups = defaultdict(list)
     for member in members:
         quote, coefficient = data(cash_keys[member.symbol]), weights.coefficients.get(member.symbol)
         if coefficient is None or quote.get("ltp") is None or not quote.get("close"):
             continue
+        # points = index points per rupee of this stock x its rupee move; weight = its share of the index at yesterday's close.
         groups[contribution_sector(member)].append({
             "symbol": member.symbol, "points": round(coefficient * (quote["ltp"] - quote["close"]), 2),
-            "changePct": rounded(percent(quote["ltp"], quote["close"]))})
+            "ltp": quote["ltp"], "prevClose": quote["close"], "change": round(quote["ltp"] - quote["close"], 2),
+            "changePct": rounded(percent(quote["ltp"], quote["close"])),
+            "weightPct": round(coefficient * quote["close"] / spot["close"] * 100, 2) if spot.get("close") else None})
     sectors = sorted(({"name": name, "points": round(sum(stock["points"] for stock in stocks), 1),
                        "stocks": sorted(stocks, key=lambda stock: -abs(stock["points"]))} for name, stocks in groups.items()),
                      key=lambda sector: -sector["points"])
-    spot = data(spot_key)
     fetched = [entry["at"] for entry in entries.values() if entry.get("data")]
     return {
         **base, "sectors": sectors, "indexLevel": spot.get("ltp"),

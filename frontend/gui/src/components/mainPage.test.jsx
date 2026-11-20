@@ -1,9 +1,13 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import MainPage from "./mainPage";
 
 jest.mock("./dashboard", () => ({ __esModule: true, default: () => <h1>Index dashboard</h1> }));
-jest.mock("./home", () => ({ __esModule: true, default: ({ details, onOpenStocks }) => <div>{details}<button onClick={() => onOpenStocks("sensex")}>See SENSEX stocks</button></div> }));
+jest.mock("./home", () => ({ __esModule: true, default: ({ api, details, onOpenStocks, market }) => <div>
+  <p>Market: {market}</p>
+  <button onClick={() => api.decision()}>Load cards</button>
+  {details}{onOpenStocks && <button onClick={() => onOpenStocks("sensex")}>See SENSEX stocks</button>}</div> }));
+jest.mock("./commodityDetails", () => ({ __esModule: true, default: ({ api }) => <h2>Commodity details / {api.name}</h2> }));
 jest.mock("./indexStocks", () => ({ __esModule: true, default: ({ api }) => <h1>Index Stocks / {api.name}</h1> }));
 jest.mock("./settings", () => ({ __esModule: true, default: () => <h1>Settings</h1> }));
 jest.mock("./equity", () => ({ __esModule: true, default: ({ indexOptions, api }) => <h1>{indexOptions ? "Index Options" : "Equity"} / {api.name}</h1> }));
@@ -14,7 +18,7 @@ jest.mock("./moneyFlow", () => ({ __esModule: true, default: ({ api }) => <h1>Mo
 jest.mock("./intraday", () => ({ __esModule: true, default: ({ api }) => <h1>Intraday / {api.name}</h1> }));
 jest.mock("./tools", () => ({ __esModule: true, default: ({ api }) => <h1>Tools / {api.name}</h1> }));
 
-afterEach(() => { window.history.replaceState(null, "", "/"); });
+afterEach(() => { window.history.replaceState(null, "", "/"); localStorage.removeItem("utraders-market"); });
 
 const openMenu = async () => {
   fireEvent.click(await screen.findByRole("button", { name: "Open menu" }));
@@ -120,3 +124,46 @@ test("the live Dashboard opens from the menu and by deep link", async () => {
   expect(window.location.hash).toBe("#charts");
 });
 
+const chooseMarket = name => fireEvent.click(within(screen.getByRole("navigation", { name: "Market" })).getByRole("button", { name }));
+
+test("the market switch at the top shows only commodity pages and remembers the choice", async () => {
+  const commodityApi = { name: "mcx", decision: jest.fn(async () => ({})) };
+  const { unmount } = render(<MainPage username="demo" equityApi={{ name: "stocks" }} indexOptionsApi={{ name: "indices" }} commodityApi={commodityApi} />);
+  expect(screen.getByText("Market: india")).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Index dashboard" })).toBeInTheDocument();
+  chooseMarket("Commodity");
+  expect(screen.getByText("Market: commodity")).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "Commodity details / mcx" })).toBeInTheDocument();
+  expect(screen.queryByRole("heading", { name: "Index dashboard" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "See SENSEX stocks" })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Load cards" }));
+  expect(commodityApi.decision).toHaveBeenCalled();
+  expect(localStorage.getItem("utraders-market")).toBe("commodity");
+  // Only the pages that apply to commodities stay in the menu and on the phone bar.
+  expect((await openMenu()).getAllByRole("button").map(item => item.getAttribute("aria-label"))).toEqual(["Home", "Dashboard", "Tools", "My Trading", "Settings"]);
+  fireEvent.keyDown(screen.getByRole("dialog", { name: "Menu" }), { key: "Escape" });
+  const phone = within(screen.getByRole("navigation", { name: "Mobile section navigation" }));
+  expect(phone.getAllByRole("button").map(item => item.textContent)).toEqual(["Home", "Charts", "Tools", "Trading", "More"]);
+  unmount();
+  render(<MainPage username="demo" equityApi={{ name: "stocks" }} indexOptionsApi={{ name: "indices" }} commodityApi={commodityApi} />);
+  expect(screen.getByText("Market: commodity")).toBeInTheDocument();
+  chooseMarket("Indian market");
+  expect(screen.getByRole("heading", { name: "Index dashboard" })).toBeInTheDocument();
+  expect(localStorage.getItem("utraders-market")).toBe("india");
+});
+
+test("choosing Commodity on an Indian page goes Home, and an Indian link brings the Indian market back", async () => {
+  window.history.replaceState(null, "", "/#oi-analysis");
+  render(<MainPage username="demo" equityApi={{ name: "stocks" }} indexOptionsApi={{ name: "indices" }} oiApi={{ name: "oi" }} commodityApi={{ name: "mcx", decision: jest.fn() }} />);
+  expect(await screen.findByRole("heading", { name: "OI Analysis / oi" })).toBeInTheDocument();
+  chooseMarket("Commodity");
+  expect(await screen.findByRole("heading", { name: "Commodity details / mcx" })).toBeInTheDocument();
+  expect(window.location.hash).toBe("#index");
+  act(() => {
+    window.history.replaceState(null, "", "/#equity");
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+  });
+  expect(await screen.findByRole("heading", { name: "Equity / stocks" })).toBeInTheDocument();
+  expect(within(screen.getByRole("navigation", { name: "Market" })).getByRole("button", { name: "Indian market" })).toHaveAttribute("aria-pressed", "true");
+  expect(localStorage.getItem("utraders-market")).toBe("india");
+});

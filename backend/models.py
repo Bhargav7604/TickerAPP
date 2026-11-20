@@ -121,6 +121,12 @@ class MarketSnapshot(models.Model):
         ("nifty", "NIFTY"),
         ("banknifty", "BANKNIFTY"),
         ("sensex", "SENSEX"),
+        ("crudeoil", "CRUDE OIL"),
+        ("naturalgas", "NATURAL GAS"),
+        ("gold", "GOLD"),
+        ("silver", "SILVER"),
+        ("copper", "COPPER"),
+        ("zinc", "ZINC"),
     )
 
     index_key = models.CharField(max_length=20, choices=INDEX_CHOICES)

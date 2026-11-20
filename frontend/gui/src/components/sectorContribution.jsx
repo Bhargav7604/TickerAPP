@@ -6,6 +6,10 @@ const LIVE_MS = 5000;
 const CLOSED_MS = 60000;
 const points = value => Number.isFinite(value) ? `${value > 0 ? "+" : ""}${value.toFixed(1)}` : "--";
 const pointsColor = value => value > 0 ? "success.main" : value < 0 ? "error.main" : "text.secondary";
+const price = value => Number.isFinite(value) ? value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "--";
+const signed = value => Number.isFinite(value) ? `${value > 0 ? "+" : ""}${price(value)}` : "--";
+const signedPct = value => Number.isFinite(value) ? `${value > 0 ? "+" : ""}${value.toFixed(2)}%` : "--";
+const STOCK_COLUMNS = "minmax(96px, 1.1fr) 84px minmax(132px, 1.4fr) 64px 92px";
 const clock = seconds => new Date(seconds * 1000).toLocaleTimeString("en-GB", { timeZone: "Asia/Kolkata" });
 const istDay = date => date.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 /** " · weights updated 12:45" when refitted today, otherwise the day they were fitted. */
@@ -17,11 +21,40 @@ export function weightsNote(data, now = new Date()) {
   return data?.weightsOn ? ` · weights from ${new Date(data.weightsOn + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}` : "";
 }
 
-function SectorRow({ sector, scale, open, onToggle }) {
+/** A stock's NIFTY points next to its own price move, so points are never read as rupees. */
+function StockTable({ sector, indexLabel }) {
+  const lead = sector.stocks.find(stock => Number.isFinite(stock.change) && Number.isFinite(stock.weightPct));
+  return <Box sx={{ px: 1, pt: 0.25, pb: 1 }}>
+    <Box role="table" aria-label={`${sector.name} stocks`} sx={{ overflowX: "auto" }}>
+      <Box role="row" sx={{ display: "grid", gridTemplateColumns: STOCK_COLUMNS, gap: 1, minWidth: 500, py: 0.5, fontSize: 11, fontWeight: 700, color: "text.secondary" }}>
+        <span role="columnheader">Stock</span>
+        <Box component="span" role="columnheader" sx={{ textAlign: "right" }}>Price ₹</Box>
+        <Box component="span" role="columnheader" sx={{ textAlign: "right" }}>Change ₹ (%)</Box>
+        <Box component="span" role="columnheader" sx={{ textAlign: "right" }} title={`Share of ${indexLabel} at yesterday's close`}>Weight</Box>
+        <Box component="span" role="columnheader" sx={{ textAlign: "right" }}>{indexLabel} pts</Box>
+      </Box>
+      {sector.stocks.map(stock => <Box key={stock.symbol} role="row" sx={{ display: "grid", gridTemplateColumns: STOCK_COLUMNS, gap: 1, minWidth: 500, py: 0.45,
+        borderTop: 1, borderColor: "divider", fontSize: 12.5, alignItems: "center" }}>
+        <Box component="span" role="cell" sx={{ fontWeight: 800 }}>{stock.symbol}</Box>
+        <Box component="span" role="cell" sx={{ ...mono, textAlign: "right" }}>{price(stock.ltp)}</Box>
+        <Box component="span" role="cell" sx={{ ...mono, textAlign: "right", color: pointsColor(stock.change ?? stock.changePct) }}>
+          {Number.isFinite(stock.change) ? `${signed(stock.change)} (${signedPct(stock.changePct)})` : signedPct(stock.changePct)}
+        </Box>
+        <Box component="span" role="cell" sx={{ ...mono, textAlign: "right", color: "text.secondary" }}>{Number.isFinite(stock.weightPct) ? `${stock.weightPct.toFixed(1)}%` : "--"}</Box>
+        <Box component="span" role="cell" sx={{ ...mono, textAlign: "right", fontWeight: 800, color: pointsColor(stock.points) }}>{points(stock.points)} pts</Box>
+      </Box>)}
+    </Box>
+    {lead && <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 0.75 }}>
+      {indexLabel} pts are index points, not the stock's price: {lead.symbol} moved {lead.change >= 0 ? "+" : "−"}₹{price(Math.abs(lead.change))} ({signedPct(lead.changePct)}) and is {lead.weightPct.toFixed(1)}% of {indexLabel}, so it moved {indexLabel} by {points(lead.points)} points.
+    </Typography>}
+  </Box>;
+}
+
+function SectorRow({ sector, scale, open, onToggle, indexLabel }) {
   const color = pointsColor(sector.points);
   return <Box component="li">
-    <ButtonBase onClick={onToggle} aria-expanded={open} aria-label={`${sector.name} ${points(sector.points)} points`} sx={{
-      width: "100%", display: "grid", gridTemplateColumns: "minmax(0, 150px) minmax(0, 1fr) 52px", alignItems: "center", gap: 1.25,
+    <ButtonBase onClick={onToggle} aria-expanded={open} aria-label={`${sector.name} ${points(sector.points)} ${indexLabel} points`} sx={{
+      width: "100%", display: "grid", gridTemplateColumns: "minmax(0, 150px) minmax(0, 1fr) 76px", alignItems: "center", gap: 1.25,
       px: 1, py: 0.7, borderRadius: 2, textAlign: "left", "&:hover": { bgcolor: "action.hover" },
       "&.Mui-focusVisible": { outline: "2px solid", outlineColor: "primary.main" },
     }}>
@@ -30,23 +63,20 @@ function SectorRow({ sector, scale, open, onToggle }) {
         <Box component="span" sx={{ display: "block", height: "100%", borderRadius: 999, bgcolor: color, transition: "width 400ms ease",
           width: `${Math.max(3, Math.abs(sector.points) / scale * 100)}%` }} />
       </Box>
-      <Typography component="span" sx={{ ...mono, fontSize: 13, fontWeight: 800, textAlign: "right", color }}>{points(sector.points)}</Typography>
+      <Typography component="span" sx={{ ...mono, fontSize: 13, fontWeight: 800, textAlign: "right", color }}>
+        {points(sector.points)}<Box component="small" sx={{ ml: 0.4, fontSize: 10.5, fontWeight: 700, color: "text.secondary" }}>pts</Box>
+      </Typography>
     </ButtonBase>
-    <Collapse in={open} unmountOnExit>
-      <Stack direction="row" useFlexGap flexWrap="wrap" gap={0.75} sx={{ px: 1, pt: 0.25, pb: 1 }}>
-        {sector.stocks.map(stock => <Chip key={stock.symbol} size="small" variant="outlined" label={`${stock.symbol} ${points(stock.points)}`}
-          sx={{ ...mono, fontWeight: 700, color: pointsColor(stock.points) }} />)}
-      </Stack>
-    </Collapse>
+    <Collapse in={open} unmountOnExit><StockTable sector={sector} indexLabel={indexLabel} /></Collapse>
   </Box>;
 }
 
-function SectorColumn({ title, sectors, scale, open, onToggle, color }) {
+function SectorColumn({ title, sectors, scale, open, onToggle, color, indexLabel }) {
   return <Box sx={{ minWidth: 0 }}>
     <Typography variant="overline" component="h3" sx={{ px: 1, color }}>{title}</Typography>
     {sectors.length
       ? <Box component="ul" sx={{ m: 0, p: 0, listStyle: "none" }}>
-        {sectors.map(sector => <SectorRow key={sector.name} sector={sector} scale={scale} open={open === sector.name} onToggle={() => onToggle(sector.name)} />)}
+        {sectors.map(sector => <SectorRow key={sector.name} sector={sector} scale={scale} open={open === sector.name} onToggle={() => onToggle(sector.name)} indexLabel={indexLabel} />)}
       </Box>
       : <Typography variant="body2" color="text.secondary" sx={{ px: 1 }}>None right now.</Typography>}
   </Box>;
@@ -112,8 +142,8 @@ export default function SectorContribution({ load, index = "nifty", sx }) {
 
     {sectors.length > 0 && <>
       <Box sx={{ display: "grid", gap: { xs: 1.5, md: 3 }, gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(2, minmax(0, 1fr))" } }}>
-        <SectorColumn title={`Pushing ${shortLabel} up`} sectors={rising} scale={scale} open={open} onToggle={toggle} color="success.main" />
-        <SectorColumn title={`Pulling ${shortLabel} down`} sectors={falling} scale={scale} open={open} onToggle={toggle} color="error.main" />
+        <SectorColumn title={`Pushing ${shortLabel} up`} sectors={rising} scale={scale} open={open} onToggle={toggle} color="success.main" indexLabel={shortLabel} />
+        <SectorColumn title={`Pulling ${shortLabel} down`} sectors={falling} scale={scale} open={open} onToggle={toggle} color="error.main" indexLabel={shortLabel} />
       </Box>
       {flat.length > 0 && <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 1, px: 1 }}>No change: {flat.map(sector => sector.name).join(", ")}</Typography>}
       <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 1.25, px: 1 }}>

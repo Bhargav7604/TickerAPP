@@ -2,6 +2,7 @@
 import datetime as dt
 
 from .board_universe import refresh_universe_stats
+from .commodities import refresh_commodity_stats
 from .equity import broker
 from .logger import log
 from .market_contracts import MARKET_TZ
@@ -24,6 +25,7 @@ def maintain_board(tracker, client=None, now=None):
             done["seeded"] = tracker.seed(client, now)
         done["backfilled"] = tracker.backfill(client, now)
         done["stats"] = refresh_universe_stats(client, now)
+        done["commodityStats"] = refresh_commodity_stats(client, now)
     except Exception as exc:
         log(f"Market board upkeep stopped early ({type(exc).__name__}).", "ERROR")
     return done

@@ -1,7 +1,7 @@
 from django.urls import path
 
 from . import views
-from . import board_views, decision, equity, index_stocks, index_weights, live_dashboard, oi_analysis, trader_views
+from . import board_views, commodities, commodity_home, decision, equity, index_stocks, index_weights, live_dashboard, oi_analysis, trader_views
 
 urlpatterns = [
     path("index-options/contracts/", equity.contracts, {"index_options": True}, name="index_option_contracts"),
@@ -15,6 +15,12 @@ urlpatterns = [
     path("board/snapshot/", board_views.board_snapshot, name="board_snapshot"),
     path("board/scanner/", board_views.board_scanner, name="board_scanner"),
     path("board/candles/", board_views.board_candles, name="board_candles"),
+    path("commodities/", commodities.commodities_view, name="commodities"),
+    path("commodities/candles/", commodities.commodity_candles, name="commodity_candles"),
+    path("commodities/home/", commodity_home.commodity_home, name="commodity_home"),
+    path("commodities/overview/", commodity_home.commodity_overview, name="commodity_overview"),
+    path("commodities/history/", commodity_home.commodity_history, name="commodity_history"),
+    path("commodities/insights/", commodity_home.commodity_insights, name="commodity_insights"),
     path("dashboard/candles/", live_dashboard.dashboard_candles, name="dashboard_candles"),
     path("trader/", trader_views.overview, name="trader_overview"),
     path("trader/profile/", trader_views.update_profile, name="trader_profile"),

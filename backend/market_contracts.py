@@ -20,6 +20,16 @@ CONTRACT_NAMES = {
     "sensex": "SENSEX",
 }
 
+# The Commodity view of Home: the most traded MCX futures, in the order their cards appear.
+COMMODITY_NAMES = {
+    "crudeoil": "CRUDEOIL",
+    "naturalgas": "NATURALGAS",
+    "gold": "GOLD",
+    "silver": "SILVER",
+    "copper": "COPPER",
+    "zinc": "ZINC",
+}
+
 # Which option expiry to pick for AC/DD ATM analysis per index.
 # - "weekly":  use the soonest upcoming option expiry. Right for indices
 #              that have an active weekly chain (NIFTY, SENSEX).
@@ -139,17 +149,19 @@ def resolve_contracts(contract_month):
     return contracts
 
 
-def resolve_contract_rows(master_contract=None):
+def resolve_contract_rows(master_contract=None, names=CONTRACT_NAMES, exchange=None):
     master_contract = master_contract if master_contract is not None else get_master_contract()
     today = pd.Timestamp(market_today())
     contract_rows = {}
 
     for contract_month, month_index in CONTRACT_MONTH_INDEX.items():
-        for key, name in CONTRACT_NAMES.items():
+        for key, name in names.items():
             rows = master_contract[
                 (master_contract["name"] == name) &
                 (master_contract["instrument_type"] == "FUT")
             ]
+            if exchange:
+                rows = rows[rows["exchange"] == exchange]
 
             if rows.empty:
                 continue
