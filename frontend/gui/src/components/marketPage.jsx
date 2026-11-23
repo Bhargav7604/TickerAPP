@@ -4,26 +4,14 @@ import { MOVERS, breadthGroups, capRead, contributions, fp, fpc, moodScore, sect
 import { BoardMessage, NameButton, Panel, Pct, StatusChip, UP, DOWN } from "./boardUi";
 import StockDrawer from "./stockDrawer";
 import { mono, PageShell } from "../ui/Glass";
-import { useTheme } from "../theme";
 import { withArrow } from "../trend";
 import { AdvanceDonut, BreadthColumns, DriverBars, IndexSpark } from "./marketGraphs";
+import { GlobalCues } from "./globalCues";
+
+export { GLOBAL_GROUPS, globalQuotesUrl } from "./globalCues";
 
 const INDEX_CARDS = ["NIFTY", "SENSEX", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "NIFTYNXT50", "NIFTY500", "INDIAVIX"];
 const FLOW_SECTOR_KEY = "utraders-flow-sector";
-// Global markets come from TradingView's quote widget; Zerodha does not carry them. Exchange index feeds (TVC:NI225,
-// TVC:DXY, GIFT Nifty) are blank in free embeds, so the broker CFD quotes stand in; checked in the widget on 14 Nov 2026.
-export const GLOBAL_GROUPS = [
-  { name: "US (overnight)", symbols: [["CAPITALCOM:US30", "Dow Jones"], ["CAPITALCOM:US500", "S&P 500"], ["CAPITALCOM:US100", "Nasdaq 100"]] },
-  { name: "Asia", symbols: [["CAPITALCOM:J225", "Nikkei 225"], ["CAPITALCOM:HK50", "Hang Seng"], ["CAPITALCOM:CN50", "China A50"]] },
-  { name: "Europe", symbols: [["CAPITALCOM:UK100", "FTSE 100"], ["CAPITALCOM:DE40", "DAX"]] },
-  { name: "Commodities & FX", symbols: [["TVC:UKOIL", "Brent crude"], ["TVC:GOLD", "Gold"], ["FX_IDC:USDINR", "USD/INR"], ["CAPITALCOM:DXY", "Dollar index"],
-    ["OANDA:USB10YUSD", "US 10Y note (price)"]] },
-];
-export const globalQuotesUrl = theme => "https://s.tradingview.com/embed-widget/market-quotes/?locale=en#" + encodeURIComponent(JSON.stringify({
-  width: "100%", height: "100%", colorTheme: theme === "dark" ? "dark" : "light", isTransparent: true, showSymbolLogo: false,
-  symbolsGroups: GLOBAL_GROUPS.map(group => ({ name: group.name, symbols: group.symbols.map(([name, displayName]) => ({ name, displayName })) })),
-}));
-
 /** Green-to-red background for a % move, readable in both themes. */
 export const heat = pc => {
   if (!Number.isFinite(pc)) return "action.hover";
@@ -129,14 +117,6 @@ function Mood({ mood, flat }) {
     <DriverBars parts={mood.parts} />
     <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>Global cues are shown alongside; their moves are not scored because TradingView's widget does not share its numbers. GIFT Nifty is not available in the free widget.</Typography>
   </>;
-}
-
-function GlobalCues() {
-  const { theme } = useTheme();
-  return <Box sx={{ position: "relative", height: { xs: 520, md: 430 } }}>
-    <Box component="iframe" key={theme} title="Global markets from TradingView" src={globalQuotesUrl(theme)} loading="lazy"
-      sx={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0 }} />
-  </Box>;
 }
 
 function SectorHeat({ stocks, flows, onTrace }) {
@@ -275,7 +255,7 @@ export default function MarketPage({ api }) {
       </Box>
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "minmax(0, 1fr) minmax(0, 1.3fr)" }, gap: 1.5, mb: 1.5 }}>
         <Panel title="Market mood" note="breadth · VIX · PCR · sector money">{mood && <Mood mood={mood} flat={Math.max(0, stocks.length - mood.adv - mood.dec)} />}</Panel>
-        <Panel title="🌐 Global cues" note="US closed overnight · Asia live · Europe from 13:30 IST"><GlobalCues /></Panel>
+        <Panel title="🌐 Global cues" note="US closed overnight · Asia live · Europe from 13:30 IST"><GlobalCues height={{ xs: 520, md: 430 }} /></Panel>
       </Box>
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "minmax(0, 1fr) minmax(0, 1fr)" }, gap: 1.5, mb: 1.5 }}>
         <Panel title="Sector heatmap" note="average move · click to trace its money"><SectorHeat stocks={stocks} flows={flows} onTrace={trace} /></Panel>

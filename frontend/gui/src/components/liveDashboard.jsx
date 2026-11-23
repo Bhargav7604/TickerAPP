@@ -154,7 +154,7 @@ export default function LiveDashboard({ api }) {
   return <PageShell className="live-dashboard" maxWidth={1680}>
     <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between" alignItems={{ sm: "center" }} sx={{ mb: 1.5 }}>
       <Box>
-        <Typography variant="h1" component="h1" sx={{ fontSize: { xs: "1.4rem", md: "1.55rem" } }}>Dashboard</Typography>
+        <Typography variant="h1" component="h1" sx={{ fontSize: { xs: "1.4rem", md: "1.55rem" } }}>Live Charts</Typography>
         <Typography variant="body2" color="text.secondary">Live charts on one screen. Drag a chart by its handle to put them in your order.</Typography>
       </Box>
       <Button size="small" variant="outlined" startIcon={<RotateCcw size={15} />} onClick={() => changeOrder(DEFAULT_ORDER)}

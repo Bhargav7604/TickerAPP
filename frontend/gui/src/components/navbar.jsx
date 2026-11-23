@@ -1,6 +1,6 @@
 import React from "react";
 import { AppBar, Box, IconButton, Toolbar, Tooltip } from "@mui/material";
-import { Activity, CalendarDays, ChartNoAxesColumn, ChartScatter, Globe, House, Layers, LayoutDashboard, Moon, Newspaper, RefreshCw, Settings, Sun, WalletCards, Waves, Wrench, Zap } from "lucide-react";
+import { Activity, CalendarDays, ChartNoAxesColumn, ChartScatter, Gauge, Globe, House, Layers, LayoutDashboard, Moon, Newspaper, RefreshCw, Settings, Sun, WalletCards, Waves, Wrench, Zap } from "lucide-react";
 import logo from "../assets/brand/utraders-logo-dark.png";
 import logoOnDark from "../assets/brand/utraders-logo-light.png";
 import brandMark from "../assets/brand/utraders-mark.png";
@@ -10,10 +10,11 @@ export const NAV_ITEMS = [
   ["dashboard", "Home", "Home", House],
   ["market", "Market", "Market", Globe],
   ["news", "News", "News", Newspaper],
+  ["index-analysis", "Index Analysis", "Signals", Gauge],
   ["money-flow", "Money Flow", "Flow", Waves],
   ["intraday", "Intraday", "Intraday", Zap],
-  ["charts", "Dashboard", "Charts", LayoutDashboard],
   ["index-stocks", "Index Stocks", "Stocks", ChartScatter],
+  ["charts", "Live Charts", "Charts", LayoutDashboard],
   ["equity", "Equity", "Equity", ChartNoAxesColumn],
   ["index-options", "Index Options", "Options", Layers],
   ["oi-analysis", "OI Analysis", "OI", Activity],
@@ -22,12 +23,26 @@ export const NAV_ITEMS = [
   ["trading", "My Trading", "Trading", WalletCards],
   ["settings", "Settings", "Settings", Settings],
 ];
-// Pages that poll their own data; the dashboard refresh button only applies to Home's market tables.
-export const OWN_REFRESH = ["market", "news", "money-flow", "intraday", "charts", "index-stocks", "equity", "index-options", "oi-analysis", "tools", "holidays", "trading", "settings"];
+// The menu shows the pages in these sections, in this order.
+export const NAV_GROUPS = [
+  ["Overview", ["dashboard", "market", "news"]],
+  ["Analysis", ["index-analysis", "money-flow", "intraday", "index-stocks", "charts"]],
+  ["F&O", ["equity", "index-options", "oi-analysis"]],
+  ["Planning", ["tools", "holidays"]],
+  ["Account", ["trading", "settings"]],
+];
+// Splits menu rows into their sections, keeping only sections that still have a row.
+export const groupNavItems = items => {
+  const grouped = NAV_GROUPS.map(([title, pages]) => [title, pages.map(page => items.find(([id]) => id === page)).filter(Boolean)]);
+  const rest = items.filter(([id]) => !NAV_GROUPS.some(([, pages]) => pages.includes(id)));
+  return [...grouped, ["More", rest]].filter(([, rows]) => rows.length);
+};
+// Pages that poll their own data; the refresh button only applies to Index Analysis's market tables.
+export const OWN_REFRESH = ["dashboard", "market", "news", "money-flow", "intraday", "charts", "index-stocks", "equity", "index-options", "oi-analysis", "tools", "holidays", "trading", "settings"];
 // The phone's bottom bar keeps the busiest pages; the rest are under More (the full menu).
 export const MOBILE_ITEMS = ["dashboard", "market", "money-flow", "intraday", "oi-analysis"];
 // Pages about NSE/BSE stocks and index options; the Commodity market hides them.
-export const INDIA_ONLY = ["market", "money-flow", "intraday", "index-stocks", "equity", "index-options", "oi-analysis"];
+export const INDIA_ONLY = ["index-analysis", "market", "money-flow", "intraday", "index-stocks", "equity", "index-options", "oi-analysis"];
 const COMMODITY_MOBILE_ITEMS = ["dashboard", "charts", "tools", "trading"];
 export const navItemsFor = market => market === "commodity" ? NAV_ITEMS.filter(([id]) => !INDIA_ONLY.includes(id)) : NAV_ITEMS;
 export const mobileItemsFor = market => market === "commodity" ? COMMODITY_MOBILE_ITEMS : MOBILE_ITEMS;

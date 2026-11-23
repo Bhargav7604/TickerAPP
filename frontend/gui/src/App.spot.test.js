@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import App from "./App";
 
-// These tests cover the Index dashboard tables, which the home screen shows under "More details".
+// These tests cover the Index dashboard tables, which the Index Analysis page shows under "More details".
 jest.mock("./components/home", () => ({ __esModule: true, default: ({ details }) => <div>{details}</div> }));
 
 const keys = ["nifty", "banknifty", "sensex"];
@@ -23,6 +23,7 @@ let app;
 beforeEach(() => {
   jest.useFakeTimers();
   localStorage.clear();
+  window.history.replaceState(null, "", "/#index-analysis");
   app = new App({});
   app.state.loggedIn = true;
   app.state.settings.symbols = response().symbols;
@@ -35,6 +36,7 @@ beforeEach(() => {
   app.loadSnapshotHeartbeat = jest.fn();
 });
 afterEach(() => {
+  window.history.replaceState(null, "", "/");
   app.stopMarketData();
   jest.clearAllTimers();
   jest.useRealTimers();

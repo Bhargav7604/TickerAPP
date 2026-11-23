@@ -5,7 +5,7 @@ import logo from "../assets/brand/utraders-logo-dark.png";
 import logoOnDark from "../assets/brand/utraders-logo-light.png";
 import brandMark from "../assets/brand/utraders-mark.png";
 import { useTheme } from "../theme";
-import { BurgerIcon, NAV_ITEMS, OWN_REFRESH } from "./navbar";
+import { BurgerIcon, NAV_ITEMS, OWN_REFRESH, groupNavItems } from "./navbar";
 
 export const RAIL_WIDTH = 72;
 const OPEN_WIDTH = 252;
@@ -13,7 +13,7 @@ const ACTIVE_TINT = "rgba(74, 111, 224, 0.13)";
 
 function Row({ icon: Icon, label, expanded, active = false, onClick }) {
   const row = <ButtonBase aria-label={label} aria-current={active ? "page" : undefined} onClick={onClick} sx={{
-    position: "relative", flex: "none", width: "100%", height: 46, display: "flex", alignItems: "center", justifyContent: expanded ? "flex-start" : "center",
+    position: "relative", flex: "none", width: "100%", height: expanded ? 40 : 42, display: "flex", alignItems: "center", justifyContent: expanded ? "flex-start" : "center",
     gap: 2, px: expanded ? 3 : 0, color: active ? "accent.main" : "text.secondary", bgcolor: active ? ACTIVE_TINT : "transparent",
     transition: "background-color 160ms ease, color 160ms ease",
     "&:hover": { bgcolor: active ? ACTIVE_TINT : "action.hover", color: active ? "accent.main" : "text.primary" },
@@ -41,8 +41,7 @@ function SidebarContent({ expanded, onToggle, toggleLabel, toggleIcon, onExpand,
 
   const words = query.trim().toLowerCase();
   const matches = items.filter(([, label]) => label.toLowerCase().includes(words));
-  const pages = matches.filter(([page]) => page !== "settings");
-  const settings = matches.find(([page]) => page === "settings");
+  const groups = groupNavItems(matches);
   const row = ([page, label, , Icon]) => <Row key={page} icon={Icon} label={label} expanded={expanded} active={currentPage === page} onClick={() => onOpen(page)} />;
   const account = action => { setAnchor(null); action(); };
 
@@ -61,7 +60,7 @@ function SidebarContent({ expanded, onToggle, toggleLabel, toggleIcon, onExpand,
         ? <Box sx={{ width: "100%", height: 40, px: 1.5, display: "flex", alignItems: "center", gap: 1, borderRadius: 3, bgcolor: "background.subtle", color: "text.secondary" }}>
           <Search size={17} aria-hidden="true" />
           <InputBase inputRef={inputRef} placeholder="Search" value={query} onChange={event => setQuery(event.target.value)} inputProps={{ "aria-label": "Search pages" }} sx={{ flex: 1, fontSize: 14 }}
-            onKeyDown={event => { if (event.key === "Enter" && matches[0]) onOpen(matches[0][0]); }} />
+            onKeyDown={event => { const first = groups[0]?.[1][0]; if (event.key === "Enter" && first) onOpen(first[0]); }} />
         </Box>
         : <Tooltip title="Search pages" placement="right">
           <IconButton aria-label="Search pages" onClick={() => { focusSearch.current = true; onExpand(); }} sx={{ width: 40, height: 40, borderRadius: 3, bgcolor: "background.subtle", color: "text.secondary" }}><Search size={18} /></IconButton>
@@ -69,9 +68,12 @@ function SidebarContent({ expanded, onToggle, toggleLabel, toggleIcon, onExpand,
     </Box>
 
     <Box component="nav" aria-label="Main navigation" sx={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column" }}>
-      {pages.map(row)}
-      {settings && pages.length > 0 && <Divider sx={{ flex: "none", my: 1, mx: expanded ? 2.25 : 2 }} />}
-      {settings && row(settings)}
+      {groups.map(([title, rows], index) => <Box key={title} role="group" aria-label={title} sx={{ flex: "none", display: "flex", flexDirection: "column" }}>
+        {expanded
+          ? <Typography aria-hidden="true" sx={{ px: 3, pt: index ? 1 : 0, pb: 0.25, lineHeight: 1.6, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "text.secondary", opacity: 0.8 }}>{title}</Typography>
+          : index > 0 && <Divider aria-hidden="true" sx={{ flex: "none", my: 0.5, mx: 2.25 }} />}
+        {rows.map(row)}
+      </Box>)}
       {!matches.length && <Typography sx={{ px: 3, py: 1, fontSize: 13, color: "text.secondary" }}>No page found</Typography>}
     </Box>
 

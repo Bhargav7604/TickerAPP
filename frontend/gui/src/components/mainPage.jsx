@@ -19,7 +19,7 @@ import { makeNewsApi } from "../newsData";
 import { makeStraddleApi } from "../straddleData";
 import { MARKETS, makeCommodityApi, readMarket, saveMarket } from "../commodityData";
 
-const PAGES = ["market", "news", "money-flow", "intraday", "charts", "index-stocks", "equity", "index-options", "oi-analysis", "tools", "holidays", "trading", "settings"];
+const PAGES = ["index-analysis", "market", "news", "money-flow", "intraday", "charts", "index-stocks", "equity", "index-options", "oi-analysis", "tools", "holidays", "trading", "settings"];
 const Equity = lazy(() => import("./equity.jsx"));
 const IndexStocks = lazy(() => import("./indexStocks.jsx"));
 const LiveDashboard = lazy(() => import("./liveDashboard.jsx"));
@@ -32,6 +32,7 @@ const Tools = lazy(() => import("./tools.jsx"));
 const MarketHolidays = lazy(() => import("./marketHolidays.jsx"));
 const News = lazy(() => import("./news.jsx"));
 const CommodityDetails = lazy(() => import("./commodityDetails.jsx"));
+const Overview = lazy(() => import("./overview.jsx"));
 
 class MainPage extends Component {
   constructor(props) {
@@ -95,6 +96,11 @@ class MainPage extends Component {
       page = <Home key="commodity" api={this.commodityHomeApi} market="commodity"
         details={<Suspense fallback={null}><CommodityDetails api={this.commodityApi} /></Suspense>} />;
     } else if (this.state.currentPage === "dashboard") {
+      // Home: one screen with a box for each part of the app; each box opens its page.
+      page = <Suspense fallback={<div className="eq-empty" role="status">Loading Home...</div>}><Overview boardApi={this.boardApi} decisionApi={this.decisionApi}
+        oiApi={this.oiApi} newsApi={this.newsApi} straddleApi={this.straddleApi} onOpen={this.changePage} onOpenStocks={this.openStocks} /></Suspense>;
+    } else if (this.state.currentPage === "index-analysis") {
+      // The index futures signals that used to be Home.
       const swingAlerts = this.props.swingAlerts || [];
       page = <Home key="india" api={this.decisionApi} market="india" onOpenStocks={this.openStocks}
         latestSwing={swingAlerts[swingAlerts.length - 1]} details={<Dashboard

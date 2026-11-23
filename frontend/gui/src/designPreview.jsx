@@ -5,6 +5,7 @@ import { makeEquityPreviewApi } from "./equityFixtures";
 import { makeBoardPreviewApi, makeIndexStocksPreviewApi } from "./boardFixtures";
 import { makeNewsPreviewApi } from "./newsFixtures";
 import { makeStraddlePreviewApi } from "./straddleFixtures";
+import { makeDecisionPreviewApi, makeOiPreviewApi } from "./overviewFixtures";
 
 export default function DesignPreview() {
   const [equityApi] = useState(makeEquityPreviewApi);
@@ -13,6 +14,8 @@ export default function DesignPreview() {
   const [indexStocksApi] = useState(makeIndexStocksPreviewApi);
   const [newsApi] = useState(makeNewsPreviewApi);
   const [straddleApi] = useState(makeStraddlePreviewApi);
+  const [oiApi] = useState(makeOiPreviewApi);
+  const [decisionApi] = useState(makeDecisionPreviewApi);
   const [month, setMonth] = useState("current");
   const [draft, setDraft] = useState(() => {
     try { return { marketColumns: JSON.parse(localStorage.getItem("index-tool-preview-columns")) }; }
@@ -22,7 +25,7 @@ export default function DesignPreview() {
   const data = makeDesignData(month);
   return <>
     {notice && <div role="status" className="design-preview-notice">{notice}</div>}
-    <MainPage {...data} equityApi={equityApi} indexOptionsApi={indexOptionsApi} boardApi={boardApi} indexStocksApi={indexStocksApi} newsApi={newsApi} straddleApi={straddleApi} username="Design preview" settings={{ ...data.settings, ...draft }}
+    <MainPage {...data} equityApi={equityApi} indexOptionsApi={indexOptionsApi} boardApi={boardApi} indexStocksApi={indexStocksApi} newsApi={newsApi} straddleApi={straddleApi} oiApi={oiApi} decisionApi={decisionApi} username="Design preview" settings={{ ...data.settings, ...draft }}
       handleContractMonthChange={setMonth}
       handleMarketColumnsSave={async marketColumns => {
         localStorage.setItem("index-tool-preview-columns", JSON.stringify(marketColumns));
