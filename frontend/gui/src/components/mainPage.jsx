@@ -135,7 +135,7 @@ class MainPage extends Component {
       page = <Suspense fallback={<div className="eq-empty" role="status">Loading Index Stocks...</div>}><IndexStocks api={this.indexStocksApi} /></Suspense>;
     } else if (["equity", "index-options"].includes(this.state.currentPage)) {
       const indexOptions = this.state.currentPage === "index-options";
-      page = <Suspense fallback={<div className="eq-empty" role="status">Loading {indexOptions ? "Index Options" : "Equity"}...</div>}><Equity key={`${this.props.username}:${this.state.currentPage}`} username={this.props.username} indexOptions={indexOptions} api={indexOptions ? this.indexOptionsApi : this.equityApi} straddleApi={this.straddleApi} /></Suspense>;
+      page = <Suspense fallback={<div className="eq-empty" role="status">Loading {indexOptions ? "Index Options" : "Equity"}...</div>}><Equity key={`${this.props.username}:${this.state.currentPage}`} username={this.props.username} indexOptions={indexOptions} api={indexOptions ? this.indexOptionsApi : this.equityApi} straddleApi={indexOptions ? null : this.straddleApi} /></Suspense>;
     } else if (this.state.currentPage === "oi-analysis") {
       page = <Suspense fallback={<div className="eq-empty" role="status">Loading OI Analysis...</div>}><OiAnalysis api={this.oiApi} boardApi={this.boardApi} /></Suspense>;
     } else if (this.state.currentPage === "trading") {

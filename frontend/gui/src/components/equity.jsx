@@ -105,8 +105,9 @@ function Equity({ api, username, indexOptions = false, straddleApi = null }) {
   const [status, setStatus] = useState("");
   const [notice, setNotice] = useState("");
   const [view, setView] = useState(indexOptions ? "options" : "watchlist");
-  // The Straddles tab replaces the market watch; its quotes and chart stop polling while it is open.
-  const [straddles, setStraddles] = useState(false);
+  // Equity opens on the Straddles tab when it has a straddle feed. The tab replaces the market watch;
+  // its quotes and chart stop polling while it is open.
+  const [straddles, setStraddles] = useState(() => Boolean(straddleApi));
   const [kind, setKind] = useState(indexOptions ? "options" : "all");
   const [month, setMonth] = useState(0);
   const [page, setPage] = useState(0);

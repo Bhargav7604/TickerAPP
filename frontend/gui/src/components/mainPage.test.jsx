@@ -10,7 +10,7 @@ jest.mock("./home", () => ({ __esModule: true, default: ({ api, details, onOpenS
 jest.mock("./commodityDetails", () => ({ __esModule: true, default: ({ api }) => <h2>Commodity details / {api.name}</h2> }));
 jest.mock("./indexStocks", () => ({ __esModule: true, default: ({ api }) => <h1>Index Stocks / {api.name}</h1> }));
 jest.mock("./settings", () => ({ __esModule: true, default: () => <h1>Settings</h1> }));
-jest.mock("./equity", () => ({ __esModule: true, default: ({ indexOptions, api }) => <h1>{indexOptions ? "Index Options" : "Equity"} / {api.name}</h1> }));
+jest.mock("./equity", () => ({ __esModule: true, default: ({ indexOptions, api, straddleApi }) => <><h1>{indexOptions ? "Index Options" : "Equity"} / {api.name}</h1>{straddleApi && <p>Straddles tab</p>}</> }));
 jest.mock("./oiAnalysis", () => ({ __esModule: true, default: ({ api }) => <h1>OI Analysis / {api.name}</h1> }));
 jest.mock("./liveDashboard", () => ({ __esModule: true, default: ({ api }) => <h1>Dashboard / {api.name}</h1> }));
 jest.mock("./marketPage", () => ({ __esModule: true, default: ({ api }) => <h1>Market / {api.name}</h1> }));
@@ -31,10 +31,12 @@ test("Index Options deep link and burger menu navigation keep the APIs separate"
   window.history.replaceState(null, "", "/#index-options");
   render(<MainPage username="demo" equityApi={{ name: "stocks" }} indexOptionsApi={{ name: "indices" }} />);
   expect(await screen.findByRole("heading", { name: "Index Options / indices" })).toBeInTheDocument();
+  expect(screen.queryByText("Straddles tab")).not.toBeInTheDocument();   // straddles live on Equity only
   let nav = await openMenu();
   expect(nav.getByRole("button", { name: "Index Options" })).toHaveAttribute("aria-current", "page");
   fireEvent.click(nav.getByRole("button", { name: "Equity", exact: true }));
   expect(await screen.findByRole("heading", { name: "Equity / stocks" })).toBeInTheDocument();
+  expect(screen.getByText("Straddles tab")).toBeInTheDocument();
   nav = await openMenu();
   fireEvent.click(nav.getByRole("button", { name: "Home", exact: true }));
   expect(await screen.findByRole("heading", { name: "Index dashboard" })).toBeInTheDocument();
