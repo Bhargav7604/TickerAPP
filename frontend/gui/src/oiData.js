@@ -1,3 +1,5 @@
+import { withArrow } from "./trend";
+
 export const OI_INDEXES = [["nifty", "NIFTY"], ["banknifty", "BANKNIFTY"], ["finnifty", "FINNIFTY"], ["midcpnifty", "MIDCPNIFTY"], ["sensex", "SENSEX"]];
 
 export function makeOiApi(request) {
@@ -17,11 +19,11 @@ export function makeOiApi(request) {
 const finite = value => typeof value === "number" && Number.isFinite(value);
 
 export const formatOi = value => finite(value) ? Math.round(value).toLocaleString("en-IN") : "--";
-export const formatSignedOi = value => finite(value) ? `${value > 0 ? "+" : ""}${Math.round(value).toLocaleString("en-IN")}` : "--";
+export const formatSignedOi = value => finite(value) ? withArrow(value, `${value > 0 ? "+" : ""}${Math.round(value).toLocaleString("en-IN")}`, 0) : "--";
 export const formatPrice = value => finite(value) ? value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "--";
-export const formatSignedPrice = value => finite(value) ? `${value > 0 ? "+" : ""}${formatPrice(value)}` : "--";
+export const formatSignedPrice = value => finite(value) ? withArrow(value, `${value > 0 ? "+" : ""}${formatPrice(value)}`) : "--";
 export const formatRatio = value => finite(value) ? value.toFixed(2) : "--";
-export const formatPct = value => finite(value) ? `${value > 0 ? "+" : ""}${value}%` : "--";
+export const formatPct = value => finite(value) ? withArrow(value, `${value > 0 ? "+" : ""}${value}%`, 4) : "--";
 
 // Lakh / crore shorthand for chart axes and summary cards, e.g. 4.40 Cr.
 export const compactOi = value => {
@@ -57,7 +59,7 @@ export const shortOi = value => {
   return Math.round(value).toLocaleString("en-IN");
 };
 
-export const signedShortOi = value => finite(value) ? `${value > 0 ? "+" : ""}${shortOi(value)}` : "--";
+export const signedShortOi = value => finite(value) ? withArrow(value, `${value > 0 ? "+" : ""}${shortOi(value)}`, 0) : "--";
 export const STRIKE_RANGES = [["atm", "ATM ±12"], ["all", "Whole chain"]];
 const RANGE_KEY = "utraders-oi-strike-range";
 export const readStrikeRange = () => { try { return localStorage.getItem(RANGE_KEY) === "all" ? "all" : "atm"; } catch { return "atm"; } };

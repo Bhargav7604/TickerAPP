@@ -23,6 +23,7 @@ def maintain_board(tracker, client=None, now=None):
     try:
         if tracker.seeded_on != now.date() or (now.time() >= CIRCUITS_FROM and tracker.circuits_on != now.date()):
             done["seeded"] = tracker.seed(client, now)
+        done["indexPaths"] = tracker.backfill_indices(client, now)
         done["backfilled"] = tracker.backfill(client, now)
         done["stats"] = refresh_universe_stats(client, now)
         done["commodityStats"] = refresh_commodity_stats(client, now)

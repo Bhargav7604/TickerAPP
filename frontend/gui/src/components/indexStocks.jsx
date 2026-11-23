@@ -1,12 +1,13 @@
 import React, { Fragment, useEffect, useRef, useState } from "react";
 import "../indexStocks.css";
 import StockHeatmap from "./stockHeatmap";
-import { BUILDUP_NAMES, HEATMAP_INDEXES, clock, price, readStockIndex, readStockView, saveStockIndex, saveStockView, signedNumber, signedPct, tone, whole } from "../indexStocksData";
+import { BUILDUP_NAMES, HEATMAP_INDEXES, clock, price, readStockIndex, readStockView, saveStockIndex, saveStockView, signedNumber, signedPct, signedPctBare, tone, whole } from "../indexStocksData";
+import { withArrow } from "../trend";
 
 const LIVE_MS = 3000;  // the server keeps stock quotes for 3 seconds
 const TICK_MS = 1200;
 const CLOSED_MS = 60000;
-const signedPrice = value => Number.isFinite(value) ? `${value > 0 ? "+" : ""}${price(value)}` : "--";
+const signedPrice = value => Number.isFinite(value) ? withArrow(value, `${value > 0 ? "+" : ""}${price(value)}`) : "--";
 const CHECK_TEXT = {
   Change: { bull: "Up from yesterday's close", bear: "Down from yesterday's close", flat: "Same as yesterday's close" },
   VWAP: { bull: "Above today's average price (VWAP)", bear: "Below today's average price (VWAP)", flat: "At today's average price (VWAP)" },
@@ -39,7 +40,6 @@ const CHARTS = [["gauge", "Gauge"], ["movers", "Movers"], ["sectors", "Sectors"]
 const CHART_KEY = "utraders-breadth-chart";
 const readChart = () => { try { return CHARTS.some(([key]) => key === localStorage.getItem(CHART_KEY)) ? localStorage.getItem(CHART_KEY) : "gauge"; } catch { return "gauge"; } };
 const saveChart = chart => { try { localStorage.setItem(CHART_KEY, chart); } catch { /* storage unavailable */ } };
-const LIST_SIZE = 5;
 const BAR_LIMIT = 10;
 
 // Half-ring from left (0) to right (1); the up share fills from the left, then unchanged, then down.
@@ -51,32 +51,35 @@ function arc(from, to) {
   return `M ${point(from)} A 96 96 0 0 1 ${point(to)}`;
 }
 
-function Gauge({ breadth, stocks, onSelect }) {
+// The share of the index's stocks that are up, as one large dial: green from the left, grey unchanged, red down.
+function Gauge({ breadth }) {
   const total = breadth.up + breadth.down + breadth.flat || 1;
   const upShare = breadth.up / total;
   const flatShare = breadth.flat / total;
-  const gainers = stocks.filter(stock => stock.changePct > 0).slice(0, LIST_SIZE);
-  const losers = stocks.filter(stock => stock.changePct < 0).reverse().slice(0, LIST_SIZE);
-  const list = (title, rows, side) => <div className={`ix-gauge-list is-${side}`}>
-    <h3>{title}</h3>
-    {rows.length ? <ol>{rows.map(stock => <li key={stock.symbol}>
-      <button type="button" onClick={() => onSelect(stock.symbol)}><b>{stock.symbol}</b><span className={tone(stock.changePct)}>{signedPct(stock.changePct)}</span></button>
-    </li>)}</ol> : <p className="ix-muted">None right now.</p>}
-  </div>;
+  const percent = share => Math.round(share * 100);
+  const side = breadth.up > breadth.down ? "is-up" : breadth.down > breadth.up ? "is-down" : "is-even";
+  const ratio = breadth.down ? (breadth.up / breadth.down).toFixed(2) : breadth.up ? "all up" : "--";
+  const parts = [["is-up", "▲ Up", breadth.up], ["is-flat", "Unchanged", breadth.flat], ["is-down", "▼ Down", breadth.down]];
   return <div className="ix-gauge">
     <figure className="ix-gauge-dial">
-      <svg viewBox="0 0 240 132" role="img" aria-label={`Advance and decline: ${breadth.up} of ${total} stocks up, ${breadth.down} down, ${breadth.flat} unchanged`}>
+      <svg viewBox="0 0 240 146" role="img" aria-label={`Advance and decline: ${breadth.up} of ${total} stocks up, ${breadth.down} down, ${breadth.flat} unchanged`}>
         <path className="ix-gauge-track" d={arc(0, 1)} />
         {breadth.up > 0 && <path className="ix-gauge-up" d={arc(0, upShare)} />}
         {breadth.flat > 0 && <path className="ix-gauge-flat" d={arc(upShare, upShare + flatShare)} />}
         {breadth.down > 0 && <path className="ix-gauge-down" d={arc(upShare + flatShare, 1)} />}
-        <text className="ix-gauge-big" x="120" y="96" textAnchor="middle">{breadth.up} up</text>
-        <text className="ix-gauge-small" x="120" y="118" textAnchor="middle">{breadth.down} down{breadth.flat ? ` · ${breadth.flat} flat` : ""}</text>
+        <text className={`ix-gauge-pct ${side}`} x="120" y="100" textAnchor="middle">{percent(upShare)}%</text>
+        <text className="ix-gauge-small" x="120" y="120" textAnchor="middle">of stocks up</text>
+        <text className="ix-gauge-end" x="24" y="144" textAnchor="middle">0%</text>
+        <text className="ix-gauge-end" x="216" y="144" textAnchor="middle">100%</text>
       </svg>
-      <figcaption className="ix-muted">{Math.round(upShare * 100)}% of stocks are up</figcaption>
+      <figcaption className="sr-only">{percent(upShare)}% of stocks are up</figcaption>
     </figure>
-    {list("Top gainers", gainers, "up")}
-    {list("Top losers", losers, "down")}
+    <ul className="ix-gauge-legend" aria-label="Stocks up, unchanged and down">
+      {parts.map(([key, label, count]) => <li key={key} className={key}>
+        <span>{label}</span><b>{count}</b><small>{percent(count / total)}%</small>
+      </li>)}
+      <li className="ix-gauge-ratio"><span>Up ÷ down</span><b>{ratio}</b></li>
+    </ul>
   </div>;
 }
 
@@ -91,7 +94,7 @@ function BarRows({ rows, label, onSelect }) {
       {row.note && <span className="ix-bar-note">{row.note}</span>}
     </>;
     return <li key={row.name}>{onSelect
-      ? <button type="button" className="ix-bar" aria-label={`${row.name} ${signedPct(row.value)}, ${label}`} onClick={() => onSelect(row.name)}>{content}</button>
+      ? <button type="button" className="ix-bar" aria-label={`${row.name} ${signedPctBare(row.value)}, ${label}`} onClick={() => onSelect(row.name)}>{content}</button>
       : <div className="ix-bar">{content}</div>}</li>;
   })}</ol>;
 }
@@ -111,7 +114,7 @@ function BreadthChart({ data, stocks, onSelect }) {
   const [chart, setChart] = useState(readChart);
   const choose = key => { setChart(key); saveChart(key); };
   const captions = {
-    gauge: "How many stocks in the index are up or down. Tap a name to open the stock.",
+    gauge: "What share of the index's stocks are up right now. Above 50% means more stocks are rising than falling.",
     movers: "Each bar is one stock: right and green for gains, left and red for falls, longest bar is the biggest move. Tap a bar to open the stock.",
     sectors: "Each bar is a sector's average change, with how many of its stocks rose (↑) and fell (↓).",
   };
@@ -125,7 +128,7 @@ function BreadthChart({ data, stocks, onSelect }) {
       </div>
     </header>
     <div className="ix-chart-body">
-      {chart === "gauge" && <Gauge breadth={data.breadth} stocks={stocks} onSelect={onSelect} />}
+      {chart === "gauge" && <Gauge breadth={data.breadth} />}
       {chart === "movers" && <MoverBars stocks={stocks} onSelect={onSelect} />}
       {chart === "sectors" && <BarRows label="sector" rows={data.sectors.map(sector => ({ name: sector.name, value: sector.avgChangePct, note: `${sector.up}↑ ${sector.down}↓` }))} />}
     </div>
@@ -170,7 +173,7 @@ function StockDetail({ stock }) {
       <h3>Futures{futures ? ` · ${futures.symbol}` : ""}</h3>
       {futures ? <dl>
         <dt>Price</dt><dd>{price(futures.ltp)}</dd><dt>OI</dt><dd>{whole(futures.oi)}</dd>
-        <dt>OI change</dt><dd className={tone(futures.oiChange)}>{signedNumber(futures.oiChange)} ({signedPct(futures.oiChangePct)})</dd>
+        <dt>OI change</dt><dd className={tone(futures.oiChange)}>{signedNumber(futures.oiChange)} ({signedPctBare(futures.oiChangePct)})</dd>
         <dt>Build-up</dt><dd>{futures.buildup || "Waiting for yesterday's OI"}</dd>
       </dl> : <p className="ix-muted">This stock has no futures contract.</p>}
     </div>
@@ -337,7 +340,7 @@ function IndexDetails({ api, index, openRequest }) {
       <div className="ix-status">
         <b>{data.label}</b>
         <span className={`ix-spot${tickClass(ticks[SPOT_TICK])}`}>{price(spot.ltp)}</span>
-        <span className={tone(spot.change)}>{signedPrice(spot.change)} ({signedPct(spot.changePct)})</span>
+        <span className={tone(spot.change)}>{signedPrice(spot.change)} ({signedPctBare(spot.changePct)})</span>
         <span className={`ix-live${data.marketOpen ? " is-live" : ""}`}>{data.marketOpen ? "Live" : "Market closed"}</span>
         {data.asOf && <span className="ix-muted">Updated {clock(data.asOf)} IST</span>}
       </div>

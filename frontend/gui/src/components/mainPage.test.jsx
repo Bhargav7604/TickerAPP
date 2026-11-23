@@ -17,6 +17,8 @@ jest.mock("./marketPage", () => ({ __esModule: true, default: ({ api }) => <h1>M
 jest.mock("./moneyFlow", () => ({ __esModule: true, default: ({ api }) => <h1>Money Flow / {api.name}</h1> }));
 jest.mock("./intraday", () => ({ __esModule: true, default: ({ api }) => <h1>Intraday / {api.name}</h1> }));
 jest.mock("./tools", () => ({ __esModule: true, default: ({ api }) => <h1>Tools / {api.name}</h1> }));
+jest.mock("./marketHolidays", () => ({ __esModule: true, default: () => <h1>Market Holidays page</h1> }));
+jest.mock("./news", () => ({ __esModule: true, default: ({ api, boardApi }) => <h1>News / {api.name} / {boardApi.name}</h1> }));
 
 afterEach(() => { window.history.replaceState(null, "", "/"); localStorage.removeItem("utraders-market"); });
 
@@ -42,7 +44,7 @@ test("the page links live in the burger menu, which closes after choosing or wit
   render(<MainPage username="demo" equityApi={{ name: "stocks" }} indexOptionsApi={{ name: "indices" }} />);
   expect(screen.queryByRole("navigation", { name: "Main navigation" })).not.toBeInTheDocument();
   const nav = await openMenu();
-  expect(nav.getAllByRole("button").map(item => item.getAttribute("aria-label"))).toEqual(["Home", "Market", "Money Flow", "Intraday", "Dashboard", "Index Stocks", "Equity", "Index Options", "OI Analysis", "Tools", "My Trading", "Settings"]);
+  expect(nav.getAllByRole("button").map(item => item.getAttribute("aria-label"))).toEqual(["Home", "Market", "News", "Money Flow", "Intraday", "Dashboard", "Index Stocks", "Equity", "Index Options", "OI Analysis", "Tools", "Market Holidays", "My Trading", "Settings"]);
   expect(within(screen.getByRole("dialog", { name: "Menu" })).getByText("demo")).toBeInTheDocument();
   fireEvent.keyDown(screen.getByRole("dialog", { name: "Menu" }), { key: "Escape" });
   await waitFor(() => expect(screen.queryByRole("navigation", { name: "Main navigation" })).not.toBeInTheDocument());
@@ -98,6 +100,25 @@ test("Market, Intraday and Tools open from the menu and by deep link", async () 
   expect(await screen.findByRole("heading", { name: "Intraday / board" })).toBeInTheDocument();
 });
 
+test("News opens by deep link with its own feed and the board for live prices", async () => {
+  window.history.replaceState(null, "", "/#news");
+  render(<MainPage username="demo" equityApi={{ name: "stocks" }} indexOptionsApi={{ name: "indices" }} boardApi={{ name: "board" }} newsApi={{ name: "feeds" }} />);
+  expect(await screen.findByRole("heading", { name: "News / feeds / board" })).toBeInTheDocument();
+  expect((await openMenu()).getByRole("button", { name: "News" })).toHaveAttribute("aria-current", "page");
+});
+
+test("Market Holidays opens from the menu and by deep link, in either market", async () => {
+  window.history.replaceState(null, "", "/#holidays");
+  render(<MainPage username="demo" equityApi={{ name: "stocks" }} indexOptionsApi={{ name: "indices" }} boardApi={{ name: "board" }} />);
+  expect(await screen.findByRole("heading", { name: "Market Holidays page" })).toBeInTheDocument();
+  expect((await openMenu()).getByRole("button", { name: "Market Holidays" })).toHaveAttribute("aria-current", "page");
+  fireEvent.click(within(screen.getByRole("dialog", { name: "Menu" })).getByRole("button", { name: "Tools" }));
+  expect(await screen.findByRole("heading", { name: "Tools / board" })).toBeInTheDocument();
+  fireEvent.click((await openMenu()).getByRole("button", { name: "Market Holidays" }));
+  expect(await screen.findByRole("heading", { name: "Market Holidays page" })).toBeInTheDocument();
+  expect(window.location.hash).toBe("#holidays");
+});
+
 test("OI Analysis is reachable from both navigations and by deep link", async () => {
   render(<MainPage username="demo" equityApi={{ name: "stocks" }} indexOptionsApi={{ name: "indices" }} oiApi={{ name: "oi" }} />);
   fireEvent.click((await openMenu()).getByRole("button", { name: "OI Analysis" }));
@@ -140,7 +161,7 @@ test("the market switch at the top shows only commodity pages and remembers the 
   expect(commodityApi.decision).toHaveBeenCalled();
   expect(localStorage.getItem("utraders-market")).toBe("commodity");
   // Only the pages that apply to commodities stay in the menu and on the phone bar.
-  expect((await openMenu()).getAllByRole("button").map(item => item.getAttribute("aria-label"))).toEqual(["Home", "Dashboard", "Tools", "My Trading", "Settings"]);
+  expect((await openMenu()).getAllByRole("button").map(item => item.getAttribute("aria-label"))).toEqual(["Home", "News", "Dashboard", "Tools", "Market Holidays", "My Trading", "Settings"]);
   fireEvent.keyDown(screen.getByRole("dialog", { name: "Menu" }), { key: "Escape" });
   const phone = within(screen.getByRole("navigation", { name: "Mobile section navigation" }));
   expect(phone.getAllByRole("button").map(item => item.textContent)).toEqual(["Home", "Charts", "Tools", "Trading", "More"]);

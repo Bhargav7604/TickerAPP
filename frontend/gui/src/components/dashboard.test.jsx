@@ -107,7 +107,7 @@ test("snapshot preview groups each index over the matching futures and net-lot c
   metrics.forEach(header => expect(header).toHaveAttribute("scope", "col"));
   expect(within(rows[2]).getByRole("rowheader")).toHaveTextContent("14:35");
   expect(within(rows[2]).getAllByRole("cell").map(cell => cell.textContent)).toEqual([
-    "25,206.8", "+1,262", "56,842.5", "-438", "82,614.7", "+214",
+    "25,206.8", "▲\u00a0+1,262", "56,842.5", "▼\u00a0-438", "82,614.7", "▲\u00a0+214",
   ]);
 });
 
@@ -148,11 +148,11 @@ test("live swing alerts are listed at once, merge into their window and the newe
   expect(latest).toHaveLength(1);
   expect(latest[0]).toHaveTextContent("Latest");
   expect(latest[0]).toHaveTextContent("Live");
-  expect(latest[0]).toHaveTextContent("+30 → +154 lots");
-  expect(latest[0]).toHaveTextContent("+124 lots");
+  expect(latest[0]).toHaveTextContent("▲ +30 → ▲ +154 lots");
+  expect(latest[0]).toHaveTextContent("▲ +124 lots");
   const bank = within(panel).getByText("Banknifty 5-min lot swing").closest(".side-row");
   expect(bank).not.toHaveClass("is-latest");
-  expect(bank).toHaveTextContent(/0 → -400 lots · alert at \d\d:\d\d/);
+  expect(bank).toHaveTextContent(/0 → ▼ -400 lots · alert at \d\d:\d\d/);
   expect(screen.getByRole("tab", { name: "Swing alerts" })).toHaveTextContent("3");
 });
 

@@ -1,14 +1,18 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Box, ButtonBase, Chip, Collapse, Paper, Stack, Typography } from "@mui/material";
 import { mono } from "../ui/Glass";
+import { withArrow } from "../trend";
 
 const LIVE_MS = 5000;
 const CLOSED_MS = 60000;
-const points = value => Number.isFinite(value) ? `${value > 0 ? "+" : ""}${value.toFixed(1)}` : "--";
+const pointsBare = value => Number.isFinite(value) ? `${value > 0 ? "+" : ""}${value.toFixed(1)}` : "--";
+const points = value => Number.isFinite(value) ? withArrow(value, pointsBare(value), 1) : "--";
 const pointsColor = value => value > 0 ? "success.main" : value < 0 ? "error.main" : "text.secondary";
 const price = value => Number.isFinite(value) ? value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "--";
-const signed = value => Number.isFinite(value) ? `${value > 0 ? "+" : ""}${price(value)}` : "--";
-const signedPct = value => Number.isFinite(value) ? `${value > 0 ? "+" : ""}${value.toFixed(2)}%` : "--";
+const signed = value => Number.isFinite(value) ? withArrow(value, `${value > 0 ? "+" : ""}${price(value)}`) : "--";
+// The bare form sits in brackets after a number that already has its arrow.
+const signedPctBare = value => Number.isFinite(value) ? `${value > 0 ? "+" : ""}${value.toFixed(2)}%` : "--";
+const signedPct = value => Number.isFinite(value) ? withArrow(value, signedPctBare(value)) : "--";
 const STOCK_COLUMNS = "minmax(96px, 1.1fr) 84px minmax(132px, 1.4fr) 64px 92px";
 const clock = seconds => new Date(seconds * 1000).toLocaleTimeString("en-GB", { timeZone: "Asia/Kolkata" });
 const istDay = date => date.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
@@ -38,14 +42,14 @@ function StockTable({ sector, indexLabel }) {
         <Box component="span" role="cell" sx={{ fontWeight: 800 }}>{stock.symbol}</Box>
         <Box component="span" role="cell" sx={{ ...mono, textAlign: "right" }}>{price(stock.ltp)}</Box>
         <Box component="span" role="cell" sx={{ ...mono, textAlign: "right", color: pointsColor(stock.change ?? stock.changePct) }}>
-          {Number.isFinite(stock.change) ? `${signed(stock.change)} (${signedPct(stock.changePct)})` : signedPct(stock.changePct)}
+          {Number.isFinite(stock.change) ? `${signed(stock.change)} (${signedPctBare(stock.changePct)})` : signedPct(stock.changePct)}
         </Box>
         <Box component="span" role="cell" sx={{ ...mono, textAlign: "right", color: "text.secondary" }}>{Number.isFinite(stock.weightPct) ? `${stock.weightPct.toFixed(1)}%` : "--"}</Box>
         <Box component="span" role="cell" sx={{ ...mono, textAlign: "right", fontWeight: 800, color: pointsColor(stock.points) }}>{points(stock.points)} pts</Box>
       </Box>)}
     </Box>
     {lead && <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 0.75 }}>
-      {indexLabel} pts are index points, not the stock's price: {lead.symbol} moved {lead.change >= 0 ? "+" : "−"}₹{price(Math.abs(lead.change))} ({signedPct(lead.changePct)}) and is {lead.weightPct.toFixed(1)}% of {indexLabel}, so it moved {indexLabel} by {points(lead.points)} points.
+      {indexLabel} pts are index points, not the stock's price: {lead.symbol} moved {lead.change >= 0 ? "+" : "−"}₹{price(Math.abs(lead.change))} ({signedPctBare(lead.changePct)}) and is {lead.weightPct.toFixed(1)}% of {indexLabel}, so it moved {indexLabel} by {pointsBare(lead.points)} points.
     </Typography>}
   </Box>;
 }
@@ -53,7 +57,7 @@ function StockTable({ sector, indexLabel }) {
 function SectorRow({ sector, scale, open, onToggle, indexLabel }) {
   const color = pointsColor(sector.points);
   return <Box component="li">
-    <ButtonBase onClick={onToggle} aria-expanded={open} aria-label={`${sector.name} ${points(sector.points)} ${indexLabel} points`} sx={{
+    <ButtonBase onClick={onToggle} aria-expanded={open} aria-label={`${sector.name} ${pointsBare(sector.points)} ${indexLabel} points`} sx={{
       width: "100%", display: "grid", gridTemplateColumns: "minmax(0, 150px) minmax(0, 1fr) 76px", alignItems: "center", gap: 1.25,
       px: 1, py: 0.7, borderRadius: 2, textAlign: "left", "&:hover": { bgcolor: "action.hover" },
       "&.Mui-focusVisible": { outline: "2px solid", outlineColor: "primary.main" },
@@ -147,7 +151,7 @@ export default function SectorContribution({ load, index = "nifty", sx }) {
       </Box>
       {flat.length > 0 && <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 1, px: 1 }}>No change: {flat.map(sector => sector.name).join(", ")}</Typography>}
       <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 1.25, px: 1 }}>
-        Tap a sector to see its stocks. Sectors add up to {points(data.explained)} of {shortLabel}'s {points(data.indexMove)} points
+        Tap a sector to see its stocks. Sectors add up to {pointsBare(data.explained)} of {shortLabel}'s {pointsBare(data.indexMove)} points
         {weightsNote(data)}.
       </Typography>
     </>}

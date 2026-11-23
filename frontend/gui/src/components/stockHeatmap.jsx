@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import useWidth from "../useWidth";
-import { clock, price, rupeesCompact, signedPct, tone } from "../indexStocksData";
+import { clock, price, rupeesCompact, signedPct, signedPctBare, tone } from "../indexStocksData";
 
 const LIVE_MS = 8000;
 const CLOSED_MS = 60000;
@@ -166,12 +166,12 @@ export default function StockHeatmap({ api, index, onOpenDetails }) {
         role="img" aria-label={breadth ? `${data.label} heatmap: ${breadth.up} stocks up, ${breadth.down} down` : `${data.label} heatmap`}>
         {sectors.map(sector => <div key={sector.name} className="hm-sector"
           style={{ left: sector.x, top: sector.y, width: sector.w, height: sector.h }}>
-          {sector.labelled && <span className="hm-sector-name" title={`${sector.name}: ${signedPct(sector.avgChangePct)} average, ${sector.up} up, ${sector.down} down`}>
+          {sector.labelled && <span className="hm-sector-name" title={`${sector.name}: ${signedPctBare(sector.avgChangePct)} average, ${sector.up} up, ${sector.down} down`}>
             {sector.name} <i className={tone(sector.avgChangePct)}>{signedPct(sector.avgChangePct)}</i>
           </span>}
           {sector.tiles.map(tile => <div key={tile.symbol} className={`hm-tile${pinned === tile.symbol ? " is-pinned" : ""}`}
             style={{ left: tile.x - sector.x, top: tile.y - sector.y, width: Math.max(0, tile.w - 1), height: Math.max(0, tile.h - 1), ...heatColor(tile.changePct) }}
-            title={`${tile.symbol} ${signedPct(tile.changePct)}`} onMouseEnter={() => setFocus(tile.symbol)}
+            title={`${tile.symbol} ${signedPctBare(tile.changePct)}`} onMouseEnter={() => setFocus(tile.symbol)}
             onClick={() => setPinned(current => current === tile.symbol ? null : tile.symbol)}>
             <TileLabel tile={tile} />
           </div>)}

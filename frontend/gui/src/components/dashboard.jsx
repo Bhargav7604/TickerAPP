@@ -6,6 +6,7 @@ import MarketComparison, { MARKET_LAYOUTS } from "./marketComparison";
 import MarketChart from "./marketChart";
 import MarketColumnSelector from "./marketColumnSelector";
 import { alertLotThreshold, describeAlertThresholds } from "../alertThresholds";
+import { withArrow } from "../trend";
 
 const INDEX_LABELS = {
   nifty: "Nifty",
@@ -214,6 +215,13 @@ class Dashboard extends Component {
       return this.formatValue(value);
     }
 
+    return withArrow(numericValue, this.formatSignedBare(numericValue));
+  }
+
+  // Without the ▲ / ▼, for a figure in brackets after one that already has its arrow.
+  formatSignedBare = value => {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue) || numericValue === 0) return this.formatValue(value);
     return `${numericValue > 0 ? "+" : ""}${this.formatValue(numericValue)}`;
   }
 

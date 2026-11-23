@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, ChartCandlestick, Check, ChevronLeft, ChevronRight, Columns3, GripVertical, Minimize2, Monitor, PanelRightClose, PanelRightOpen, Plus, RefreshCw, Search, Star, Trash2, X } from "lucide-react";
 import { closestCenter, DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -8,6 +8,8 @@ import EquityTerminal from "./equityTerminal";
 import { EQUITY_COLUMNS, DEFAULT_EQUITY_COLUMNS, contractLabel, directionClass, equityPollDelay, expiryLabel, formatChange, formatLots, formatPrice, futuresForMonth, readEquityPreferences, reconcileEquityQuotes } from "../equityData";
 import "../equity.css";
 import "../equityTerminal.css";
+
+const StraddleView = lazy(() => import("./straddleView"));
 
 const priceCell = (id, value) => id === "changePct" ? formatChange(value) : id.endsWith("Lots") ? formatLots(value) : formatPrice(value);
 const quoteTime = quote => quote?.quotedAt ? new Date(quote.quotedAt).toLocaleTimeString("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "--:--:--";
@@ -89,7 +91,7 @@ function Depth({ contract, quote, pending, onClose, indexOptions }) {
   </aside>;
 }
 
-function Equity({ api, username, indexOptions = false }) {
+function Equity({ api, username, indexOptions = false, straddleApi = null }) {
   const title = indexOptions ? "Index Options" : "Equity";
   const searchLabel = indexOptions ? "Search index options" : "Search stock futures or options";
   const columnLabel = indexOptions ? "Customize index option columns" : "Customize equity columns";
@@ -103,6 +105,8 @@ function Equity({ api, username, indexOptions = false }) {
   const [status, setStatus] = useState("");
   const [notice, setNotice] = useState("");
   const [view, setView] = useState(indexOptions ? "options" : "watchlist");
+  // The Straddles tab replaces the market watch; its quotes and chart stop polling while it is open.
+  const [straddles, setStraddles] = useState(false);
   const [kind, setKind] = useState(indexOptions ? "options" : "all");
   const [month, setMonth] = useState(0);
   const [page, setPage] = useState(0);
@@ -234,6 +238,7 @@ function Equity({ api, username, indexOptions = false }) {
     if (view !== "options" || optionsReady) setPage(previous => Math.min(previous, Math.max(0, Math.ceil(rowCount / 49) - 1)));
   }, [rowCount, view, optionsReady]);
   useEffect(() => {
+    if (straddles) return undefined;
     if (!requestedKey) { setQuotes({}); setStatus(""); return undefined; }
     const abort = new AbortController();
     let timer;
@@ -251,9 +256,9 @@ function Equity({ api, username, indexOptions = false }) {
     };
     poll();
     return () => { abort.abort(); clearTimeout(timer); };
-  }, [api, requestedKey, refresh]);
+  }, [api, requestedKey, refresh, straddles]);
 
-  const chartId = !terminal || terminalChart ? selected?.id : null;
+  const chartId = !straddles && (!terminal || terminalChart) ? selected?.id : null;
   useEffect(() => {
     setCandles([]); setChartMessage("");
     if (!chartId) return undefined;
@@ -301,7 +306,7 @@ function Equity({ api, username, indexOptions = false }) {
       <time>{new Date().toLocaleDateString("en-GB", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" })}</time>
       <span className="eq-readonly">Read-only</span>
     </div>
-    <div className={`eq-toolbar${indexOptions ? " eq-toolbar-index" : ""}`}>
+    {!straddles && <div className={`eq-toolbar${indexOptions ? " eq-toolbar-index" : ""}`}>
       <div className="eq-search"><Search size={18} /><input aria-label={searchLabel} placeholder={searchLabel} value={search} onChange={event => setSearch(event.target.value)} onKeyDown={event => { if (event.key === "Escape") setSearch(""); }} />
         {search && <button className="eq-icon" aria-label="Clear search" title="Clear search" onClick={() => setSearch("")}><X size={17} /></button>}
         {search && <div className="eq-search-results" aria-label="Contract search results">
@@ -321,17 +326,20 @@ function Equity({ api, username, indexOptions = false }) {
       <button className="eq-icon" title={terminal ? "Exit terminal view" : "Open terminal view"} aria-label={terminal ? "Exit terminal view" : "Open terminal view"} onClick={() => { setTerminal(value => !value); setTerminalChart(false); setTerminalDepth(false); }}>
         {terminal ? <Minimize2 size={19} /> : <Monitor size={19} />}
       </button>
-    </div>
+    </div>}
     </div>
     <div className="eq-watch-tabs">
-      <button className={view === "watchlist" ? "active" : ""} onClick={() => { setView("watchlist"); setKind("all"); }}>My watchlists</button>
-      {!indexOptions && <button className={view === "futures" ? "active" : ""} onClick={() => { setView("futures"); setKind("all"); }}>All futures</button>}
-      <button className={view === "options" ? "active" : ""} onClick={() => { setView("options"); setKind("options"); }}>{indexOptions ? "All index options" : "Stock options"}</button>
-      <button className="eq-icon" title="New watchlist" aria-label="New watchlist" disabled={prefs.lists.length >= 10} onClick={() => { setListName(""); setDialog("list"); }}><Plus size={19} /></button>
-      {view === "watchlist" ? <div className="eq-list-control"><select aria-label="Watchlist" value={activeList.id} onChange={event => setPrefs(previous => ({ ...previous, activeList: event.target.value }))}>{prefs.lists.map(list => <option key={list.id} value={list.id}>{list.name}</option>)}</select>
+      {straddleApi && <button className={straddles ? "active" : ""} aria-pressed={straddles} onClick={() => setStraddles(true)}>Straddles</button>}
+      <button className={!straddles && view === "watchlist" ? "active" : ""} onClick={() => { setStraddles(false); setView("watchlist"); setKind("all"); }}>My watchlists</button>
+      {!indexOptions && <button className={!straddles && view === "futures" ? "active" : ""} onClick={() => { setStraddles(false); setView("futures"); setKind("all"); }}>All futures</button>}
+      <button className={!straddles && view === "options" ? "active" : ""} onClick={() => { setStraddles(false); setView("options"); setKind("options"); }}>{indexOptions ? "All index options" : "Stock options"}</button>
+      {!straddles && <button className="eq-icon" title="New watchlist" aria-label="New watchlist" disabled={prefs.lists.length >= 10} onClick={() => { setListName(""); setDialog("list"); }}><Plus size={19} /></button>}
+      {straddles ? null : view === "watchlist" ? <div className="eq-list-control"><select aria-label="Watchlist" value={activeList.id} onChange={event => setPrefs(previous => ({ ...previous, activeList: event.target.value }))}>{prefs.lists.map(list => <option key={list.id} value={list.id}>{list.name}</option>)}</select>
         {prefs.lists.length > 1 && <button className="eq-icon" title="Delete watchlist" aria-label="Delete watchlist" onClick={() => setDialog("delete")}><Trash2 size={16} /></button>}</div> :
         view === "futures" && <div className="eq-segments eq-months" role="group" aria-label="Futures month">{["Current", "Next", "Far"].map((label, index) => <button key={label} className={month === index ? "active" : ""} aria-pressed={month === index} onClick={() => setMonth(index)}>{label}</button>)}</div>}
     </div>
+    {straddles && <div className="eq-straddles"><Suspense fallback={<div className="eq-empty" role="status">Loading straddles...</div>}><StraddleView api={straddleApi} /></Suspense></div>}
+    {!straddles && <>
     {view === "options" && <div className="eq-option-filters" role="group" aria-label={indexOptions ? "Index option filters" : "Stock option filters"} aria-busy={!optionsReady}>
       <label>{indexOptions ? "Index" : "Stock"}<select aria-label={indexOptions ? "Option index" : "Option stock"} value={optionFilters.underlying || optionResult.filters.underlying || ""} disabled={!underlyings.length} onChange={event => changeOptions({ underlying: event.target.value, expiry: "", strike: "" })}>
         {!underlyings.length && <option value="">{indexOptions ? "No indices available" : "No stocks available"}</option>}
@@ -379,6 +387,7 @@ function Equity({ api, username, indexOptions = false }) {
     </div>
     {selected && (!terminal || terminalChart) && <EquityChart contract={selected} candles={candles} message={chartMessage} loading={chartLoading} terminal={terminal} onClose={() => setTerminalChart(false)} />}
     <div className="eq-footer"><span>{api.preview ? "Sample data" : `Quote ${quoteTime(selectedQuote)} IST`} / Read-only</span><span>{indexOptions ? "Index options" : "Stock futures and options"}</span></div>
+    </>}
     {dialog === "columns" && <ColumnDialog title={`${title} columns`} value={prefs.columns} onSave={columns => setPrefs(previous => ({ ...previous, columns }))} onClose={() => setDialog(null)} />}
     {dialog === "list" && <Dialog title="New watchlist" onClose={() => setDialog(null)}><form onSubmit={event => {
       event.preventDefault(); if (!listName.trim()) return;

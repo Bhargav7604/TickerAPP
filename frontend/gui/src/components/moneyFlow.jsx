@@ -6,6 +6,7 @@ import { FLOW_TAGS, analyse, breadthGroups, capRead, contributions, flowRead, in
 import { BoardMessage, BuildTag, DOWN, FilterBar, NameButton, Panel, Pct, SegBadges, StatusChip, UP, toneColor, useBoardFilters } from "./boardUi";
 import StockDrawer from "./stockDrawer";
 import { PageShell, Segmented, mono } from "../ui/Glass";
+import { arrow, withArrow } from "../trend";
 
 const LOCK_KEY = "utraders-flow-sector";
 const STRONG_CAP = 14;
@@ -105,7 +106,7 @@ function SectorsPanel({ A, lock, onLock, onHover }) {
         <Box component="span" sx={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontWeight: on ? 800 : 600 }}>{s.sector}</Box>
         <Box component="span" sx={{ color: "text.secondary", textAlign: "right", ...mono }}>{s.n}</Box>
         <DivergingBar value={s.net} max={top} />
-        <Box component="span" sx={{ ...mono, textAlign: "right", fontWeight: 800, color: toneColor(s.net) }}>{s.net > 0 ? "+" : ""}{s.net}</Box>
+        <Box component="span" sx={{ ...mono, textAlign: "right", fontWeight: 800, color: toneColor(s.net) }}>{withArrow(s.net, `${s.net > 0 ? "+" : ""}${s.net}`, 0)}</Box>
       </Box>;
     }) : <Typography variant="body2" color="text.secondary">No names in view.</Typography>}
     <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>net = bull lists − bear lists · click to trace</Typography>
@@ -187,7 +188,7 @@ function MoversPanel({ snapshot, indexKey, onIndex, onPick }) {
       {Number.isFinite(x.weight) && <Box component="span" sx={{ color: "text.secondary", fontSize: 10.5 }}>{x.weight.toFixed(1)}%</Box>}
     </Box>
     <Pct value={x.st.pc} sx={{ textAlign: "right" }} />
-    <Box component="span" sx={{ ...mono, textAlign: "right", fontWeight: 800, color: toneColor(x.pts) }}>{x.pts >= 0 ? "+" : ""}{x.pts.toFixed(1)} pts</Box>
+    <Box component="span" sx={{ ...mono, textAlign: "right", fontWeight: 800, color: toneColor(x.pts) }}>{withArrow(x.pts, `${x.pts >= 0 ? "+" : ""}${x.pts.toFixed(1)}`, 1)} pts</Box>
     <Box sx={{ position: "absolute", left: 0, bottom: 0, height: 2, width: `${Math.abs(x.pts) / max * 100}%`, bgcolor: x.pts >= 0 ? UP : DOWN, opacity: 0.6 }} />
   </Box>;
   const index = C.index;
@@ -303,8 +304,8 @@ function SectorFlowTable({ flows, lock, onLock, onPick }) {
               borderBottom: 1, borderColor: "divider", bgcolor: on ? "action.selected" : "transparent", "&:hover, &:focus-visible": { bgcolor: "action.hover" } }}>
             <Box role="cell" sx={{ fontWeight: 700, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{o.sector} <Box component="span" sx={{ color: "text.secondary", fontWeight: 400 }}>{o.n}</Box></Box>
             <Box role="cell"><DivergingBar value={o.flow} max={max} height={8} /></Box>
-            <Box role="cell" sx={{ ...mono, textAlign: "right", color: toneColor(o.flow), fontWeight: 700 }}>₹{cr(o.flow)}</Box>
-            <Box role="cell" sx={{ ...mono, textAlign: "right", color: toneColor(o.flow30) }}>{o.flow30 >= 0 ? "↗" : "↘"} {cr(o.flow30)}</Box>
+            <Box role="cell" sx={{ ...mono, textAlign: "right", color: toneColor(o.flow), fontWeight: 700 }}>{arrow(o.flow, 1)}₹{cr(o.flow)}</Box>
+            <Box role="cell" sx={{ ...mono, textAlign: "right", color: toneColor(o.flow30) }}>{withArrow(o.flow30, cr(o.flow30), 1)}</Box>
             <Box role="cell" sx={{ ...mono, textAlign: "right" }}>{Math.round(o.vwP * 100)}%</Box>
             <Box role="cell" sx={{ ...mono, textAlign: "right" }}>{o.fno ? <><Box component="span" sx={{ color: UP }}>{o.lb}</Box>/<Box component="span" sx={{ color: DOWN }}>{o.sb}</Box></> : <Box component="span" sx={{ color: "text.secondary" }}>—</Box>}</Box>
             <Box role="cell" sx={{ ...mono, textAlign: "right" }}><Box component="span" sx={{ color: UP }}>{o.up}</Box>/<Box component="span" sx={{ color: DOWN }}>{o.down}</Box></Box>

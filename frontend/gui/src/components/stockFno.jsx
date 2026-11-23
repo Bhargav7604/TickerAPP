@@ -4,6 +4,7 @@ import { useBoard } from "../boardData";
 import { BoardMessage, BuildTag, NameButton, Panel, Pct, StatusChip, UP, DOWN } from "./boardUi";
 import StockDrawer from "./stockDrawer";
 import { mono } from "../ui/Glass";
+import { withArrow } from "../trend";
 
 const QUADRANTS = [
   ["LB", "Long build-up", "price ▲ OI ▲ · fresh buying", UP],
@@ -39,7 +40,7 @@ export default function StockFno({ api }) {
           {list.slice(0, 6).map(st => <Box key={st.sym} sx={{ display: "grid", gridTemplateColumns: "1fr 64px 76px", gap: 1, py: 0.35, borderTop: 1, borderColor: "divider", fontSize: 12.5 }}>
             <NameButton st={st} onPick={setPick} />
             <Box component="span" sx={{ textAlign: "right" }}><Pct value={st.pc} /></Box>
-            <Box component="span" sx={{ ...mono, textAlign: "right", color: "text.secondary" }}>OI {st.oc >= 0 ? "+" : ""}{st.oc.toFixed(1)}%</Box>
+            <Box component="span" sx={{ ...mono, textAlign: "right", color: "text.secondary" }}>OI {withArrow(st.oc, `${st.oc >= 0 ? "+" : ""}${st.oc.toFixed(1)}%`, 1)}</Box>
           </Box>)}
           {!list.length && <Typography variant="body2" color="text.secondary">None right now.</Typography>}
         </Panel>;

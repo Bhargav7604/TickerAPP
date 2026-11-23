@@ -15,9 +15,11 @@ import { makeTraderApi } from "../traderData";
 import { makeIndexStocksApi, saveStockIndex } from "../indexStocksData";
 import { makeDashboardApi } from "../dashboardData";
 import { makeBoardApi } from "../boardData";
+import { makeNewsApi } from "../newsData";
+import { makeStraddleApi } from "../straddleData";
 import { MARKETS, makeCommodityApi, readMarket, saveMarket } from "../commodityData";
 
-const PAGES = ["market", "money-flow", "intraday", "charts", "index-stocks", "equity", "index-options", "oi-analysis", "tools", "trading", "settings"];
+const PAGES = ["market", "news", "money-flow", "intraday", "charts", "index-stocks", "equity", "index-options", "oi-analysis", "tools", "holidays", "trading", "settings"];
 const Equity = lazy(() => import("./equity.jsx"));
 const IndexStocks = lazy(() => import("./indexStocks.jsx"));
 const LiveDashboard = lazy(() => import("./liveDashboard.jsx"));
@@ -27,6 +29,8 @@ const MarketPage = lazy(() => import("./marketPage.jsx"));
 const MoneyFlow = lazy(() => import("./moneyFlow.jsx"));
 const Intraday = lazy(() => import("./intraday.jsx"));
 const Tools = lazy(() => import("./tools.jsx"));
+const MarketHolidays = lazy(() => import("./marketHolidays.jsx"));
+const News = lazy(() => import("./news.jsx"));
 const CommodityDetails = lazy(() => import("./commodityDetails.jsx"));
 
 class MainPage extends Component {
@@ -48,6 +52,8 @@ class MainPage extends Component {
     this.indexStocksApi = props.indexStocksApi || makeIndexStocksApi(props.request);
     this.dashboardApi = props.dashboardApi || makeDashboardApi(props.request);
     this.boardApi = props.boardApi || makeBoardApi(props.request);
+    this.newsApi = props.newsApi || makeNewsApi(props.request);
+    this.straddleApi = props.straddleApi || makeStraddleApi(props.request);
     this.commodityApi = props.commodityApi || makeCommodityApi(props.request);
     // Home in Commodity mode: the same page fed with MCX cards; no sector contribution or index swing alerts.
     this.commodityHomeApi = { decision: signal => this.commodityApi.decision(signal) };
@@ -119,13 +125,17 @@ class MainPage extends Component {
       page = <Suspense fallback={<div className="eq-empty" role="status">Loading Intraday...</div>}><Intraday api={this.boardApi} /></Suspense>;
     } else if (this.state.currentPage === "tools") {
       page = <Suspense fallback={<div className="eq-empty" role="status">Loading Tools...</div>}><Tools api={this.boardApi} /></Suspense>;
+    } else if (this.state.currentPage === "news") {
+      page = <Suspense fallback={<div className="eq-empty" role="status">Loading News...</div>}><News api={this.newsApi} boardApi={this.boardApi} /></Suspense>;
+    } else if (this.state.currentPage === "holidays") {
+      page = <Suspense fallback={<div className="eq-empty" role="status">Loading Market Holidays...</div>}><MarketHolidays /></Suspense>;
     } else if (this.state.currentPage === "charts") {
       page = <Suspense fallback={<div className="eq-empty" role="status">Loading Dashboard...</div>}><LiveDashboard api={this.dashboardApi} /></Suspense>;
     } else if (this.state.currentPage === "index-stocks") {
       page = <Suspense fallback={<div className="eq-empty" role="status">Loading Index Stocks...</div>}><IndexStocks api={this.indexStocksApi} /></Suspense>;
     } else if (["equity", "index-options"].includes(this.state.currentPage)) {
       const indexOptions = this.state.currentPage === "index-options";
-      page = <Suspense fallback={<div className="eq-empty" role="status">Loading {indexOptions ? "Index Options" : "Equity"}...</div>}><Equity key={`${this.props.username}:${this.state.currentPage}`} username={this.props.username} indexOptions={indexOptions} api={indexOptions ? this.indexOptionsApi : this.equityApi} /></Suspense>;
+      page = <Suspense fallback={<div className="eq-empty" role="status">Loading {indexOptions ? "Index Options" : "Equity"}...</div>}><Equity key={`${this.props.username}:${this.state.currentPage}`} username={this.props.username} indexOptions={indexOptions} api={indexOptions ? this.indexOptionsApi : this.equityApi} straddleApi={this.straddleApi} /></Suspense>;
     } else if (this.state.currentPage === "oi-analysis") {
       page = <Suspense fallback={<div className="eq-empty" role="status">Loading OI Analysis...</div>}><OiAnalysis api={this.oiApi} boardApi={this.boardApi} /></Suspense>;
     } else if (this.state.currentPage === "trading") {

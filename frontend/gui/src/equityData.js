@@ -1,3 +1,5 @@
+import { withArrow } from "./trend";
+
 export const EQUITY_COLUMNS = [
   { id: "ltp", label: "LTP" }, { id: "changePct", label: "Change %" },
   { id: "bid", label: "Bid" }, { id: "ask", label: "Ask" },
@@ -8,7 +10,7 @@ export const formatPrice = value => Number.isFinite(value)
   ? value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "\u2014";
 export const formatLots = value => Number.isFinite(value)
   ? value.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : "\u2014";
-export const formatChange = value => Number.isFinite(value) ? `${value > 0 ? "+" : ""}${value.toFixed(2)}%` : "\u2014";
+export const formatChange = value => Number.isFinite(value) ? withArrow(value, `${value > 0 ? "+" : ""}${value.toFixed(2)}%`) : "\u2014";
 export const directionClass = value => value > 0 ? "eq-positive" : value < 0 ? "eq-negative" : "";
 export const equityPollDelay = (response, normal) => Number.isFinite(response.retryAfterMs) && response.retryAfterMs > 0
   ? Math.max(250, Math.min(5000, response.retryAfterMs)) + 50 + Math.floor(Math.random() * 250) : normal;

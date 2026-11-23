@@ -47,8 +47,12 @@ test("shows breadth, the gauge and both tables for the chosen index", async () =
   expect(screen.getByRole("img", { name: "Advance and decline: 3 of 6 stocks up, 2 down, 1 unchanged" })).toBeInTheDocument();
   expect(screen.getByText("50% of stocks are up")).toBeInTheDocument();
   const gauge = screen.getByRole("region", { name: "Market breadth" });
-  expect(within(gauge).getAllByRole("button", { name: /%$/ }).map(button => button.querySelector("b").textContent))
-    .toEqual(["HDFCBANK", "ICICIBANK", "AXISBANK", "CANBK", "SBIN"]);
+  // The gauge view is the percentage dial and its counts; the gainers and losers live in the tables below.
+  expect(within(gauge).queryByText("Top gainers")).not.toBeInTheDocument();
+  expect(within(gauge).queryByRole("button", { name: /%$/ })).not.toBeInTheDocument();
+  expect(gauge.querySelector(".ix-gauge-pct")).toHaveTextContent("50%");
+  expect(within(within(gauge).getByRole("list", { name: "Stocks up, unchanged and down" })).getAllByRole("listitem").map(item => item.textContent))
+    .toEqual(["▲ Up350%", "Unchanged117%", "▼ Down233%", "Up ÷ down1.50"]);
 
   const gainers = screen.getByRole("region", { name: "Gainers" });
   expect(within(gainers).getAllByRole("row")).toHaveLength(4);

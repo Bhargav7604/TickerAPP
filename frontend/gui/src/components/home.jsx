@@ -4,6 +4,7 @@ import { AlertTriangle, ArrowDownRight, ArrowRight, ArrowUpRight, BellRing, Book
 import { GLOSSARY, glossaryText, LANGUAGES, marketSummary, readLanguage, saveLanguage, speechLang, t, translate } from "../i18n";
 import { mono, PageShell, Segmented } from "../ui/Glass";
 import SectorContribution from "./sectorContribution";
+import { withArrow } from "../trend";
 
 const REFRESH_MS = 30000;
 const LIGHTS = ["red", "yellow", "green"];
@@ -18,7 +19,7 @@ const whole = value => Number.isFinite(value) ? Math.round(value).toLocaleString
 const clock = seconds => seconds ? new Date(seconds * 1000).toLocaleTimeString("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" }) : "--:--";
 const day = seconds => new Date(seconds * 1000).toLocaleDateString("en-GB", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short" });
 
-const signed = value => `${value > 0 ? "+" : ""}${whole(value)}`;
+const signed = value => withArrow(value, `${value > 0 ? "+" : ""}${whole(value)}`, 0);
 const sameDay = (ms, now) => new Date(ms).toLocaleDateString("en-GB", { timeZone: "Asia/Kolkata" }) === new Date(now).toLocaleDateString("en-GB", { timeZone: "Asia/Kolkata" });
 
 // One page grid: summary tiles, must-know, calendar and sector contribution from Home, and the market desk sections
@@ -108,7 +109,7 @@ const IndexCard = React.memo(function IndexCard({ card, lang, onOpenStocks }) {
       <Box sx={{ textAlign: "right", flex: "none" }}>
         <Typography sx={{ ...mono, fontSize: "1.2rem", fontWeight: 800, lineHeight: 1.2 }}>{money(card.price)}</Typography>
         {change && <Typography sx={{ ...mono, fontSize: 11.5, fontWeight: 700, color: changeColor }}>
-          {change.value > 0 ? "+" : ""}{money(change.value)} ({change.pct > 0 ? "+" : ""}{change.pct}%) {t(change.since === "open" ? "since open" : "today", lang)}
+          {withArrow(change.value, `${change.value > 0 ? "+" : ""}${money(change.value)}`)} ({change.pct > 0 ? "+" : ""}{change.pct}%) {t(change.since === "open" ? "since open" : "today", lang)}
         </Typography>}
       </Box>
     </Stack>

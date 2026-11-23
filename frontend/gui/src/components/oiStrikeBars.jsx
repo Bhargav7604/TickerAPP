@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { compactOi, formatOi, formatSignedOi } from "../oiData";
+import { withArrow } from "../trend";
 
 // [toggle value, button label, field on each call/put, chart name]
 const METRICS = [
@@ -8,7 +9,7 @@ const METRICS = [
   ["oiPct", "OI %", "oiChangePct", "OI change %"],
   ["ltpPct", "LTP %", "ltpChangePct", "LTP change %"],
 ];
-const signedPct = value => `${value > 0 ? "+" : ""}${Number(value.toFixed(1))}%`;
+const signedPct = value => withArrow(value, `${value > 0 ? "+" : ""}${Number(value.toFixed(1))}%`, 1);
 const SLOT = 34;
 const HEIGHT = 240;
 const PAD = { top: 18, bottom: 34, left: 56 };

@@ -23,6 +23,7 @@ SESSION_CLOSE = dt.time(15, 30)
 QUOTE_BATCH = 450
 QUOTE_PAUSE = 1.05
 BACKFILL_PAUSE = 0.4
+PATH_STEP = 3  # minutes per point of each index's intraday line on the Market page (125 points a day)
 STOCK_FIELDS = ("sym", "sector", "cap", "flags", "ltp", "prev", "open", "high", "low", "vwap", "volume", "avgVol",
                 "prevH", "prevL", "hi52", "lo52", "oi", "prevOi", "flow", "flow30", "p30", "lc", "uc", "lot", "company")
 
@@ -62,6 +63,8 @@ class BoardTracker:
         self.by_token = {}  # token -> ("stock", symbol) | ("fut", symbol) | ("index", key)
         self.state = {}
         self.index_state = {}
+        self.index_paths = {}  # key -> {minute: last price}
+        self.index_filled = set()  # indices whose earlier minutes came from Zerodha's history this session
         self.session = None
         self.seeded_on = None
         self.circuits_on = None
@@ -86,6 +89,7 @@ class BoardTracker:
             for index in indices:
                 by_token[index["token"]] = ("index", index["key"])
                 self.index_state.setdefault(index["key"], {})
+                self.index_paths.setdefault(index["key"], {})
             self.by_token = by_token
             if self.started is None:
                 self.started = dt.datetime.now(MARKET_TZ)
@@ -98,6 +102,8 @@ class BoardTracker:
         if self.session is not None:
             self.state = {symbol: StockState() for symbol in self.state}
             self.index_state = {key: {} for key in self.index_state}
+            self.index_paths = {key: {} for key in self.index_paths}
+            self.index_filled = set()
             self.circuits_on = None
         self.session = session
 
@@ -121,6 +127,7 @@ class BoardTracker:
                     ohlc = tick.get("ohlc") or {}
                     self.index_state[key] = {"ltp": price, "open": ohlc.get("open"), "high": ohlc.get("high"),
                                              "low": ohlc.get("low"), "prev": ohlc.get("close")}
+                    self.index_paths.setdefault(key, {})[minute] = price
                 elif kind == "fut":
                     state = self.state[key]
                     if finite(tick.get("oi")):
@@ -239,6 +246,45 @@ class BoardTracker:
             self.merge_history(symbol, candles)
         return calls
 
+    def backfill_indices(self, client, now=None, pause=BACKFILL_PAUSE):
+        """Each index's minute closes since the open, once a session, so a worker that started late still draws the whole day."""
+        now = now or dt.datetime.now(MARKET_TZ)
+        with self.lock:
+            session = self.session
+            todo = [(index["key"], index["token"]) for index in self.indices if index["key"] not in self.index_filled]
+            watched = {key for key, path in self.index_paths.items() if 0 in path}
+        if session is None:
+            return 0
+        start = dt.datetime.combine(session, SESSION_OPEN)
+        end = min(now.astimezone(MARKET_TZ).replace(tzinfo=None), dt.datetime.combine(session, SESSION_CLOSE))
+        if end <= start:
+            return 0
+        calls = 0
+        for key, token in todo:
+            if key in watched:
+                with self.lock:
+                    self.index_filled.add(key)  # watched from the open; nothing to fill
+                continue
+            try:
+                candles = client.historical_data(token, start, end, "minute")
+                calls += 1
+                time.sleep(pause)
+            except Exception as exc:
+                if type(exc).__name__ in ("TokenException", "PermissionException"):
+                    break
+                continue
+            closes = {}
+            for row in candles:
+                moment = row["date"] if row["date"].tzinfo else row["date"].replace(tzinfo=MARKET_TZ)
+                if finite(row.get("close")):
+                    closes[minute_of(moment)] = row["close"]
+            with self.lock:
+                path = self.index_paths.setdefault(key, {})
+                for minute, close in closes.items():
+                    path.setdefault(minute, close)  # live ticks win
+                self.index_filled.add(key)
+        return calls
+
     def merge_history(self, symbol, candles):
         """Fill minutes with no live bar. Their flow uses the close-to-close direction of each minute."""
         bars, sign, last_close = {}, 1, None
@@ -306,6 +352,17 @@ class BoardTracker:
             })
         return rows
 
+    def index_path(self, key):
+        """The day's line for one index: the last price in each PATH_STEP-minute slot, a quiet slot repeating the one before."""
+        path = self.index_paths.get(key) or {}
+        points, last = [], None
+        for slot in range(max(path) // PATH_STEP + 1 if path else 0):
+            seen = [minute for minute in range(slot * PATH_STEP, (slot + 1) * PATH_STEP) if minute in path]
+            if seen:
+                last = path[seen[-1]]
+            points.append(round(last, 2) if last is not None else None)
+        return points
+
     def index_rows(self, stats):
         rows = []
         for index in self.indices:
@@ -315,7 +372,7 @@ class BoardTracker:
             rows.append({"key": index["key"], "label": index["label"], "ltp": state.get("ltp"), "prev": state.get("prev"),
                          "open": state.get("open"), "high": state.get("high"), "low": state.get("low"),
                          "prevH": prev_candle[2] if prev_candle else None, "prevL": prev_candle[3] if prev_candle else None,
-                         "prevC": prev_candle[4] if prev_candle else None})
+                         "prevC": prev_candle[4] if prev_candle else None, "path": self.index_path(index["key"])})
         return rows
 
     def status(self, now):

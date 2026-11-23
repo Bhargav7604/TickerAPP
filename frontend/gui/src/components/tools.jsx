@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Box, Button, IconButton, TextField, Typography } from "@mui/material";
+import { Box, Button, IconButton, Link, TextField, Typography } from "@mui/material";
 import { X } from "lucide-react";
 import { fp, isNum, levelsOf, useBoard } from "../boardData";
 import { BuildTag, DOWN, NameButton, Panel, Pct, StatusChip, UP } from "./boardUi";
 import StockDrawer from "./stockDrawer";
 import { PageShell, mono } from "../ui/Glass";
+import { upcomingHolidays } from "../holidayData";
 
 const WATCH_KEY = "utraders-board-watch";
 const DEFAULT_WATCH = ["RELIANCE", "HDFCBANK", "ICICIBANK", "INFY", "TCS", "SBIN"];
@@ -225,7 +226,7 @@ function OptionPrice({ nifty, niftyDays }) {
 
 function Calendar({ snapshot }) {
   const today = todayIso();
-  const holidays = Object.entries(snapshot?.holidays || {}).filter(([date]) => date >= today).sort(([a], [b]) => a.localeCompare(b));
+  const holidays = upcomingHolidays(today, ["trading"]).map(row => [row.date, row.name]);
   const rows = snapshot?.calendar || [];
   const line = { display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 1, py: 0.5, borderBottom: 1, borderColor: "divider", fontSize: 12.5 };
   return <Panel title="Expiry & holiday calendar" note="NSE · BSE">
@@ -246,7 +247,8 @@ function Calendar({ snapshot }) {
     </Box>) : <Typography variant="body2" color="text.secondary">No more holidays this year.</Typography>}
     <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
       Next year's holidays are added when NSE publishes its circular. Market hours: pre-open 09:00–09:15 · normal 09:15–15:30 · closing
-      session 15:40–16:00. Most brokers auto square-off intraday positions from about 15:15–15:20.
+      session 15:40–16:00. Most brokers auto square-off intraday positions from about 15:15–15:20.{" "}
+      <Link href="#holidays" underline="hover" sx={{ fontWeight: 700 }}>All market holidays and live status</Link>
     </Typography>
   </Panel>;
 }

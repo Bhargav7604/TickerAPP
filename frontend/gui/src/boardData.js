@@ -2,6 +2,7 @@
 // The market-feed worker publishes one snapshot of every NIFTY 500 and F&O stock; these functions turn it into
 // the boards, lists and scores. Delivery %, FII/DII flows and the ban list are not available from Zerodha.
 import { useEffect, useState } from "react";
+import { withArrow } from "./trend";
 
 export const FLAG = { N500: 1, FNO: 2, N50: 4, SX: 8 };
 const finite = value => typeof value === "number" && Number.isFinite(value);
@@ -24,7 +25,9 @@ export function makeBoardApi(request) {
 export const pctOf = (value, base) => finite(value) && finite(base) && base ? (value - base) / base * 100 : NaN;
 export const fp = value => !finite(value) ? "--" : value >= 1000
   ? value.toLocaleString("en-IN", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : value.toFixed(2);
-export const fpc = value => finite(value) ? `${value >= 0 ? "+" : ""}${value.toFixed(2)}%` : "--";
+// Changes carry ▲ / ▼ in front; fpcBare leaves it out where the arrow already sits beside it.
+export const fpcBare = value => finite(value) ? `${value >= 0 ? "+" : ""}${value.toFixed(2)}%` : "--";
+export const fpc = value => finite(value) ? withArrow(value, fpcBare(value)) : "--";
 /** Rupees as crore: 1,234 Cr, 12.3 Cr, 1.2k Cr. */
 export const crore = rupees => {
   if (!finite(rupees)) return "--";
@@ -32,7 +35,7 @@ export const crore = rupees => {
   const size = Math.abs(value);
   return size >= 1000 ? `${(value / 1000).toFixed(1)}k` : size >= 100 ? value.toFixed(0) : value.toFixed(1);
 };
-export const signedCrore = rupees => finite(rupees) ? `${rupees >= 0 ? "+" : ""}${crore(rupees)}` : "--";
+export const signedCrore = rupees => finite(rupees) ? withArrow(rupees / 1e7, `${rupees >= 0 ? "+" : ""}${crore(rupees)}`, 1) : "--";
 export const tone = value => finite(value) && value !== 0 ? (value > 0 ? "up" : "down") : "";
 export const minuteClock = minute => { const total = 555 + minute; return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`; };
 
@@ -95,7 +98,7 @@ export const segmentLabel = (segment, cap) => `${(SEGMENTS.find(([key]) => key =
 export const CONDS = [
   { id: "chg", name: "% Change", sub: "day movers", thr: 0.1, score: st => st.pc, fmt: v => fpc(v) },
   { id: "oi", name: "OI Build-up", sub: "F&O · fresh positions", thr: 0.05, need: "open interest (F&O names only)",
-    score: st => !finite(st.oc) ? NaN : st.oc > 0 ? st.pc * Math.min(st.oc, 25) : 0, fmt: (v, st) => `OI ${st.oc >= 0 ? "+" : ""}${st.oc.toFixed(1)}%` },
+    score: st => !finite(st.oc) ? NaN : st.oc > 0 ? st.pc * Math.min(st.oc, 25) : 0, fmt: (v, st) => `OI ${withArrow(st.oc, `${st.oc >= 0 ? "+" : ""}${st.oc.toFixed(1)}%`, 1)}` },
   { id: "del", name: "Delivery", sub: "cash · shares taken home", thr: 0.5, need: "delivery % (NSE publishes it after the close; Zerodha does not supply it)",
     score: () => NaN, fmt: v => String(v) },
   { id: "vol", name: "Volume Surge", sub: "× normal pace", thr: 0.5, need: "average volume",
@@ -312,12 +315,12 @@ export function indicatorText(id, side, detail = []) {
     case "ema": return side > 0 ? "9 above 21" : "9 below 21";
     case "st": return `${side > 0 ? "up" : "down"} · stop ${fp(detail[0])}`;
     case "rsi": return finite(detail[0]) ? detail[0].toFixed(0) : "--";
-    case "macd": return finite(detail[0]) ? `${detail[0] > 0 ? "+" : ""}${detail[0].toFixed(2)}` : "--";
+    case "macd": return finite(detail[0]) ? withArrow(detail[0], `${detail[0] > 0 ? "+" : ""}${detail[0].toFixed(2)}`) : "--";
     case "orb": return side > 0 ? `above ${fp(detail[0])}` : side < 0 ? `below ${fp(detail[1])}` : `inside ${fp(detail[1])}–${fp(detail[0])}`;
     case "cpr": return side > 0 ? "above CPR" : side < 0 ? "below CPR" : "inside CPR";
     case "pdhl": return side > 0 ? `above PDH ${fp(detail[0])}` : side < 0 ? `below PDL ${fp(detail[1])}` : "inside yesterday";
     case "vol": return finite(detail[0]) ? `${detail[0].toFixed(1)}× pace` : "--";
-    case "oi": return `${BUILD[detail[0]]?.name || detail[0]} ${detail[1] >= 0 ? "+" : ""}${finite(detail[1]) ? detail[1].toFixed(1) : "--"}%`;
+    case "oi": return `${BUILD[detail[0]]?.name || detail[0]} ${finite(detail[1]) ? withArrow(detail[1], `${detail[1] >= 0 ? "+" : ""}${detail[1].toFixed(1)}%`, 1) : "--"}`;
     case "rs": return `${fpc(detail[0])} vs Nifty`;
     case "dr": return `${detail[0]}% of range`;
     case "sec": return (FLOW_TAGS[detail[0]] || "").toLowerCase();
@@ -376,7 +379,7 @@ export const sessionMinute = (now = new Date()) => {
 
 // ---- polling -------------------------------------------------------------------------------------------------
 /** Repeats `fn` every `delay` ms while the tab is visible, until the returned stop function runs. */
-function poll(fn, delay) {
+export function poll(fn, delay) {
   let stopped = false;
   let timer = null;
   const abort = new AbortController();

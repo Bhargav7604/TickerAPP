@@ -39,7 +39,7 @@ function readIndex(dashboard, key) {
     contract: expiry ? new Date(expiry + "T00:00:00").toLocaleDateString("en-GB", { month: "short" }).toUpperCase() + " FUT" : "",
     title: dashboard.getCurrentSymbol(key) + " | Expiry " + dashboard.formatExpiry(expiry),
     price: dashboard.formatValue(offline ? null : data.cmp),
-    changeText: `${dashboard.formatSignedValue(change)} (${dashboard.formatSignedValue(live(data.pctChange))}%)`,
+    changeText: `${dashboard.formatSignedValue(change)} (${dashboard.formatSignedBare(live(data.pctChange))}%)`,
     changeClass: dashboard.valueClass(change),
     show: id => {
       if (id === "ohlc") return ["open", "high", "low"].map(field => dashboard.formatValue(live(data[field]))).join(" / ");

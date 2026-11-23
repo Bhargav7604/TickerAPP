@@ -57,15 +57,17 @@ test("formatting helpers and the remembered market choice", () => {
   saveMarket("commodity");
   expect(readMarket()).toBe("commodity");
   expect([placesFor(13.42), placesFor(5510), placesFor(98200)]).toEqual([2, 1, 0]);
-  expect(signedWhole(600)).toBe("+600");
+  expect(signedWhole(600)).toBe("▲\u00a0+600");
+  expect(signedWhole(-150)).toBe("▼\u00a0-150");
+  expect(signedWhole(0)).toBe("0");
 });
 
 test("market overview lists current, next and far contracts with net lots and demand/supply", async () => {
   await renderDetails();
   const crude = screen.getByRole("table", { name: "CRUDE OIL futures" });
   const rows = within(crude).getAllByRole("row").slice(1).map(row => within(row).getAllByRole("cell").map(cell => cell.textContent));
-  expect(rows[0]).toEqual(["current18 Dec", "5,510.0", "+1.10%", "+600", "3.00", "12,000", "45,000"]);
-  expect(rows[1][3]).toBe("-150");
+  expect(rows[0]).toEqual(["current18 Dec", "5,510.0", "▲\u00a0+1.10%", "▲\u00a0+600", "3.00", "12,000", "45,000"]);
+  expect(rows[1][3]).toBe("▼\u00a0-150");
   expect(screen.getByRole("table", { name: "GOLD futures" })).toBeInTheDocument();
 });
 
@@ -97,7 +99,7 @@ test("every MCX future is grouped, flashes on a new price and opens its chart", 
   expect(within(table).getAllByRole("row").map(row => row.textContent).filter(text => ["Bullion", "Energy", "Base metals"].includes(text)))
     .toEqual(["Bullion", "Energy", "Base metals"]);
   const crude = within(table).getByRole("row", { name: /^Crude Oil 5,510\.0/ });
-  expect(within(crude).getAllByRole("cell").map(cell => cell.textContent)).toEqual(["Crude Oil18 Dec · ₹/bbl", "5,510.0", "+60.0", "+1.10%", "5,520.0", "5,440.0", "5,000", "3,000", "+4.20%", "LB"]);
+  expect(within(crude).getAllByRole("cell").map(cell => cell.textContent)).toEqual(["Crude Oil18 Dec · ₹/bbl", "5,510.0", "▲\u00a0+60.0", "▲\u00a0+1.10%", "5,520.0", "5,440.0", "5,000", "3,000", "▲\u00a0+4.20%", "LB"]);
   api.board.mockResolvedValue(board(5525));
   await act(async () => { jest.advanceTimersByTime(3100); });
   expect(within(table).getByRole("row", { name: /^Crude Oil 5,525\.0/ })).toBeInTheDocument();
@@ -141,7 +143,7 @@ test("commodity analytics show the worked-out reads for each commodity and acros
   expect(within(within(section).getByRole("article", { name: "Gold / Silver ratio" })).getByText("85.22 · avg 83.05")).toBeInTheDocument();
   expect(within(section).getByRole("article", { name: "Copper vs gold" })).toHaveTextContent("+1%");
   expect(within(section).getByRole("article", { name: "Crude vs natural gas" })).toHaveTextContent("Waiting for prices.");
-  expect(within(section).getByRole("article", { name: "Rupee effect (USD/INR)" })).toHaveTextContent("94.3000 +0.21%");
+  expect(within(section).getByRole("article", { name: "Rupee effect (USD/INR)" })).toHaveTextContent("94.3000 ▲ +0.21%");
   const crude = within(section).getByRole("article", { name: "CRUDE OIL insights" });
   ["Uptrend", "Contango", "Long build-up", "₹100 per point", "+₹3,000", "₹4,000", "75%", "45%", "6.9%"].forEach(text => expect(within(crude).getAllByText(text, { exact: false }).length).toBeGreaterThan(0));
   expect(within(crude).getByText("Support (S1) · Resistance (R1)").nextSibling).toHaveTextContent("5,275.0 · 5,315.0");

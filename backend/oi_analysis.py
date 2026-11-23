@@ -321,6 +321,16 @@ def live_spot(index_key):
             .order_by("-bucket_time").values_list("underlying", flat=True).first())
 
 
+def live_quote_fetcher(client):
+    """Fetches Zerodha quotes for cache keys "oi|EXCHANGE:SYMBOL" in the shape the OI and Straddle pages share."""
+    def fetch(missing):
+        raw = quote_all(client, [key[len(LIVE_KEY_PREFIX):] for key in missing])
+        return {LIVE_KEY_PREFIX + name: {"oi": quote.get("oi"), "ltp": quote.get("last_price"),
+                                         "close": (quote.get("ohlc") or {}).get("close"), "volume": quote.get("volume")}
+                for name, quote in raw.items()}
+    return fetch
+
+
 def live_chain_payload(index_key, expiry, window=DEFAULT_CHANGE_WINDOW, strike_range="atm"):
     client, session = broker()
     if not client:
@@ -330,13 +340,7 @@ def live_chain_payload(index_key, expiry, window=DEFAULT_CHANGE_WINDOW, strike_r
     if listed.empty:
         raise ValueError("Select an available expiry.")
     spot_key = LIVE_KEY_PREFIX + SPOT_KEYS[index_key]
-
-    def fetch(missing):
-        raw = quote_all(client, [key[len(LIVE_KEY_PREFIX):] for key in missing])
-        return {LIVE_KEY_PREFIX + name: {"oi": quote.get("oi"), "ltp": quote.get("last_price"),
-                                         "close": (quote.get("ohlc") or {}).get("close"), "volume": quote.get("volume")}
-                for name, quote in raw.items()}
-
+    fetch = live_quote_fetcher(client)
     spot = live_spot(index_key)
     if spot is None:
         # No streaming feed or recording yet: price the index first so the strike window can centre on ATM.

@@ -1,7 +1,7 @@
 from django.urls import path
 
 from . import views
-from . import board_views, commodities, commodity_home, decision, equity, index_stocks, index_weights, live_dashboard, oi_analysis, trader_views
+from . import board_views, commodities, commodity_home, decision, equity, index_stocks, index_weights, live_dashboard, news, oi_analysis, straddle, trader_views
 
 urlpatterns = [
     path("index-options/contracts/", equity.contracts, {"index_options": True}, name="index_option_contracts"),
@@ -15,6 +15,7 @@ urlpatterns = [
     path("board/snapshot/", board_views.board_snapshot, name="board_snapshot"),
     path("board/scanner/", board_views.board_scanner, name="board_scanner"),
     path("board/candles/", board_views.board_candles, name="board_candles"),
+    path("news/", news.market_news, name="market_news"),
     path("commodities/", commodities.commodities_view, name="commodities"),
     path("commodities/candles/", commodities.commodity_candles, name="commodity_candles"),
     path("commodities/home/", commodity_home.commodity_home, name="commodity_home"),
@@ -37,6 +38,7 @@ urlpatterns = [
     path("oi/chain/", oi_analysis.oi_chain, name="oi_chain"),
     path("oi/live-chain/", oi_analysis.oi_live_chain, name="oi_live_chain"),
     path("oi/trend/", oi_analysis.oi_trend, name="oi_trend"),
+    path("straddle/", straddle.straddle, name="straddle"),
     path("equity/contracts/", equity.contracts, name="equity_contracts"),
     path("equity/quotes/", equity.quotes, name="equity_quotes"),
     path("equity/history/", equity.history, name="equity_history"),

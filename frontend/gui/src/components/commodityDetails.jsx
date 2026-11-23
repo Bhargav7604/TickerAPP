@@ -6,7 +6,7 @@ import { AreaSeries, CandlestickSeries, ColorType, HistogramSeries, LineSeries, 
 import LiveChart from "./liveChart";
 import CommodityInsights from "./commodityInsights";
 import { CHART_TYPES } from "./marketChart";
-import { COMMODITY_KEYS, MONTHS, placesFor, price, signed, signedPct, signedWhole, tone, usePoll, whole } from "../commodityData";
+import { COMMODITY_KEYS, MONTHS, placesFor, price, signed, signedPct, signedPctBare, signedWhole, tone, usePoll, whole } from "../commodityData";
 import { levelsOf } from "../boardData";
 import { mono, Segmented } from "../ui/Glass";
 import { useTheme } from "../theme";
@@ -226,7 +226,7 @@ function ContractChart({ row, api, onClose }) {
         </Box>
         <Stack direction="row" spacing={1} alignItems="center">
           <Typography sx={{ ...mono, fontSize: 20, fontWeight: 850 }}>{price(row.ltp, places)}</Typography>
-          <Typography sx={{ ...mono, fontWeight: 800, color: tone(row.change) }}>{signed(row.change, places)} ({signedPct(row.changePct)})</Typography>
+          <Typography sx={{ ...mono, fontWeight: 800, color: tone(row.change) }}>{signed(row.change, places)} ({signedPctBare(row.changePct)})</Typography>
           <IconButton aria-label="Close chart" onClick={onClose} size="small"><X size={18} /></IconButton>
         </Stack>
       </Stack>
@@ -275,7 +275,7 @@ function CommodityBoard({ api }) {
         {list.map(row => {
           const places = placesFor(row.ltp);
           return <Box key={row.symbol} role="row" tabIndex={0} onClick={() => setOpen(row.symbol)} onKeyDown={event => { if (event.key === "Enter") setOpen(row.symbol); }}
-            aria-label={`${row.label} ${price(row.ltp, places)} ${signedPct(row.changePct)}`}
+            aria-label={`${row.label} ${price(row.ltp, places)} ${signedPctBare(row.changePct)}`}
             sx={{ display: "grid", gridTemplateColumns: columns, gap: 1, minWidth: 960, py: 0.55, px: 0.25, borderTop: 1, borderColor: "divider", fontSize: 12.5,
               alignItems: "center", cursor: "pointer", borderRadius: 1, "&:hover, &:focus-visible": { bgcolor: "action.hover", outline: "none" } }}>
             <Box component="span" role="cell" sx={{ minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>

@@ -103,8 +103,8 @@ test("the latest swing alert shows as a quiet strip, not a popup, and jumps to t
   await renderHome(payload({ expiryToday: [], lastHour: false }), { latestSwing });
   expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   const strip = screen.getByRole("region", { name: "Latest swing alert" });
-  expect(strip).toHaveTextContent("SENSEX +124 lots");
-  expect(strip).toHaveTextContent("-50 → +74 · SENSEX26OCTFUT");
+  expect(strip).toHaveTextContent("SENSEX ▲ +124 lots");
+  expect(strip).toHaveTextContent("▼ -50 → ▲ +74 · SENSEX26OCTFUT");
   const panel = document.createElement("div");
   panel.className = "scan-activity";
   panel.scrollIntoView = jest.fn();
@@ -155,7 +155,7 @@ test("sector contribution splits NIFTY's points into sectors pushing it up and p
   await act(async () => { render(<Home api={api} details={<h2>Full tables</h2>} />); });
   expect(contribution).toHaveBeenCalledWith("nifty", expect.anything());
   const panel = screen.getByRole("region", { name: "Sector contribution" });
-  expect(within(panel).getByText("NIFTY +25.0 pts")).toBeInTheDocument();
+  expect(within(panel).getByText("NIFTY ▲ +25.0 pts")).toBeInTheDocument();
   const up = within(panel).getByRole("heading", { name: "Pushing NIFTY up" }).parentElement;
   const down = within(panel).getByRole("heading", { name: "Pulling NIFTY down" }).parentElement;
   expect(within(up).getAllByRole("button").map(button => button.getAttribute("aria-label"))).toEqual(["Banking +20.0 NIFTY points", "IT +10.0 NIFTY points"]);
@@ -167,7 +167,7 @@ test("sector contribution splits NIFTY's points into sectors pushing it up and p
   const table = within(panel).getByRole("table", { name: "IT stocks" });
   expect(within(table).getAllByRole("columnheader").map(cell => cell.textContent)).toEqual(["Stock", "Price ₹", "Change ₹ (%)", "Weight", "NIFTY pts"]);
   const rows = within(table).getAllByRole("row").slice(1).map(row => within(row).getAllByRole("cell").map(cell => cell.textContent));
-  expect(rows).toEqual([["INFY", "1,520.00", "+20.00 (+1.33%)", "9.4%", "+30.0 pts"], ["TCS", "3,450.00", "-50.00 (-1.43%)", "5.8%", "-20.0 pts"]]);
+  expect(rows).toEqual([["INFY", "1,520.00", "▲\u00a0+20.00 (+1.33%)", "9.4%", "▲\u00a0+30.0 pts"], ["TCS", "3,450.00", "▼\u00a0-50.00 (-1.43%)", "5.8%", "▼\u00a0-20.0 pts"]]);
   expect(within(panel).getByText(/NIFTY pts are index points, not the stock's price: INFY moved \+₹20\.00 \(\+1\.33%\) and is 9\.4% of NIFTY, so it moved NIFTY by \+30\.0 points\./)).toBeInTheDocument();
 });
 

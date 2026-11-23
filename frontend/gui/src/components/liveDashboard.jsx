@@ -8,6 +8,7 @@ import LiveChart from "./liveChart";
 import { CANDLE_SIZES, DASHBOARD_CHARTS, DEFAULT_ORDER, readOrder, readSizes, saveOrder, saveSizes } from "../dashboardData";
 import { mono, PageShell, Segmented } from "../ui/Glass";
 import { useTheme } from "../theme";
+import { withArrow } from "../trend";
 
 const QUOTES_MS = 3000;
 const CANDLES_MS = 60000;
@@ -20,7 +21,8 @@ const DOW_SRC = theme => "https://s.tradingview.com/widgetembed/?" + new URLSear
 });
 
 const fixed = (value, places) => Number.isFinite(value) ? value.toLocaleString("en-IN", { minimumFractionDigits: places, maximumFractionDigits: places }) : "--";
-const signed = (value, places) => Number.isFinite(value) ? `${value > 0 ? "+" : ""}${fixed(value, places)}` : "--";
+const signedBare = (value, places) => Number.isFinite(value) ? `${value > 0 ? "+" : ""}${fixed(value, places)}` : "--";
+const signed = (value, places) => Number.isFinite(value) ? withArrow(value, signedBare(value, places), places) : "--";
 const tone = value => value > 0 ? "success.main" : value < 0 ? "error.main" : "text.secondary";
 
 /** The new order after dropping one chart onto another's place. */
@@ -81,7 +83,7 @@ function ChartCard({ chart, quote, interval, onInterval, api }) {
       {!tradingView && <Box sx={{ textAlign: "right", flex: "none" }}>
         <Typography sx={{ ...mono, fontSize: 16, fontWeight: 800, lineHeight: 1.2 }}>{fixed(quote?.ltp, places)}</Typography>
         <Typography sx={{ ...mono, fontSize: 12, fontWeight: 700, color: tone(quote?.change) }}>
-          {signed(quote?.change, places)} ({signed(quote?.changePct, 2)}%)
+          {signed(quote?.change, places)} ({signedBare(quote?.changePct, 2)}%)
         </Typography>
       </Box>}
     </Stack>

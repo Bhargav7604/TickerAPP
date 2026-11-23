@@ -217,6 +217,27 @@ class TrackerTests(TestCase):
         self.assertTrue(all(state.backfilled for state in self.tracker.state.values()))
         self.assertEqual(self.tracker.backfill(client, at(9, 24), pause=0), 0)
 
+    def test_index_line_has_three_minute_points_and_fills_a_late_start_once(self):
+        # The worker starts at 09:25: Zerodha's minute history fills the morning and live ticks win where both exist.
+        self.tracker.on_ticks([tick(256265, 22610, close=22500)], at(9, 25, 10))
+        self.tracker.on_ticks([tick(256265, 22620, close=22500)], at(9, 26, 40))
+        client = Mock()
+        client.historical_data.return_value = [{"date": dt.datetime(2026, 11, 16, 9, 15 + m), "close": 22500 + m} for m in range(12)]
+        self.assertEqual(self.tracker.backfill_indices(client, at(9, 27), pause=0), 3)  # NIFTY, SENSEX, INDIA VIX
+        self.assertEqual(self.tracker.backfill_indices(client, at(9, 28), pause=0), 0)  # once a session
+        self.assertEqual(self.tracker.index_path("NIFTY"), [22502, 22505, 22508, 22620])
+        # Quiet slots repeat the last price, and the line goes out with the snapshot.
+        self.tracker.on_ticks([tick(256265, 22650, close=22500)], at(9, 35))
+        with patch("backend.board_tracker.time.time", return_value=time.time()):
+            nifty = self.tracker.snapshot(at(9, 35, 30))["indices"][0]
+        self.assertEqual((nifty["key"], nifty["path"]), ("NIFTY", [22502, 22505, 22508, 22620, 22620, 22620, 22650]))
+        # Next morning starts empty; an index watched from the open needs no history.
+        self.tracker.on_ticks([tick(256265, 22700, close=22650)], at(9, 15, 20, day=MONDAY + dt.timedelta(days=1)))
+        self.assertEqual(self.tracker.index_path("NIFTY"), [22700])
+        client.historical_data.reset_mock()
+        self.assertEqual(self.tracker.backfill_indices(client, at(9, 20, day=MONDAY + dt.timedelta(days=1)), pause=0), 2)
+        self.assertNotIn(256265, [call.args[0] for call in client.historical_data.call_args_list])
+
     def test_scanner_and_snapshot_are_published_for_the_web(self):
         for m in range(40):
             self.tracker.on_ticks([tick(11, 100 + m * 0.05, 1000 + m * 100, average=100.5)], at(9, 15 + m, 10))

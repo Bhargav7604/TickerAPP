@@ -1,13 +1,14 @@
 import React from "react";
 import { Box, Chip, Paper, Stack, Typography } from "@mui/material";
-import { placesFor, price, signed, signedPct, tone, usePoll } from "../commodityData";
+import { placesFor, price, signed, signedPct, signedPctBare, tone, usePoll } from "../commodityData";
+import { withArrow } from "../trend";
 import { mono } from "../ui/Glass";
 
 const INSIGHTS_MS = 15000;
 const BUILD_COLORS = { LB: "success", SC: "success", SB: "error", LU: "error" };
 const BUILD_NAMES = { LB: "Long build-up", SC: "Short covering", SB: "Short build-up", LU: "Long unwinding" };
 const rupees = value => Number.isFinite(value) ? `₹${Math.round(Math.abs(value)).toLocaleString("en-IN")}` : "--";
-const signedRupees = value => Number.isFinite(value) ? `${value > 0 ? "+" : value < 0 ? "−" : ""}${rupees(value)}` : "--";
+const signedRupees = value => Number.isFinite(value) ? withArrow(value, `${value > 0 ? "+" : value < 0 ? "−" : ""}${rupees(value)}`, 0) : "--";
 
 function Meter({ value, max = 100, color = "primary.main", label }) {
   const width = Number.isFinite(value) ? Math.max(0, Math.min(100, value / max * 100)) : 0;
@@ -69,7 +70,7 @@ function InsightCard({ item }) {
       </Box>
       <Box sx={{ textAlign: "right", flex: "none" }}>
         <Typography sx={{ ...mono, fontWeight: 850, fontSize: 15 }}>{price(item.ltp, places)}</Typography>
-        <Typography sx={{ ...mono, fontSize: 11.5, fontWeight: 700, color: tone(item.change) }}>{signed(item.change, places)} ({signedPct(item.changePct)})</Typography>
+        <Typography sx={{ ...mono, fontSize: 11.5, fontWeight: 700, color: tone(item.change) }}>{signed(item.change, places)} ({signedPctBare(item.changePct)})</Typography>
       </Box>
     </Stack>
 
@@ -102,7 +103,7 @@ function InsightCard({ item }) {
         <Stack direction="row" sx={{ mb: 0.5 }}>
           {term.state && <Chip size="small" variant="outlined" color={term.state === "backwardation" ? "warning" : "info"} label={term.state === "contango" ? "Contango" : term.state === "backwardation" ? "Backwardation" : "Flat"} sx={{ fontWeight: 800 }} />}
         </Stack>
-        <Line label="Next − current month" value={`${signed(term.spread, places)} (${signedPct(term.spreadPct)})`} />
+        <Line label="Next − current month" value={`${signed(term.spread, places)} (${signedPctBare(term.spreadPct)})`} />
         <Line label="Carry, yearly" value={Number.isFinite(term.carryAnnualPct) ? `${term.carryAnnualPct}%` : "--"} />
         <Line label="Open interest rolled" value={Number.isFinite(term.rolloverPct) ? `${term.rolloverPct}%` : "--"} strong />
         <Meter value={term.rolloverPct} label={`${item.label} open interest rolled to later months`} color="info.main" />
@@ -154,8 +155,8 @@ export default function CommodityInsights({ api }) {
     {(error || data?.message) && <Typography variant="body2" color="text.secondary" role="status" sx={{ mb: 1 }}>{error || data.message}</Typography>}
     <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" }, mb: 1.5 }}>
       <CrossTile title="Gold / Silver ratio" value={cross.goldSilver ? `${cross.goldSilver.ratio}${cross.goldSilver.average20 ? ` · avg ${cross.goldSilver.average20}` : ""}` : "--"} read={cross.goldSilver?.read} />
-      <CrossTile title="Copper vs gold" value={cross.copperGold ? `${cross.copperGold.gap > 0 ? "+" : ""}${cross.copperGold.gap}%` : "--"} read={cross.copperGold?.read} color={tone(cross.copperGold?.gap)} />
-      <CrossTile title="Crude vs natural gas" value={cross.crudeGas ? `${cross.crudeGas.gap > 0 ? "+" : ""}${cross.crudeGas.gap}%` : "--"} read={cross.crudeGas?.read} color={tone(cross.crudeGas?.gap)} />
+      <CrossTile title="Copper vs gold" value={cross.copperGold ? withArrow(cross.copperGold.gap, `${cross.copperGold.gap > 0 ? "+" : ""}${cross.copperGold.gap}%`, 4) : "--"} read={cross.copperGold?.read} color={tone(cross.copperGold?.gap)} />
+      <CrossTile title="Crude vs natural gas" value={cross.crudeGas ? withArrow(cross.crudeGas.gap, `${cross.crudeGas.gap > 0 ? "+" : ""}${cross.crudeGas.gap}%`, 4) : "--"} read={cross.crudeGas?.read} color={tone(cross.crudeGas?.gap)} />
       <CrossTile title="Rupee effect (USD/INR)" value={cross.rupee ? `${price(cross.rupee.ltp, 4)} ${signedPct(cross.rupee.changePct)}` : "--"} read={cross.rupee?.read} />
     </Box>
     <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 540px), 1fr))" }}>

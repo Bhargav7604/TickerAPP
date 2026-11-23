@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Box, Chip, MenuItem, Paper, TextField, Typography } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { CAPS, SEGMENTS, fpc } from "../boardData";
 import { mono } from "../ui/Glass";
 
@@ -69,6 +70,15 @@ export function Panel({ title, note, actions, children, sx, titleColor, ...props
     </Box>}
     {children}
   </Paper>;
+}
+
+/** A small rounded label tinted with a palette colour; "default" is grey. */
+export function Tag({ color = "default", children, sx, ...props }) {
+  const grey = color === "default";
+  return <Box component="span" {...props} sx={{
+    display: "inline-flex", alignItems: "center", gap: 0.5, px: 1, py: 0.3, borderRadius: 999, fontSize: 11.5, fontWeight: 700, lineHeight: 1.4, whiteSpace: "nowrap",
+    color: grey ? "text.secondary" : `${color}.main`, bgcolor: theme => grey ? theme.palette.action.hover : alpha(theme.palette[color].main, 0.13), ...sx,
+  }}>{children}</Box>;
 }
 
 const TAG_COLORS = { LB: "success", SC: "success", UP: "success", SB: "error", LU: "error", DN: "error" };

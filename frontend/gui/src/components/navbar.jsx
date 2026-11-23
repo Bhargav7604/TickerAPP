@@ -1,6 +1,6 @@
 import React from "react";
 import { AppBar, Box, IconButton, Toolbar, Tooltip } from "@mui/material";
-import { Activity, ChartNoAxesColumn, ChartScatter, Globe, House, Layers, LayoutDashboard, Moon, RefreshCw, Settings, Sun, WalletCards, Waves, Wrench, Zap } from "lucide-react";
+import { Activity, CalendarDays, ChartNoAxesColumn, ChartScatter, Globe, House, Layers, LayoutDashboard, Moon, Newspaper, RefreshCw, Settings, Sun, WalletCards, Waves, Wrench, Zap } from "lucide-react";
 import logo from "../assets/brand/utraders-logo-dark.png";
 import logoOnDark from "../assets/brand/utraders-logo-light.png";
 import brandMark from "../assets/brand/utraders-mark.png";
@@ -9,6 +9,7 @@ import { useTheme } from "../theme";
 export const NAV_ITEMS = [
   ["dashboard", "Home", "Home", House],
   ["market", "Market", "Market", Globe],
+  ["news", "News", "News", Newspaper],
   ["money-flow", "Money Flow", "Flow", Waves],
   ["intraday", "Intraday", "Intraday", Zap],
   ["charts", "Dashboard", "Charts", LayoutDashboard],
@@ -17,11 +18,12 @@ export const NAV_ITEMS = [
   ["index-options", "Index Options", "Options", Layers],
   ["oi-analysis", "OI Analysis", "OI", Activity],
   ["tools", "Tools", "Tools", Wrench],
+  ["holidays", "Market Holidays", "Holidays", CalendarDays],
   ["trading", "My Trading", "Trading", WalletCards],
   ["settings", "Settings", "Settings", Settings],
 ];
 // Pages that poll their own data; the dashboard refresh button only applies to Home's market tables.
-export const OWN_REFRESH = ["market", "money-flow", "intraday", "charts", "index-stocks", "equity", "index-options", "oi-analysis", "tools", "trading", "settings"];
+export const OWN_REFRESH = ["market", "news", "money-flow", "intraday", "charts", "index-stocks", "equity", "index-options", "oi-analysis", "tools", "holidays", "trading", "settings"];
 // The phone's bottom bar keeps the busiest pages; the rest are under More (the full menu).
 export const MOBILE_ITEMS = ["dashboard", "market", "money-flow", "intraday", "oi-analysis"];
 // Pages about NSE/BSE stocks and index options; the Commodity market hides them.

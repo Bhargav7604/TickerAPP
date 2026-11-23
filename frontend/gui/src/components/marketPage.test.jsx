@@ -53,6 +53,14 @@ test("index cards, mood, global cues, heatmaps, movers and breadth", async () =>
   expect(within(movers).getByText("No cash stock near its circuit limit right now.")).toBeInTheDocument();
   const breadth = screen.getByRole("region", { name: "Breadth by group" });
   expect(within(breadth).getByText("Sensex 30")).toBeInTheDocument();
+  // The thin line bars are drawn as charts: an intraday line on each index card, an advancing ring, score drivers and breadth columns.
+  const nifty = screen.getByRole("article", { name: "NIFTY 50" });
+  expect(within(nifty).getByRole("img", { name: /^NIFTY 50 today: from [\d,.]+ to 23,980\.5, .+ previous close 23,901\.1$/ })).toBeInTheDocument();
+  expect(within(nifty).getByRole("img", { name: /^NIFTY 50 today/ }).querySelectorAll("path")).toHaveLength(2);
+  expect(within(nifty).getByText(/^[▲▼]\s[+-]\d+\.\d{2}%$/)).toBeInTheDocument();
+  expect(within(mood).getByRole("img", { name: /% advancing$/ })).toBeInTheDocument();
+  expect(within(mood).getByRole("img", { name: /^Breadth -?\d+, India VIX/ })).toBeInTheDocument();
+  expect(within(breadth).getByRole("img", { name: /^All: \d+ up, \d+ down; Sensex 30: / })).toBeInTheDocument();
 });
 
 test("a sector tile traces its money on the Money Flow page", async () => {

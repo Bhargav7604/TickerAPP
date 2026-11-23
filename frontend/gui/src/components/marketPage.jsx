@@ -5,6 +5,8 @@ import { BoardMessage, NameButton, Panel, Pct, StatusChip, UP, DOWN } from "./bo
 import StockDrawer from "./stockDrawer";
 import { mono, PageShell } from "../ui/Glass";
 import { useTheme } from "../theme";
+import { withArrow } from "../trend";
+import { AdvanceDonut, BreadthColumns, DriverBars, IndexSpark } from "./marketGraphs";
 
 const INDEX_CARDS = ["NIFTY", "SENSEX", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "NIFTYNXT50", "NIFTY500", "INDIAVIX"];
 const FLOW_SECTOR_KEY = "utraders-flow-sector";
@@ -73,18 +75,15 @@ function IndexCard({ ix }) {
   const vix = ix.key === "INDIAVIX";
   const good = vix ? ix.pc <= 0 : ix.pc >= 0;
   const change = Number.isFinite(ix.ltp) && Number.isFinite(ix.prev) ? ix.ltp - ix.prev : NaN;
-  const range = ix.high > ix.low ? (ix.ltp - ix.low) / (ix.high - ix.low) * 100 : 50;
   return <Box component="article" aria-label={ix.label} sx={{ p: 1.25, borderRadius: 2, bgcolor: "background.paper", border: 1, borderColor: "divider", minWidth: 0 }}>
     <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
       <Typography sx={{ fontSize: 12, fontWeight: 800, letterSpacing: 0.5 }}>{ix.label}</Typography>
-      <Typography sx={{ ...mono, fontSize: 12, fontWeight: 800, color: good ? UP : DOWN }}>{good ? "▲" : "▼"} {fpc(ix.pc)}</Typography>
+      <Typography sx={{ ...mono, fontSize: 12, fontWeight: 800, color: good ? UP : DOWN }}>{fpc(ix.pc)}</Typography>
     </Box>
     <Typography sx={{ ...mono, fontSize: 20, fontWeight: 850, mt: 0.25 }}>{fp(ix.ltp)}
       <Box component="small" sx={{ ml: 0.75, fontSize: 12, color: good ? UP : DOWN }}>{Number.isFinite(change) ? `${change >= 0 ? "+" : ""}${change.toFixed(vix ? 2 : 1)}` : ""}</Box>
     </Typography>
-    <Box title={`Day range ${fp(ix.low)} – ${fp(ix.high)}`} sx={{ position: "relative", height: 5, borderRadius: 3, bgcolor: "action.hover", my: 0.75 }}>
-      <Box sx={{ position: "absolute", top: -2, left: `calc(${Math.max(0, Math.min(100, range))}% - 4px)`, width: 9, height: 9, borderRadius: "50%", bgcolor: good ? UP : DOWN }} />
-    </Box>
+    <IndexSpark ix={ix} good={good} />
     <Typography variant="caption" color="text.secondary" sx={{ display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
       {vix ? (ix.ltp < 12 ? "Very calm — option premiums cheap" : ix.ltp < 16 ? "Normal volatility" : ix.ltp < 20 ? "Nervous — wider swings" : "Fear — big swings likely")
         : `PDH ${fp(ix.prevH)} · PDL ${fp(ix.prevL)}`}
@@ -106,26 +105,28 @@ function Gauge({ score }) {
   </Box>;
 }
 
-function Mood({ mood }) {
+function Mood({ mood, flat }) {
+  const legend = [[UP, `▲ ${mood.adv}`, "advancing"], [DOWN, `▼ ${mood.dec}`, "declining"], ["text.secondary", `${flat}`, "unchanged"]];
   return <>
-    <Box sx={{ display: "flex", gap: 1.5, alignItems: "center", flexWrap: "wrap" }}>
-      <Gauge score={mood.score} />
-      <Box sx={{ minWidth: 0 }}>
-        <Typography sx={{ fontSize: 20, fontWeight: 850, color: mood.score > 18 ? UP : mood.score < -18 ? DOWN : "text.secondary" }}>{mood.label}</Typography>
-        <Typography variant="caption" color="text.secondary">score {mood.score >= 0 ? "+" : ""}{mood.score.toFixed(0)} of ±100</Typography>
-        <Box sx={{ height: 6, borderRadius: 3, bgcolor: DOWN, overflow: "hidden", my: 0.75, width: 180 }}>
-          <Box sx={{ height: 1, width: `${mood.adv / (mood.adv + mood.dec || 1) * 100}%`, bgcolor: UP }} />
+    <Box sx={{ display: "flex", gap: 2, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+      <Box sx={{ display: "flex", gap: 1.5, alignItems: "center", minWidth: 0 }}>
+        <Gauge score={mood.score} />
+        <Box sx={{ minWidth: 0 }}>
+          <Typography sx={{ fontSize: 20, fontWeight: 850, color: mood.score > 18 ? UP : mood.score < -18 ? DOWN : "text.secondary" }}>{mood.label}</Typography>
+          <Typography variant="caption" color="text.secondary">score {withArrow(mood.score, `${mood.score >= 0 ? "+" : ""}${mood.score.toFixed(0)}`, 0)} of ±100</Typography>
         </Box>
-        <Typography variant="caption"><Box component="span" sx={{ color: UP }}>{mood.adv} advancing</Box> · <Box component="span" sx={{ color: DOWN }}>{mood.dec} declining</Box></Typography>
+      </Box>
+      <Box sx={{ display: "flex", gap: 1.25, alignItems: "center" }}>
+        <AdvanceDonut adv={mood.adv} dec={mood.dec} flat={flat} />
+        <Box component="ul" aria-label="Stocks advancing and declining" sx={{ m: 0, p: 0, listStyle: "none", display: "grid", gap: 0.5 }}>
+          {legend.map(([color, count, text]) => <Box component="li" key={text} sx={{ fontSize: 12.5 }}>
+            <Box component="b" sx={{ ...mono, color, fontSize: 15 }}>{count}</Box> <Box component="span" sx={{ color: "text.secondary" }}>{text}</Box>
+          </Box>)}
+        </Box>
       </Box>
     </Box>
-    {mood.parts.map(part => <Box key={part.name} sx={{ display: "grid", gridTemplateColumns: "96px 1fr 120px", gap: 1, alignItems: "center", mt: 0.75, fontSize: 12.5 }}>
-      <span>{part.name}</span>
-      <Box sx={{ position: "relative", height: 6, borderRadius: 3, bgcolor: "action.hover" }}>
-        <Box sx={{ position: "absolute", top: 0, bottom: 0, borderRadius: 3, left: `${part.value >= 0 ? 50 : 50 + part.value / 2}%`, width: `${Math.abs(part.value) / 2}%`, bgcolor: part.value >= 0 ? UP : DOWN }} />
-      </Box>
-      <Typography variant="caption" color="text.secondary" sx={{ ...mono, textAlign: "right" }}>{part.note}</Typography>
-    </Box>)}
+    <Typography sx={{ mt: 1.5, fontSize: 11, fontWeight: 800, letterSpacing: 0.6, textTransform: "uppercase", color: "text.secondary" }}>What moves the score</Typography>
+    <DriverBars parts={mood.parts} />
     <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>Global cues are shown alongside; their moves are not scored because TradingView's widget does not share its numbers. GIFT Nifty is not available in the free widget.</Typography>
   </>;
 }
@@ -226,16 +227,15 @@ function Movers({ stocks, onPick }) {
 
 function Breadth({ stocks }) {
   const groups = breadthGroups(stocks);
+  const key = [[UP, "▲ Advancing"], ["text.disabled", "Unchanged"], [DOWN, "▼ Declining"]];
   return <>
-    {groups.map(group => <Box key={group.label} sx={{ display: "grid", gridTemplateColumns: "88px 1fr 80px", gap: 1, alignItems: "center", py: 0.4, fontSize: 12.5 }}>
-      <span>{group.label}</span>
-      <Box sx={{ display: "flex", height: 7, borderRadius: 4, overflow: "hidden", bgcolor: "action.hover" }}>
-        <Box sx={{ width: `${group.up / group.n * 100}%`, bgcolor: UP }} />
-        <Box sx={{ width: `${group.flat / group.n * 100}%`, bgcolor: "text.disabled", opacity: 0.35 }} />
-        <Box sx={{ width: `${group.down / group.n * 100}%`, bgcolor: DOWN }} />
-      </Box>
-      <Box component="span" sx={{ ...mono, textAlign: "right" }}><Box component="span" sx={{ color: UP }}>{group.up}</Box> / <Box component="span" sx={{ color: DOWN }}>{group.down}</Box></Box>
-    </Box>)}
+    <Box sx={{ display: "flex", flexWrap: "wrap", gap: "4px 12px", mb: 0.5, fontSize: 11.5, fontWeight: 700 }}>
+      {key.map(([color, text]) => <Box key={text} component="span" sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, color: "text.secondary" }}>
+        <Box component="i" sx={{ width: 10, height: 10, borderRadius: 0.5, bgcolor: color }} />{text}
+      </Box>)}
+      <Box component="span" sx={{ color: "text.secondary", fontWeight: 500 }}>· number = % of the group up</Box>
+    </Box>
+    <BreadthColumns groups={groups} />
     <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.75 }}>{capRead(groups)}</Typography>
   </>;
 }
@@ -274,7 +274,7 @@ export default function MarketPage({ api }) {
         {INDEX_CARDS.map(key => snapshot.idx[key]).filter(ix => ix && Number.isFinite(ix.ltp)).map(ix => <IndexCard key={ix.key} ix={ix} />)}
       </Box>
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "minmax(0, 1fr) minmax(0, 1.3fr)" }, gap: 1.5, mb: 1.5 }}>
-        <Panel title="Market mood" note="breadth · VIX · PCR · sector money">{mood && <Mood mood={mood} />}</Panel>
+        <Panel title="Market mood" note="breadth · VIX · PCR · sector money">{mood && <Mood mood={mood} flat={Math.max(0, stocks.length - mood.adv - mood.dec)} />}</Panel>
         <Panel title="🌐 Global cues" note="US closed overnight · Asia live · Europe from 13:30 IST"><GlobalCues /></Panel>
       </Box>
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "minmax(0, 1fr) minmax(0, 1fr)" }, gap: 1.5, mb: 1.5 }}>

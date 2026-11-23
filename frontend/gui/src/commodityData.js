@@ -1,5 +1,6 @@
 // The Commodity view of Home: MCX futures shown the way the Indian market is shown.
 import { useEffect, useRef, useState } from "react";
+import { withArrow } from "./trend";
 
 export const MARKETS = [["india", "Indian market"], ["commodity", "Commodity"]];
 export const COMMODITY_KEYS = [["crudeoil", "Crude Oil"], ["naturalgas", "Natural Gas"], ["gold", "Gold"], ["silver", "Silver"], ["copper", "Copper"], ["zinc", "Zinc"]];
@@ -28,10 +29,12 @@ export function makeCommodityApi(request) {
 
 const finite = value => typeof value === "number" && Number.isFinite(value);
 export const price = (value, places = 2) => finite(value) ? value.toLocaleString("en-IN", { minimumFractionDigits: places, maximumFractionDigits: places }) : "--";
-export const signed = (value, places = 2) => finite(value) ? `${value > 0 ? "+" : ""}${price(value, places)}` : "--";
-export const signedPct = value => finite(value) ? `${value > 0 ? "+" : ""}${value.toFixed(2)}%` : "--";
+// Changes carry ▲ / ▼ in front; signedPctBare goes in brackets after a number that already has its arrow.
+export const signed = (value, places = 2) => finite(value) ? withArrow(value, `${value > 0 ? "+" : ""}${price(value, places)}`, places) : "--";
+export const signedPctBare = value => finite(value) ? `${value > 0 ? "+" : ""}${value.toFixed(2)}%` : "--";
+export const signedPct = value => finite(value) ? withArrow(value, signedPctBare(value)) : "--";
 export const whole = value => finite(value) ? Math.round(value).toLocaleString("en-IN") : "--";
-export const signedWhole = value => finite(value) ? `${value > 0 ? "+" : ""}${whole(value)}` : "--";
+export const signedWhole = value => finite(value) ? withArrow(value, `${value > 0 ? "+" : ""}${whole(value)}`, 0) : "--";
 export const tone = value => finite(value) && value !== 0 ? (value > 0 ? "success.main" : "error.main") : "text.secondary";
 export const placesFor = value => finite(value) && Math.abs(value) < 100 ? 2 : finite(value) && Math.abs(value) < 10000 ? 1 : 0;
 

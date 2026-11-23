@@ -23,11 +23,11 @@ html:has(.eq-terminal) { overflow: hidden; }
 .eq-terminal .eq-toolbar > .eq-icon:last-child { margin-left: auto; }
 .eq-terminal .eq-segments { height: 32px; padding: 2px; }
 .eq-terminal .eq-segments button { height: 26px; padding: 0 12px; font-size: 12px; }
-.eq-terminal .eq-option-filters { order: 1; flex: none; padding: 6px 0 8px; gap: 10px; grid-template-columns: repeat(4, minmax(0, 200px)); }
+.eq-terminal .eq-option-filters { order: 2; flex: none; padding: 6px 0 8px; gap: 10px; grid-template-columns: repeat(4, minmax(0, 200px)); }
 .eq-terminal .eq-option-filters label { font-size: 11px; gap: 3px; }
 .eq-terminal .eq-option-filters select { font-size: 12px; height: 30px; padding: 0 6px; }
 .eq-terminal .eq-notice, .eq-terminal .eq-error { order: 2; flex: none; padding: 5px 10px; margin: 0 0 6px; font-size: 12px; border-radius: 5px; background: var(--ui-warning-bg); color: var(--ui-warning-ink); border: 1px solid var(--ui-warning-line); }
-.eq-terminal .eq-workspace { order: 3; flex: 1 1 0; min-height: 90px; align-items: stretch; gap: 0; overflow: hidden; border: 1px solid var(--ui-line); border-radius: 6px 6px 0 0; background: var(--ui-surface); }
+.eq-terminal .eq-workspace { order: 3; flex: 1 1 0; min-height: 90px; align-items: stretch; gap: 0; overflow: hidden; border: 1px solid var(--ui-line); border-radius: 6px; background: var(--ui-surface); }
 .eq-terminal .eq-watch { display: flex; flex-direction: column; min-height: 0; }
 .eq-terminal .eq-table-scroll { flex: 1 1 0; min-height: 0; max-height: none; overflow: auto; background: var(--ui-surface); }
 .eq-terminal .eq-empty { color: var(--ui-muted); background: var(--ui-surface); padding: 12px; }
@@ -52,9 +52,12 @@ html:has(.eq-terminal) { overflow: hidden; }
 .terminal-table .terminal-action button:hover { color: var(--ui-blue); }
 .eq-terminal .eq-table-footer { flex: none; min-height: 28px; padding: 0 10px; font-size: 11px; color: var(--ui-muted); background: var(--ui-subtle); border-top: 1px solid var(--ui-line); }
 .eq-terminal .eq-table-footer .eq-icon { height: 22px; width: 24px; }
-.eq-terminal .eq-watch-tabs { order: 4; flex: none; min-height: 36px; gap: 2px; padding: 0 6px; flex-wrap: nowrap; background: var(--ui-surface); border: 1px solid var(--ui-line); border-top: 0; border-radius: 0 0 6px 6px; }
-.eq-terminal .eq-watch-tabs > button:not(.eq-icon) { height: 35px; font-size: 12px; padding: 0 12px; border: 0; border-top: 2px solid transparent; border-radius: 0; color: var(--ui-muted); background: transparent; }
-.eq-terminal .eq-watch-tabs > button.active { color: var(--ui-blue); background: var(--ui-blue-soft); border-top-color: var(--ui-blue); border-bottom: 0; }
+/* The Straddles tab fills the space under the tabs and scrolls on its own, like the market watch. */
+.eq-terminal .eq-straddles { order: 2; flex: 1 1 0; min-height: 0; overflow-y: auto; margin: 0 -16px; }
+/* The tabs sit on top, under the toolbar, as their own strip. */
+.eq-terminal .eq-watch-tabs { order: 1; flex: none; min-height: 36px; gap: 2px; padding: 0 6px; margin: 0 0 6px; flex-wrap: nowrap; background: var(--ui-surface); border: 1px solid var(--ui-line); border-radius: 6px; }
+.eq-terminal .eq-watch-tabs > button:not(.eq-icon) { height: 35px; font-size: 12px; padding: 0 12px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; color: var(--ui-muted); background: transparent; }
+.eq-terminal .eq-watch-tabs > button.active { color: var(--ui-blue); background: var(--ui-blue-soft); border-bottom-color: var(--ui-blue); }
 .eq-terminal .eq-list-control { flex-basis: auto; margin-left: auto; padding: 0; }
 .eq-terminal .eq-list-control select { height: 28px; font-size: 12px; }
 .eq-terminal .eq-depth { overflow: auto; padding: 12px; color: var(--ui-ink); }

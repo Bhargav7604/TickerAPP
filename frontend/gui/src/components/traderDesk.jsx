@@ -3,6 +3,7 @@ import { AlertTriangle, CheckCircle2, Copy, Lock, Pause, Play, ShieldAlert, XCir
 import "../traderDesk.css";
 import { clockOf, dateOf, price, rupees } from "../traderData";
 import { LANGUAGES, saveLanguage, translate } from "../i18n";
+import { withArrow } from "../trend";
 
 const TABS = [["plan", "Plan a trade"], ["trades", "My trades"], ["coach", "Coach"], ["alerts", "Alerts"], ["replay", "Replay"], ["expiry", "Expiry report"], ["money", "My money"]];
 const INDEXES = [["nifty", "NIFTY"], ["banknifty", "BANKNIFTY"], ["sensex", "SENSEX"], ["stock", "Stock F&O"]];
@@ -89,7 +90,7 @@ function PlanTab({ api, overview, onSaved }) {
       {result.timeLoss && <Note tone="warning">{result.timeLoss}</Note>}
       {result.stockExpiry && <Note tone="danger">{result.stockExpiry.text}</Note>}
       {result.whatIf.length > 0 && <section className="desk-card"><h2>What if</h2><ul className="desk-whatif">{result.whatIf.map(item =>
-        <li key={item.label}><span>{item.label}</span><b className={item.pnl >= 0 ? "desk-up" : "desk-down"}>{item.pnl >= 0 ? "+" : ""}{rupees(item.pnl)}</b></li>)}</ul></section>}
+        <li key={item.label}><span>{item.label}</span><b className={item.pnl >= 0 ? "desk-up" : "desk-down"}>{withArrow(item.pnl, `${item.pnl >= 0 ? "+" : ""}${rupees(item.pnl)}`, 0)}</b></li>)}</ul></section>}
       <button type="button" className="desk-primary" onClick={save}>Add to my trade list ({practice ? "practice money" : "real money"})</button>
       {saved && <Note>Saved to your trade list.{saved.warnings.length ? " The coach noted: " + saved.warnings.join(" ") : ""}</Note>}
     </div>}
@@ -236,7 +237,7 @@ function ReplayTab({ api }) {
     <ReplayChart prices={prices} cursor={cursor} alerts={alerts} />
     <input type="range" min="0" max={Math.max(prices.length - 1, 0)} value={cursor} onChange={event => { setCursor(Number(event.target.value)); setPlaying(false); }} aria-label="Replay time" className="desk-slider" />
     {point && <p className="desk-replay-now"><b>{clockOf(point.time)} IST</b> · futures {price(point.price)} · net lots {Math.round(point.netLots).toLocaleString("en-IN")}
-      {oi && <> · put − call OI {oi.diff > 0 ? "+" : ""}{Math.round(oi.diff).toLocaleString("en-IN")}</>}</p>}
+      {oi && <> · put − call OI {withArrow(oi.diff, `${oi.diff > 0 ? "+" : ""}${Math.round(oi.diff).toLocaleString("en-IN")}`, 0)}</>}</p>}
     <ul className="desk-alerts">{alerts.filter(alert => point && alert.time <= point.time).map(alert => <li key={alert.id}>
       <span className="desk-time">{clockOf(alert.time)}</span><span className={`desk-chip is-${alert.strength}`}>{alert.strength}</span>
       <span className="desk-alert-text">{alert.message}</span><span className={`desk-chip is-${alert.outcome || "pending"}`}>{alert.outcome || "checking"}</span></li>)}</ul>

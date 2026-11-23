@@ -8,7 +8,48 @@ import Navbar from "./navbar";
 
 jest.mock("./equityChart", () => ({ __esModule: true, default: ({ contract, candles }) => <div data-testid="equity-chart">{contract.symbol} / {candles.length} candles</div> }));
 
+jest.mock("./straddleView", () => ({ __esModule: true, default: ({ api }) => <h2>Straddle view / {api.name}</h2> }));
+
 beforeEach(() => { localStorage.clear(); window.innerWidth = 1440; });
+
+test("the Straddles tab swaps the market watch for the straddle view and back", async () => {
+  render(<Equity api={makeEquityPreviewApi()} username="demo" straddleApi={{ name: "straddles" }} />);
+  fireEvent.click(screen.getByRole("button", { name: "Exit terminal view" }));
+  expect(await screen.findByRole("region", { name: "Equity market watch" })).toBeInTheDocument();
+  // Straddles comes first in the tab row.
+  const tabs = [...document.querySelectorAll(".eq-watch-tabs > button:not(.eq-icon)")].map(button => button.textContent);
+  expect(tabs).toEqual(["Straddles", "My watchlists", "All futures", "Stock options"]);
+  fireEvent.click(screen.getByRole("button", { name: "Straddles" }));
+  expect(await screen.findByRole("heading", { name: "Straddle view / straddles" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Straddles" })).toHaveAttribute("aria-pressed", "true");
+  expect(screen.queryByRole("region", { name: "Equity market watch" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("textbox", { name: "Search stock futures or options" })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "My watchlists" }));
+  expect(screen.getByRole("region", { name: "Equity market watch" })).toBeInTheDocument();
+  expect(screen.queryByRole("heading", { name: "Straddle view / straddles" })).not.toBeInTheDocument();
+  await waitFor(() => expect(screen.getAllByText("1,408.20").length).toBeGreaterThan(0));   // quotes resume
+});
+
+test("the Straddles tab stays in the terminal layout, in its own scrolling area under the tabs", async () => {
+  const { container } = render(<Equity api={makeEquityPreviewApi()} username="demo" straddleApi={{ name: "straddles" }} />);
+  expect(container.querySelector("main")).toHaveClass("eq-terminal");
+  fireEvent.click(screen.getByRole("button", { name: "Straddles" }));
+  const view = await screen.findByRole("heading", { name: "Straddle view / straddles" });
+  expect(container.querySelector("main")).toHaveClass("eq-terminal");
+  expect(view.closest(".eq-straddles")).not.toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "My watchlists" }));
+  expect(container.querySelector(".eq-straddles")).toBeNull();
+  await screen.findByRole("region", { name: "Equity market watch" });
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 50)); });
+});
+
+test("without a straddle feed there is no Straddles tab", async () => {
+  render(<Equity api={makeEquityPreviewApi()} username="demo" />);
+  fireEvent.click(screen.getByRole("button", { name: "Exit terminal view" }));
+  await screen.findByRole("region", { name: "Equity market watch" });
+  expect(screen.queryByRole("button", { name: "Straddles" })).not.toBeInTheDocument();
+  await waitFor(() => expect(screen.getAllByText("1,408.20").length).toBeGreaterThan(0));
+});
 afterEach(() => { delete document.documentElement.dataset.theme; });
 
 test("watchlist selection remains highlighted when the theme changes", async () => {

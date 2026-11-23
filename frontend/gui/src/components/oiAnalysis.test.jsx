@@ -82,12 +82,14 @@ test("option chain streams live quotes with build-up labels, ATM row and OI bars
   expect(headers).toEqual(["Calls", "Strike", "Puts", "Build-up 15m", "ΔOI 15m", "OI", "ΔOI day", "Vol", "IV", "LTP", "Δ",
     "Δ", "LTP", "IV", "Vol", "ΔOI day", "OI", "ΔOI 15m", "Build-up 15m"]);
   const atmCells = within(within(table).getByText("ATM").closest("tr")).getAllByRole("cell").map(cell => cell.textContent);
-  expect(atmCells).toEqual(["SB", "+5,000", "8.0L", "+50,000", "12.5k", "14.2", "120.00", "0.52", "0.52", "120.00", "14.2", "12.5k", "+30,000", "7.0L", "+3,000", "LB"]);
+  // Every signed change carries its direction arrow, kept on the line by a no-break space.
+  const up = text => `▲\u00a0${text}`;
+  expect(atmCells).toEqual(["SB", up("+5,000"), "8.0L", up("+50,000"), "12.5k", "14.2", "120.00", "0.52", "0.52", "120.00", "14.2", "12.5k", up("+30,000"), "7.0L", up("+3,000"), "LB"]);
   // Spot 22,603 sits above both strikes, so its marker row closes the table.
   const bodyRows = within(table).getAllByRole("row").slice(2);
   expect(bodyRows[bodyRows.length - 1]).toHaveTextContent("Spot 22,603.00");
   const summary = screen.getByRole("region", { name: "Option chain summary" });
-  ["22,603.00", "22,600", "27 Oct 2026", "1.23", "22,550", "14.2%", "13.0L", "ΔDay +70.0k", "16.0L", "ΔDay +29.0k", "+7.0k / +2.9k"]
+  ["22,603.00", "22,600", "27 Oct 2026", "1.23", "22,550", "14.2%", "13.0L", "ΔDay ▲ +70.0k", "16.0L", "ΔDay ▲ +29.0k", "▲ +7.0k / ▲ +2.9k"]
     .forEach(value => expect(within(summary).getByText(value)).toBeInTheDocument());
   expect(screen.getByText(/build-up window 15m is ready — 15 of 15 min recorded today \(40 snapshots\)/)).toBeInTheDocument();
   expect(screen.getByText(/showing 2 of 165 strikes/)).toBeInTheDocument();
@@ -97,11 +99,11 @@ test("option chain streams live quotes with build-up labels, ATM row and OI bars
   expect(screen.getByText("Support (max put OI)")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "OI %" }));
   const oiPct = screen.getByRole("img", { name: "OI change % by strike for 2 strikes" });
-  expect(oiPct.querySelector("title")).toHaveTextContent(/: \+5%$/);
+  expect(oiPct.querySelector("title")).toHaveTextContent(/: ▲ \+5%$/);
   expect(screen.getByText(/OI % = today's OI change/)).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "LTP %" }));
   const ltpPct = screen.getByRole("img", { name: "LTP change % by strike for 2 strikes" });
-  expect(ltpPct.querySelector("title")).toHaveTextContent(/: \+2%$/);
+  expect(ltpPct.querySelector("title")).toHaveTextContent(/: ▲ \+2%$/);
   expect(screen.getByRole("button", { name: "LTP %" })).toHaveAttribute("aria-pressed", "true");
 });
 

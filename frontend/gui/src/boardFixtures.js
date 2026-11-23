@@ -1,5 +1,5 @@
 // Sample market data for tests and the local design preview. Deterministic: the same numbers every run.
-import { INDICATORS } from "./boardData";
+import { INDICATORS, decodeSnapshot } from "./boardData";
 
 const SECTORS = ["Financial Services", "IT", "Oil & Gas", "Auto", "FMCG", "Healthcare", "Metals & Mining", "Capital Goods",
   "Telecom", "Power", "Realty", "Chemicals", "Consumer Durables", "Construction Materials"];
@@ -23,6 +23,21 @@ const N100 = new Set(NAMES.slice(0, 95));
 function random(seed) {
   let state = seed;
   return () => { state = (state * 1103515245 + 12345) % 2147483648; return state / 2147483648; };
+}
+
+/** A made-up day for each index, one point per 3-minute slot up to `minute`, from the open to the last price inside the day's range. */
+function withPaths(indices, minute) {
+  return indices.map((ix, n) => {
+    const slots = Math.floor(minute / 3) + 1;
+    const path = Array.from({ length: slots }, (_, i) => {
+      const t = slots > 1 ? i / (slots - 1) : 1;
+      const wave = Math.sin(i * 0.45 + n) * 0.35 + Math.sin(i * 0.11 + n * 2) * 0.45;
+      const value = ix.open + (ix.ltp - ix.open) * t + wave * (ix.high - ix.low) * 0.45 * Math.sin(Math.PI * t);
+      return +Math.min(ix.high, Math.max(ix.low, value)).toFixed(2);
+    });
+    path[path.length - 1] = ix.ltp;
+    return { ...ix, path };
+  });
 }
 
 export function makeBoardSnapshot({ minute = 245, status = "live" } = {}) {
@@ -57,7 +72,7 @@ export function makeBoardSnapshot({ minute = 245, status = "live" } = {}) {
   const coefficients = Object.fromEntries(NAMES.slice(0, 50).map((sym, i) => [sym, (0.11 - i * 0.0019) * nifty / rows[i][5] / 10]));
   return {
     type: "success", status, session: "2026-11-13", asOf: 1794560400, minute, paceFrac: (minute + 1) / 375, fields, rows,
-    indices: [
+    indices: withPaths([
       { key: "NIFTY", label: "NIFTY 50", ltp: nifty, prev: 23901.1, open: 23920, high: 24010.5, low: 23880.2, prevH: 24120, prevL: 23860, prevC: 23980 },
       { key: "SENSEX", label: "SENSEX", ltp: 78912.3, prev: 78701.2, open: 78750, high: 79010, low: 78620, prevH: 79100, prevL: 78500, prevC: 78701.2 },
       { key: "BANKNIFTY", label: "BANK NIFTY", ltp: 51874.2, prev: 52011.4, open: 52050, high: 52120, low: 51790, prevH: 52300, prevL: 51800, prevC: 52011.4 },
@@ -66,7 +81,7 @@ export function makeBoardSnapshot({ minute = 245, status = "live" } = {}) {
       { key: "NIFTYNXT50", label: "NIFTY NEXT 50", ltp: 64210.5, prev: 64480.2, open: 64500, high: 64560, low: 64100, prevH: 64700, prevL: 64200, prevC: 64480.2 },
       { key: "NIFTY500", label: "NIFTY 500", ltp: 22140.7, prev: 22088.9, open: 22100, high: 22180, low: 22060, prevH: 22200, prevL: 22010, prevC: 22088.9 },
       { key: "INDIAVIX", label: "INDIA VIX", ltp: 13.42, prev: 14.01, open: 14.0, high: 14.2, low: 13.3, prevH: 14.5, prevL: 13.8, prevC: 14.01 },
-    ],
+    ], minute),
     pcr: 1.12, weights: { nifty: coefficients, sensex: {} },
     calendar: [
       { index: "NIFTY", cycle: "Weekly", lot: 65, next: ["2026-11-17", "2026-11-24", "2026-12-01"], daysTo: 4 },
@@ -120,4 +135,41 @@ export function makeBoardPreviewApi() {
       return later({ type: "success", symbol: sym, candles, message: "" });
     },
   };
+}
+
+/** Index Stocks sample data for the local design preview, built from the same sample stocks. */
+export function makeIndexStocksPreviewApi() {
+  const later = value => new Promise(resolve => setTimeout(() => resolve(value), 80));
+  const snapshot = decodeSnapshot(makeBoardSnapshot());
+  const members = { nifty: ["NIFTY 50", "NIFTY", st => st.n50], sensex: ["SENSEX", "SENSEX", st => st.sx],
+    banknifty: ["BANK NIFTY", "BANKNIFTY", st => st.sector === "Financial Services"] };
+  const side = test => test > 0 ? "bull" : test < 0 ? "bear" : "flat";
+  const load = async index => {
+    const [label, key, test] = members[index] || members.nifty;
+    const stocks = snapshot.stocks.filter(test).map(st => {
+      const vsVwapPct = (st.ltp - st.vwap) / st.vwap * 100;
+      const checks = [{ name: "Change", side: side(st.pc) }, { name: "VWAP", side: side(vsVwapPct) }, { name: "Open", side: side(st.ltp - st.open) }];
+      const bull = checks.filter(check => check.side === "bull").length, bear = checks.filter(check => check.side === "bear").length;
+      return { symbol: st.sym, company: st.company, sector: st.sector, ltp: st.ltp, prevClose: st.prev, change: st.ltp - st.prev, changePct: st.pc,
+        open: st.open, high: st.high, low: st.low, vwap: st.vwap, vsVwapPct, volume: st.volume,
+        rangePos: st.high > st.low ? (st.ltp - st.low) / (st.high - st.low) : 0.5, futures: null, pivots: null, checks, bull, bear,
+        score: bull - bear, state: bull >= 3 ? "bullish" : bear >= 3 ? "bearish" : "choppy" };
+    }).sort((a, b) => b.changePct - a.changePct).map((row, i) => ({ ...row, rank: i + 1 }));
+    const up = stocks.filter(st => st.changePct > 0).length, down = stocks.filter(st => st.changePct < 0).length;
+    const sectors = Object.values(stocks.reduce((groups, st) => {
+      const group = groups[st.sector] = groups[st.sector] || { name: st.sector, total: 0, up: 0, down: 0, stocks: [] };
+      group.total += st.changePct; group.up += st.changePct > 0 ? 1 : 0; group.down += st.changePct < 0 ? 1 : 0;
+      group.stocks.push({ symbol: st.symbol, changePct: st.changePct });
+      return groups;
+    }, {})).map(group => ({ ...group, avgChangePct: group.total / group.stocks.length })).sort((a, b) => b.avgChangePct - a.avgChangePct);
+    const ix = snapshot.idx[key];
+    return later({ type: "success", index, label, marketOpen: true, stocks, asOf: snapshot.asOf, sessionDate: snapshot.session,
+      spot: { ltp: ix.ltp, change: ix.ltp - ix.prev, changePct: ix.pc },
+      breadth: { up, down, flat: stocks.length - up - down, bullish: stocks.filter(st => st.state === "bullish").length,
+        bearish: stocks.filter(st => st.state === "bearish").length, choppy: stocks.filter(st => st.state === "choppy").length,
+        mood: up >= down ? "More stocks rising" : "More stocks falling", moodSide: up >= down ? "up" : "down" },
+      sectors, leading: sectors[0], lagging: sectors[sectors.length - 1], missing: [], levelsReady: 0, retryAfterMs: null,
+      message: "Sample data for the design preview." });
+  };
+  return { load, heatmap: () => Promise.reject(new Error("The heatmap is not part of the design preview.")) };
 }

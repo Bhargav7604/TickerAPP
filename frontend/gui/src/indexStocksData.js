@@ -1,3 +1,5 @@
+import { withArrow } from "./trend";
+
 export const STOCK_INDEXES = [["nifty", "NIFTY 50"], ["banknifty", "BANK NIFTY"], ["sensex", "SENSEX"]];
 export const HEATMAP_INDEXES = [...STOCK_INDEXES, ["nifty500", "NIFTY 500"]];
 const INDEX_KEY = "utraders-index-stocks";
@@ -41,8 +43,10 @@ export const rupeesCompact = value => !finite(value) ? "--" : value >= 1e7
 
 const finite = value => typeof value === "number" && Number.isFinite(value);
 export const price = value => finite(value) ? value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "--";
-export const signedPct = value => finite(value) ? `${value > 0 ? "+" : ""}${value.toFixed(2)}%` : "--";
-export const signedNumber = value => finite(value) ? `${value > 0 ? "+" : ""}${Math.round(value).toLocaleString("en-IN")}` : "--";
+// Changes carry ▲ / ▼ in front; the bare form leaves it out where the arrow already sits beside it, as in "▲ +12.50 (+0.40%)".
+export const signedPctBare = value => finite(value) ? `${value > 0 ? "+" : ""}${value.toFixed(2)}%` : "--";
+export const signedPct = value => finite(value) ? withArrow(value, signedPctBare(value)) : "--";
+export const signedNumber = value => finite(value) ? withArrow(value, `${value > 0 ? "+" : ""}${Math.round(value).toLocaleString("en-IN")}`, 0) : "--";
 export const whole = value => finite(value) ? Math.round(value).toLocaleString("en-IN") : "--";
 export const tone = value => finite(value) ? value > 0 ? "is-up" : value < 0 ? "is-down" : "" : "";
 export const clock = seconds => finite(seconds)
